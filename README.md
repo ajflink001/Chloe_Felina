@@ -8,7 +8,7 @@ from chloeFelina import cat
 
 felia = cat.CholeAI()
 
-felia.getNestedDirectoryData("path/to/directory/you/want/to/get/from/including/subdirectories")
+felia.getNestedDirectoryData("path/to/directory/you/want/to/get/data/from/including/subdirectories")
 ```
 
 Currently, only the searchQuery and getTotalNumberOfReferencedEntities functions are fully implemented.
