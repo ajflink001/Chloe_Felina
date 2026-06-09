@@ -7,10 +7,10 @@
 # stable version of Python 3 will result in the best performance and behavior
 # of Chloe Felina.
 
-# Made in loving dedication and memory to my precious feline, friend, and
+# Made in loving dedication and memory to my precious feline pet, friend, and
 # family member: Chloe Link.
 
-import python_third_party_module_installer
+from chloeFelina import python_third_party_module_installer
 
 from tqdm import tqdm
 from os import system
@@ -68,16 +68,16 @@ from array import array
 from pathlib import Path
 
 # Custom Python Modules
-from purr import isQueryMatchKether,isQueryMatchBinah,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName
-from meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,convertValueToBytes,genSearchQueryResultFile,forbidden_dirs,backupGen
-from paxium import encrypt as pax_encrypt
-from paxium import decrypt as pax_decrypt
+from chloeFelina.purr import isQueryMatchKether,isQueryMatchBinah,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName
+from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,convertValueToBytes,genSearchQueryResultFile,forbidden_dirs,backupGen
+from chloeFelina.paxium import encrypt as pax_encrypt
+from chloeFelina.paxium import decrypt as pax_decrypt
 
 setlocale(LC_ALL,'')
 
 class ChloeAI:
 
-    def __init__(self, database_location : Union[str,None] = None, database_name : str = 'datumbazo', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, auto_check_db_integrity : bool = True):
+    def __init__(self, database_location : Union[str,None] = None, database_name : str = 'datenaro', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, auto_check_db_integrity : bool = True):
 
         self.crintum_obfuscation = crintum_obfuscation
 
