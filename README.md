@@ -3,11 +3,13 @@ Chloe Felina is approximately a Rule-Based Expert System designed with the philo
 
 In order to properly utilize Chloe Felina, you must first initialize the database by:
 
-
+```python
 from chloeFelina import cat
 
 felia = cat.CholeAI()
+
 felia.getNestedDirectoryData("path/to/directory/you/want/to/get/from/including/subdirectories")
+```
 
 Currently, only the searchQuery and getTotalNumberOfReferencedEntities functions are fully implemented.
 
