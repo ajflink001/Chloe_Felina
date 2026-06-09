@@ -10,11 +10,6 @@ from secrets import choice
 from time import ctime
 from decimal import Decimal
 # installed modules
-# PyWin32
-pywin32_imported = True
-try: from win32api import GetLogicalDriveStrings
-except ImportError: pywin32_imported = False
-except ModuleNotFoundError: pywin32_imported = False
 # OpenPyXL
 openpyxl_imported = True
 try:
@@ -42,12 +37,6 @@ getModifiedDate = lambda item_path : ctime(getmtime(item_path))
 
 alnums = f'{ascii_letters}{digits}'
 
-if pywin32_imported:
-    comp_drives = {unc_path(drive) : drive.replace('\\','/') for drive in GetLogicalDriveStrings().split('\000')[:-1] if drive != 'C:\\'}
-    explicit_drives = tuple(comp_drives.keys())
-    associated_drives = {comp_drives[item] : item for item in explicit_drives}
-
-    del comp_drives
 
 def randstr(string_length : int = 8) -> str:
     '''

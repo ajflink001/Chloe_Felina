@@ -10,6 +10,8 @@
 # Made in loving dedication and memory to my precious feline, friend, and
 # family member: Chloe Link.
 
+import python_third_party_module_installer
+
 from tqdm import tqdm
 from os import system
 
@@ -676,7 +678,7 @@ class ChloeAI:
                 tf.write(txt_lines[0])
                 counter += 1
                 for n in range(1,len(txt_lines)):
-                    tf.write(txt_lines[n])
+                    tf.write(f"\n{txt_lines[n]}")
                     counter += 1
 
             del txt_lines
