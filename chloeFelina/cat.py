@@ -695,11 +695,19 @@ class ChloeAI:
             del txt_lines
 
             if not exists((_metadata := f'{self.db_path}/{archive_db_name}/_metadata.txt')):
-                with open(_metadata,'w') as tf:
-                    tf.write(f"{new_txt_file[new_txt_file.rfind('/')+1:][:-4]}|TXT|{baseline_metadata}|{counter}")
+                try:
+                    with open(_metadata,'w',encoding='utf-8') as tf:
+                        tf.write(f"{new_txt_file[new_txt_file.rfind('/')+1:][:-4]}|TXT|{baseline_metadata}|{counter}")
+                except UnicodeEncodeError:
+                    with open(_metadata,'w',encoding='latin-1') as tf:
+                        tf.write(f"{new_txt_file[new_txt_file.rfind('/')+1:][:-4]}|TXT|{baseline_metadata}|{counter}")
             else:
-                with open(_metadata,'a') as tf:
-                    tf.write(f"\n{new_txt_path[new_txt_path.rfind('/')+1:][:-4]}|TXT|{baseline_metadata}|{counter}")
+                try:
+                    with open(_metadata,'a',encoding='utf-8') as tf:
+                        tf.write(f"\n{new_txt_path[new_txt_path.rfind('/')+1:][:-4]}|TXT|{baseline_metadata}|{counter}")
+                except UnicodeEncodeError:
+                    with open(_metadata,'a',encoding='latin-1') as tf:
+                        tf.write(f"\n{new_txt_path[new_txt_path.rfind('/')+1:][:-4]}|TXT|{baseline_metadata}|{counter}")
         except Exception:
             if exists(txt_folder):
                 if not len(listdir(txt_folder)):
@@ -1028,11 +1036,19 @@ class ChloeAI:
                 counter += 1
 
         if not exists((_metadata := f'{self.db_path}/{archive_db_name}/_metadata.txt')):
-            with open(_metadata,'w') as tf:
-                tf.write(f"{shapefile_name[:shapefile_name.rfind('.')]}_{shapefile_name[shapefile_name.rfind('.')+1:]}|SHP|{baseline_metadata}|{counter}")
+            try:
+                with open(_metadata,'w',encoding='utf-8') as tf:
+                    tf.write(f"{shapefile_name[:shapefile_name.rfind('.')]}_{shapefile_name[shapefile_name.rfind('.')+1:]}|SHP|{baseline_metadata}|{counter}")
+            except UnicodeEncodeError:
+                with open(_metadata,'w',encoding='latin-1') as tf:
+                    tf.write(f"{shapefile_name[:shapefile_name.rfind('.')]}_{shapefile_name[shapefile_name.rfind('.')+1:]}|SHP|{baseline_metadata}|{counter}")
         else:
-            with open(_metadata,'a') as tf:
-                tf.write(f"\n{shapefile_name[:shapefile_name.rfind('.')]}_{shapefile_name[shapefile_name.rfind('.')+1:]}|SHP|{baseline_metadata}|{counter}")
+            try:
+                with open(_metadata,'a',encoding='utf-8') as tf:
+                    tf.write(f"\n{shapefile_name[:shapefile_name.rfind('.')]}_{shapefile_name[shapefile_name.rfind('.')+1:]}|SHP|{baseline_metadata}|{counter}")
+            except UnicodeEncodeError:
+                with open(_metadata,'a',encoding='latin-1') as tf:
+                    tf.write(f"\n{shapefile_name[:shapefile_name.rfind('.')]}_{shapefile_name[shapefile_name.rfind('.')+1:]}|SHP|{baseline_metadata}|{counter}")
 
         return None
 
@@ -1182,11 +1198,18 @@ class ChloeAI:
 
         object_counters = '|'.join(sorted(object_counters))
 
-        with open(f'{self.db_path}/{archive_db_name}/{gdb_path[gdb_path.rfind("/")+1:gdb_path.rfind(".")]}_{gdb_path[gdb_path.rfind(".")+1:]}_metadata.txt','w') as tf:
-            gdb_items = tuple(gdb_files.keys())
-            tf.write(f'{object_counters}\n{gdb_items[0]}|{gdb_files[gdb_items[0]][0]}|{gdb_files[gdb_items[0]][1]}|{gdb_files[gdb_items[0]][2]}')
-            for n in range(1,len(gdb_items)):
-                tf.write(f"\n{gdb_items[n]}|{gdb_files[gdb_items[n]][0]}|{gdb_files[gdb_items[n]][1]}|{gdb_files[gdb_items[n]][2]}")
+        try:
+            with open(f'{self.db_path}/{archive_db_name}/{gdb_path[gdb_path.rfind("/")+1:gdb_path.rfind(".")]}_{gdb_path[gdb_path.rfind(".")+1:]}_metadata.txt','w',encoding='utf-8') as tf:
+                gdb_items = tuple(gdb_files.keys())
+                tf.write(f'{object_counters}\n{gdb_items[0]}|{gdb_files[gdb_items[0]][0]}|{gdb_files[gdb_items[0]][1]}|{gdb_files[gdb_items[0]][2]}')
+                for n in range(1,len(gdb_items)):
+                    tf.write(f"\n{gdb_items[n]}|{gdb_files[gdb_items[n]][0]}|{gdb_files[gdb_items[n]][1]}|{gdb_files[gdb_items[n]][2]}")
+        except UnicodeEncodeError:
+            with open(f'{self.db_path}/{archive_db_name}/{gdb_path[gdb_path.rfind("/")+1:gdb_path.rfind(".")]}_{gdb_path[gdb_path.rfind(".")+1:]}_metadata.txt','w',encoding='latin-1') as tf:
+                gdb_items = tuple(gdb_files.keys())
+                tf.write(f'{object_counters}\n{gdb_items[0]}|{gdb_files[gdb_items[0]][0]}|{gdb_files[gdb_items[0]][1]}|{gdb_files[gdb_items[0]][2]}')
+                for n in range(1,len(gdb_items)):
+                    tf.write(f"\n{gdb_items[n]}|{gdb_files[gdb_items[n]][0]}|{gdb_files[gdb_items[n]][1]}|{gdb_files[gdb_items[n]][2]}")
 
         return None
 
@@ -1216,11 +1239,19 @@ class ChloeAI:
         except NameError: pass
 
         if not exists((_metadata := f'{self.db_path}/{archive_db_name}/_metadata.txt')):
-            with open(_metadata,'w') as tf:
-                tf.write(f'{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}|IMG|{baseline_metadata}|{counter}')
+            try:
+                with open(_metadata,'w',encoding='utf-8') as tf:
+                    tf.write(f'{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}|IMG|{baseline_metadata}|{counter}')
+            except UnicodeEncodeError:
+                with open(_metadata,'w',encoding='latin-1') as tf:
+                    tf.write(f'{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}|IMG|{baseline_metadata}|{counter}')
         else:
-            with open(_metadata,'a') as tf:
-                tf.write(f'\n{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}|IMG|{baseline_metadata}|{counter}')
+            try:
+                with open(_metadata,'a',encoding='utf-8') as tf:
+                    tf.write(f'\n{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}|IMG|{baseline_metadata}|{counter}')
+            except UnicodeEncodeError:
+                with open(_metadata,'a',encoding='latin-1') as tf:
+                    tf.write(f'\n{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}|IMG|{baseline_metadata}|{counter}')
 
         return None
 
@@ -1955,10 +1986,6 @@ class ChloeAI:
             found_matches = tuple([found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.')+1:] in check_type])
         else:
             return None
-
-        if save_results_to_file:
-            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
-        return found_matches
 
         # Account for not selecting all on first run
         if save_results_to_file:
