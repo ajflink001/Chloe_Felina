@@ -1,0 +1,50 @@
+Note: Certain things are deliberately unexplained due to not being advised to let the user use and/or interact with them directly.
+
+ChloeAI
+
+Purpose: Initialization of Chloe Felina
+
+Parameters:
+
+database_location (String or NoneType) - This dictates the directory/folder where the database used by Chloe Felina will be generated. If this is not specified, it will try to default to the current user's Documents folder. Please note that specific locations on the user's local machine are forbidden from being used and will instead default to the current user's Documents folder.
+
+database_name (String) - This will be the name of the database used by Chloe Felina. Anything name is acceptable. If a database has already been generated for Chloe Felina (and both the database_location and database_name together point to it), it will get the necessary data from the pre-existing database instead of initializing a new one. By default "datenaro" is used as the name of the database. Datenaro is supposedly "database" in Esperanto.
+
+maximum_pixels (Integer) - This parameter only comes into effect if pillow/PIL (i.e., Python Image Library) module is installed/available. It dictates the maximum number of pixels an image is allowed to have before an error is thrown by the module. By default, the value is set to 10 billion pixels.
+
+histogram_ratio_precision (Integer) - This parameter only comes into effect if pillow/PIL (i.e., Python Image Library) module is installed/available. When acquiring identifying data from image files, this value determines the number of decimal points that are kept for histogram ratio values. In short, higher values result in more "exact" values for histogram ratios while lower ones result in the inverse. By default, the value is 6 and is considered optimal.
+
+pdf_max_array_out_stream_len, pdf_max_declared_stream_len, pdf_jbig2_max_out_len, pdf_lzw_max_out_len, pdf_zlib_max_out_len, pdf_zlib_recovery_in_len, pdf_flate_max_columns, pdf_flate_max_row_len, pdf_flate_max_buffer_size, pdf_run_len_max_out_len (Integers) - These parameters only come into effect if pypdf module is installed/available. These values directly set preset maximums for the pypdf module : pypdf.filters.MAX_ARRAY_BASED_STREAM_OUTPUT_LENGTH, pypdf.filters.MAX_DECLARED_STREAM_LENGTH, pypdf.filters.JBIG2_MAX_OUTPUT_LENGTH, pypdf.filters.LZW_MAX_OUTPUT_LENGTH, pypdf.filters.RUN_LENGTH_MAX_OUTPUT_LENGTH, pypdf.filters.ZLIB_MAX_OUTPUT_LENGTH, pypdf.filters.ZLIB_MAX_RECOVERY_INPUT_LENGTH, pypdf.filters.FLATE_MAX_COLUMNS, pypdf.filters.FLATE_MAX_ROW_LENGTH, and pypdf.filters.FLATE_MAX_BUFFER_SIZE, respectively. If you are dealing with extremely large/long PDFs or experiencing an error related to one of the values, try increasing the default value to see if that helps.
+
+crintum_obfuscation (Boolean) - If a database for Chloe Felina already exists, it will expect that obfuscation has already been applied to the crintum_pointer.txt and decode it during the session that Chloe Felina is being used. Otherwise, any added entry to crintum_pointer.txt will be obfuscated via a custom obfuscation algorithm. This is False by default. Set to True if you want a minor amount of security; however, this may result in some minor slower initialization of Chloe Felina depending upon how many entries are in crintum_pointer.txt.
+
+
+ChloeAI.getNestedDirectoryData
+
+Purpose: This compiles data from entities (i.e., files and special folders) into the database starting with the specified directory and all folders/directories contained within said specified directory.
+
+Parameters:
+
+top_directory_path (String) - This is the specified full path to the directory the user wants Chloe Felina to start with getting data from and will get data from all nested folders/directories as well. An invalid explicit path will result in nothing happening.
+
+terminal_progress_display_enabled (Boolean) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
+
+
+ChloeAI.getDirectoryData
+
+Purpose: This compiles data from entities (i.e., files and special folders) into the database from a specified directory.
+
+Parameters:
+
+reference_directory (String) - This is the specified full path to the directory the user wants Chloe Felina to get data from. An invalid explicit path will result in nothing happening.
+
+terminal_progress_display_enabled (Boolean) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
+
+
+ChloeAI.searchQuery
+
+Purpose: This is dynamic term searching system that scans the database for matches to an inputted term or phrase and can output the results as an organized Excel, text, or CSV file and/or return a tuple. Search results by default are saved for future searches for faster results as well as shortcutting the need to check the entirety of the database. For example, if "plagioclase" was already searched and the user inputs "plagioclase feldspar" in searchQuery, only the saved results for "plagioclase" will be checked for any instance of "plagioclase feldspar" existing within said search results instead of the whole database. The only downside of this system is that there is no association between plural and singular versions of terms. So, "station" and "stations" are not considered to be the same thing by the system. This downside is only present due to allowing for specific strings of characters being allowed to be searched for. So, having code in place to connect the search results of "station" with "stations" would be unnecessary.
+
+Parameters:
+
+entry_string (String) - Input text to be searched across the database for instances of existing within files
