@@ -10,12 +10,16 @@
 # Made in loving dedication and memory to my precious feline pet, friend, and
 # family member: Chloe Link.
 
-from chloeFelina import python_third_party_module_installer
-
-from tqdm import tqdm
-from os import system
-
-sys_clear = lambda : system('cls')
+# TQDM
+tqdm_imported = True
+try:
+    from tqdm import tqdm
+    from os import system
+    sys_clear = lambda : system('cls')
+except ImportError:
+    tqdm_imported = False
+except ModuleNotFoundError:
+    tqdm_imported = False
 
 # Installed Python Modules
 # ArcPy
@@ -68,7 +72,7 @@ from array import array
 from pathlib import Path
 
 # Custom Python Modules
-from chloeFelina.purr import isQueryMatchKether,isQueryMatchBinah,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName
+from chloeFelina.purr import isQueryMatchKether,isQueryMatchBinah,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName,decodeZipTxtLine
 from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,convertValueToBytes,genSearchQueryResultFile,forbidden_dirs,backupGen
 from chloeFelina.paxium import encrypt as pax_encrypt
 from chloeFelina.paxium import decrypt as pax_decrypt
@@ -77,7 +81,7 @@ setlocale(LC_ALL,'')
 
 class ChloeAI:
 
-    def __init__(self, database_location : Union[str,None] = None, database_name : str = 'datenaro', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, auto_check_db_integrity : bool = True):
+    def __init__(self, database_location : Union[str,None] = None, database_name : str = 'datenaro', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False):
 
         self.crintum_obfuscation = crintum_obfuscation
 
@@ -228,7 +232,7 @@ class ChloeAI:
         2 == just local drives
         '''
 
-        if terminal_progress_display_enabled:
+        if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
 
         # Note: Local drive refers to just the C drive. Any external or network
@@ -304,43 +308,46 @@ class ChloeAI:
         return True
 
 
-    def getNestedDirectoryData(self, top_folder_path : str, terminal_progress_display_enabled : bool = False) -> None:
+    def getNestedDirectoryData(self, top_directory_path : str, terminal_progress_display_enabled : bool = False) -> None:
 
-        for root,dirs,files in walker(top_folder_path):
+        if not exists(top_directory_path):
+            return None
+
+        for root,dirs,files in walker(top_directory_path):
             if not "$RECYCLE.BIN" in root:
                 self.getDirectoryData(root.replace('\\','/'),terminal_progress_display_enabled)
 
         return None
 
 
-    def appendCrintumEntry(self, reference_path : str, corresponding_folder : str) -> None:
+    def appendCrintumEntry(self, reference_directory : str, corresponding_folder : str) -> None:
 
         if self.crintum_obfuscation:
             if not len(self.used_names):
                 with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
-                    tf.write(pax_encrypt(f"{reference_path}|{corresponding_folder}"))
+                    tf.write(pax_encrypt(f"{reference_directory}|{corresponding_folder}"))
             else:
                 with open(f'{self.db_path}/crintum_pointer.txt','a',encoding='utf-8') as tf:
-                    tf.write("\n%s" % (pax_encrypt(f'{reference_path}|{corresponding_folder}')))
+                    tf.write("\n%s" % (pax_encrypt(f'{reference_directory}|{corresponding_folder}')))
         else:
             if not len(self.used_names):
                 with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
-                    tf.write(f"{reference_path}|{corresponding_folder}")
+                    tf.write(f"{reference_directory}|{corresponding_folder}")
             else:
                 with open(f'{self.db_path}/crintum_pointer.txt','a',encoding='utf-8') as tf:
-                    tf.write(f"\n{reference_path}|{corresponding_folder}")
+                    tf.write(f"\n{reference_directory}|{corresponding_folder}")
 
         self.used_names.add(corresponding_folder)
-        self.paths_in_db.add(reference_path)
-        self.crintum_pointer[reference_path] = corresponding_folder
-        self.path_pointer[corresponding_folder] = reference_path
+        self.paths_in_db.add(reference_directory)
+        self.crintum_pointer[reference_directory] = corresponding_folder
+        self.path_pointer[corresponding_folder] = reference_directory
 
         return None
 
 
-    def removeCrintumEntry(self, reference_path : str) -> None:
+    def removeCrintumEntry(self, reference_directory : str) -> None:
 
-        del self.crintum_pointer[reference_path]
+        del self.crintum_pointer[reference_directory]
 
         # Failsafe
         backupGen(f'{self.db_path}/crintum_pointer.txt',(backup_crintum := f'{self.db_path}/_backup_crintum_pointer.txt'))
@@ -369,21 +376,21 @@ class ChloeAI:
         return None
 
 
-    def getDirectoryData(self, reference_path : str, terminal_progress_display_enabled : bool = False) -> None:
+    def getDirectoryData(self, reference_directory : str, terminal_progress_display_enabled : bool = False) -> None:
 
-        if terminal_progress_display_enabled:
+        if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
 
         # This is to account for mapped network drives.
-        if not exists((reference_path := unc_path(reference_path))):
+        if not exists((reference_directory := unc_path(reference_directory))):
             # Account for weird abnormality.
             return None
 
-        if reference_path in self.paths_in_db or reference_path.lower().endswith('.gdb') or reference_path == self.db_path:
+        if reference_directory in self.paths_in_db or reference_directory.lower().endswith('.gdb') or reference_directory == self.db_path:
             return None
         else:
             items = {}
-            for name in listdir(reference_path):
+            for name in listdir(reference_directory):
                 # Files with more than one "." are considered "dirty files".
                 if name.count('.') > 1:
                     continue
@@ -406,30 +413,34 @@ class ChloeAI:
                 while archive_db_name in self.used_names:
                     archive_db_name = randstr(12)
                 mkdir((output_db_folder := f'{self.db_path}/{archive_db_name}'))
-                for name in tqdm(items.keys(), disable = not terminal_progress_display_enabled):
+                if tqdm_imported:
+                    names = tqdm(tuple(items.keys()), disable = not terminal_progress_display_enabled)
+                else:
+                    names = tuple(items.keys())
+                for name in names:
                     match items[name]:
                         case 'GDB':
                             # This allows the algorithm to function without the
                             # ArcPy module being installed. Open source
                             # alternatives to ArcPy should be considered.
                             if arcpy_imported:
-                                self.archive_gdb_data(f'{reference_path}/{name}',archive_db_name)
+                                self.archive_gdb_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'SHP':
                             if arcpy_imported:
-                                self.archive_shp_data(f'{reference_path}/{name}',archive_db_name)
+                                self.archive_shp_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'TXT':
-                            self.archive_txt_data(f'{reference_path}/{name}',archive_db_name)
+                            self.archive_txt_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'PDF':
                             if pypdf_imported and pil_imported:
-                                self.archive_pdf_data(f'{reference_path}/{name}',archive_db_name)
+                                self.archive_pdf_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'DOC':
                             if docx_imported and docx2_imported:
-                                self.archive_doc_data(f'{reference_path}/{name}',archive_db_name)
+                                self.archive_doc_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'CSV':
                             pass
                         case 'IMG':
                             if pil_imported:
-                                self.archive_img_data(f'{reference_path}/{name}',archive_db_name)
+                                self.archive_img_data(f'{reference_directory}/{name}',archive_db_name)
                         case _:
                             pass
                 if exists(f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10.gdb'):
@@ -438,7 +449,7 @@ class ChloeAI:
                     except Exception:
                         rmtree(f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10.gdb')
                 if self.compressToZIP(archive_db_name):
-                    self.appendCrintumEntry(reference_path,archive_db_name)
+                    self.appendCrintumEntry(reference_directory,archive_db_name)
                 if exists(f'{self.db_path}/{archive_db_name}'):
                     rmtree(f'{self.db_path}/{archive_db_name}')
 
@@ -888,11 +899,19 @@ class ChloeAI:
                     counters[1] += 1
 
         if not exists((_metadata := f'{self.db_path}/{archive_db_name}/_metadata.txt')):
-            with open(_metadata,'w') as tf:
-                tf.write(f'{doc_path[doc_path.rfind("/")+1:doc_path.rfind(".")]}_{doc_path[doc_path.rfind(".")+1:]}|DOC|{baseline_metadata}|{counters[0]}|{counters[1]}')
+            try:
+                with open(_metadata,'w',encoding='utf-8') as tf:
+                    tf.write(f'{doc_path[doc_path.rfind("/")+1:doc_path.rfind(".")]}_{doc_path[doc_path.rfind(".")+1:]}|DOC|{baseline_metadata}|{counters[0]}|{counters[1]}')
+            except UnicodeEncodeError:
+                with open(_metadata,'w',encoding='latin-1') as tf:
+                    tf.write(f'{doc_path[doc_path.rfind("/")+1:doc_path.rfind(".")]}_{doc_path[doc_path.rfind(".")+1:]}|DOC|{baseline_metadata}|{counters[0]}|{counters[1]}')
         else:
-            with open(_metadata,'a') as tf:
-                tf.write(f'\n{doc_path[doc_path.rfind("/")+1:doc_path.rfind(".")]}_{doc_path[doc_path.rfind(".")+1:]}|DOC|{baseline_metadata}|{counters[0]}|{counters[1]}')
+            try:
+                with open(_metadata,'a',encoding='utf-8') as tf:
+                    tf.write(f'\n{doc_path[doc_path.rfind("/")+1:doc_path.rfind(".")]}_{doc_path[doc_path.rfind(".")+1:]}|DOC|{baseline_metadata}|{counters[0]}|{counters[1]}')
+            except UnicodeEncodeError:
+                with open(_metadata,'a',encoding='latin-1') as tf:
+                    tf.write(f'\n{doc_path[doc_path.rfind("/")+1:doc_path.rfind(".")]}_{doc_path[doc_path.rfind(".")+1:]}|DOC|{baseline_metadata}|{counters[0]}|{counters[1]}')
 
         return None
 
@@ -1357,11 +1376,19 @@ class ChloeAI:
                     counters[1] += 1
 
         if not exists((_metadata := f'{self.db_path}/{archive_db_name}/_metadata.txt')):
-            with open(_metadata,'w') as tf:
-                tf.write(f'{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
+            try:
+                with open(_metadata,'w',encoding='utf-8') as tf:
+                    tf.write(f'{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
+            except UnicodeEncodeError:
+                with open(_metadata,'w',encoding='latin-1') as tf:
+                    tf.write(f'{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
         else:
-            with open(_metadata,'a') as tf:
-                tf.write(f'\n{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
+            try:
+                with open(_metadata,'a',encoding='utf-8') as tf:
+                    tf.write(f'\n{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
+            except UnicodeEncodeError:
+                with open(_metadata,'a',encoding='latin-1') as tf:
+                    tf.write(f'\n{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
 
         return None
 
@@ -1392,7 +1419,7 @@ class ChloeAI:
             return test_name
 
 
-        if terminal_progress_display_enabled:
+        if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
 
         if max_line_concat < 2:
@@ -1498,11 +1525,14 @@ class ChloeAI:
                             else:
                                 zip_file_path_to_files[current_path] = [relevant_file_path[relevant_file_path.rfind("/")+1:]]
                     del end_num
-                    item_file_paths = tuple(zip_file_path_to_files.keys())
+                    if tqdm_imported:
+                        item_file_paths = tqdm(tuple(zip_file_path_to_files.keys()), disable = not terminal_progress_display_enabled)
+                    else:
+                        item_file_paths = tuple(zip_file_path_to_files.keys())
                     if isinstance(check_type,str):
                         match check_type.lower().replace(' ',''):
                             case 'any' | 'all' | 'every':
-                                for item_file_path in tqdm(item_file_paths, disable = not terminal_progress_display_enabled):
+                                for item_file_path in item_file_paths:
                                     with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
                                         for item in zip_file_path_to_files[item_file_path]:
                                             match item[item.rfind(".")+1:].lower():
@@ -1550,7 +1580,7 @@ class ChloeAI:
                                                     # placeholder
                                                     continue
                             case 'txt':
-                                for item_file_path in tqdm(item_file_paths, disable = not terminal_progress_display_enabled):
+                                for item_file_path in item_file_paths:
                                     with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
                                         for item in zip_file_path_to_files[item_file_path]:
                                             if include_entity_name:
@@ -1560,7 +1590,7 @@ class ChloeAI:
                                             if isQueryMatchKether(entry_string,tuple(zf.open(f'_txt_files/{item}').readlines())):
                                                 found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                             case 'pdf' | 'doc' | 'docx':
-                                for item_file_path in tqdm(item_file_paths, disable = not terminal_progress_display_enabled):
+                                for item_file_path in item_file_paths:
                                     with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
                                         for item in zip_file_path_to_files[item_file_path]:
                                             starting_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}/'
@@ -1573,7 +1603,7 @@ class ChloeAI:
                                                     found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                                     break
                             case 'shp':
-                                for item_file_path in tqdm(item_file_paths, disable = not terminal_progress_display_enabled):
+                                for item_file_path in item_file_paths:
                                     with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
                                         for item in zip_file_path_to_files[item_file_path]:
                                             starting_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}/'
@@ -1585,7 +1615,7 @@ class ChloeAI:
                                                 if isQueryMatchDaath(entry_string,f'{starting_name}{relevant_archived_file}',zf):
                                                     found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                             case 'gdb':
-                                for item_file_path in tqdm(item_file_paths, disable = not terminal_progress_display_enabled):
+                                for item_file_path in item_file_paths:
                                     with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
                                         for item in zip_file_path_to_files[item_file_path]:
                                             starting_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}/'
@@ -1598,7 +1628,7 @@ class ChloeAI:
                                                     found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                                     break
                             case 'jpeg' | 'jpg' | 'tif' | 'tiff' | 'png' | 'webp':
-                                for item_file_path in tqdm(item_file_paths, disable = not terminal_progress_display_enabled):
+                                for item_file_path in item_file_paths:
                                     with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
                                         for item in zip_file_path_to_files[item_file_path]:
                                             if include_entity_name:
@@ -1614,7 +1644,7 @@ class ChloeAI:
                                 check_type.remove('img')
                         except TypeError:
                             return None
-                        for item_file_path in tqdm(item_file_paths, disable = not  terminal_progress_display_enabled):
+                        for item_file_path in item_file_paths:
                             with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
                                 for item in zip_file_path_to_files[item_file_path]:
                                     if (entity_type := item.lower()[item.rfind(".")+1:]) in check_type:
@@ -1671,6 +1701,7 @@ class ChloeAI:
                                                         if temp_entry_string in getTestName(relevant_archived_file):
                                                             found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                             case _:
+                                                # Placeholder
                                                 pass
                     else:
                         return None
@@ -1680,12 +1711,17 @@ class ChloeAI:
                         return found_matches
                     else:
                         return None
+
         del search_results_folder
 
         found_matches = []
         # memory overhead needs to be reduced.
+        if tqdm_imported:
+            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled)
+        else:
+            iterator = tuple(self.used_names)
         if not ' ' in entry_string:
-            for used_name in tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled):
+            for used_name in iterator:
                 extracted_data = {}
                 with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
                     for item in tuple(zf.namelist()):
@@ -1760,7 +1796,7 @@ class ChloeAI:
             terms = tuple(entry_string.split(' '))
             if save_found_matches:
                 term_memories = {term : [] for term in terms}
-            for used_name in tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled):
+            for used_name in iterator:
                 extracted_data = {}
                 with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
                     for item in tuple(zf.namelist()):
@@ -1939,7 +1975,7 @@ class ChloeAI:
         Check items of matching type against each other.
         '''
 
-        if terminal_progress_display_enabled:
+        if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
 
         num_dbs = len((db_names := tuple(self.used_names)))
@@ -1949,7 +1985,12 @@ class ChloeAI:
         range_4 = range(4)
         documentation_types = {'docx','doc','pdf'}
 
-        for a in tqdm(range(num_dbs-1),disable = not terminal_progress_display_enabled):
+        if tqdm_imported:
+            iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled)
+        else:
+            iterator = range(num_dbs-1)
+
+        for a in iterator:
             ## General
             # entity_metadata = {entity : (Type, # txt lines)}
             ## PDF/doc/docx
@@ -1962,10 +2003,7 @@ class ChloeAI:
                 for metadata_file in tuple([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
                     if len(metadata_file) == 13:
                         for line in tuple([item for item in tuple(zf.open(metadata_file).readlines())]):
-                            try:
-                                line = line.decode().replace('\r','').replace('\n','')
-                            except UnicodeDecodeError:
-                                line = line.decode('latin-1',errors='replace').replace('\r').replace('\n','')
+                            line = decodeZipTxtLine(line)
                             if f'{current_db_name}|' + (entry := line[:line.find('|')]) in checked_entities:
                                 checked_entities.remove(f'{current_db_name}|{entry}')
                                 continue
@@ -1985,11 +2023,7 @@ class ChloeAI:
                             continue
                         with zf.open(metadata_file) as tf:
                             line = tf.readline()
-                        try:
-                            line = line.decode().replace('\r','').replace('\n','')
-                        except UnicodeDecodeError:
-                            line = line.decode('latin-1',errors='replace').replace('\r','').replace('\n','')
-                        entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(line.split('|'))})
+                        entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(decodeZipTxtLine(line).split('|'))})
                         del line
             for entity in entity_metadata.keys():
                 if f"{current_db_name}|{entity}" in checked_entities:
@@ -1999,73 +2033,34 @@ class ChloeAI:
                 with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
                     match (entity_type := entity_metadata[entity][0]):
                         case 'TXT':
-                            entity_lines = []
-                            for line in tuple(zf.open(f'_txt_files/{entity}.txt').readlines()):
-                                try:
-                                    entity_lines.append(line.decode().replace('\r','').replace('\n',''))
-                                except UnicodeDecodeError:
-                                    entity_lines.append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                            entity_lines = tuple(entity_lines)
+                            entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_txt_files/{entity}.txt').readlines())])
                         case 'PDF':
                             entity_lines = []
                             if entity_metadata[entity][1]:
-                                entity_lines.append(tuple(zf.open(f'{entity}/pdf_extracted_text.txt').readlines()))
+                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entity}/pdf_extracted_text.txt').readlines())]))
                             else:
                                 entity_lines.append(None)
                             if entity_metadata[entity][2]:
-                                entity_lines.append(tuple(zf.open(f'{entity}/image_histogram_data.txt').readlines()))
+                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entity}/image_histogram_data.txt').readlines())]))
                             else:
                                 entity_lines.append(None)
                         case 'DOC':
                             entity_lines = []
                             if entity_metadata[entity][1]:
-                                entity_lines.append([])
-                                for line in tuple(zf.open(f'{entity}/doc_extracted_text.txt').readlines()):
-                                    try:
-                                        entity_lines[0].append(line.decode().replace('\r','').replace('\n',''))
-                                    except UnicodeDecodeError:
-                                        entity_lines[0].append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                                entity_lines[0] = tuple(entity_lines[0])
+                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entity}/doc_extracted_text.txt').readlines())]))
                             else:
                                 entity_lines.append(None)
                             if entity_metadata[entity][2]:
-                                entity_lines.append([])
-                                for line in tuple(zf.open(f'{entity}/image_histogram_data.txt').readlines()):
-                                    try:
-                                        entity_lines[1].append(line.decode().replace('\r','').replace('\n',''))
-                                    except UnicodeDecodeError:
-                                        entity_lines[1].append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                                entity_lines[1] = tuple(entity_lines[1])
+                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entity}/image_histogram_data.txt').readlines())]))
                             else:
                                 entity_lines.append(None)
                             entity_lines = tuple(entity_lines)
                         case 'SHP':
-                            entity_lines = []
-                            for line in tuple(zf.open(f'_shp_files/{entity}.txt').readlines()):
-                                try:
-                                    entity_lines.append(line.decode().replace('\r','').replace('\n',''))
-                                except UnicodeDecodeError:
-                                    entity_lines.append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                            entity_lines = tuple(entity_lines)
+                            entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_shp_files/{entity}.txt').readlines())])
                         case 'GDB':
-                            entity_lines = []
-                            for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{entity}/')])):
-                                entity_lines.append([])
-                                for line in tuple(zf.open(f'{entity}/{gdb_object_txt_file}').readlines()):
-                                    try:
-                                        entity_lines[-1].append(line.decode().replace('\r','').replace('\n',''))
-                                    except UnicodeDecodeError:
-                                        entity_lines[-1].append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                                entity_lines[-1] = tuple(entity_lines[-1])
-                            entity_lines = tuple(entity_lines)
+                            entity_lines = tuple([tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entity}/{gdb_object_txt_file}').readlines())]) for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{entity}/')]))])
                         case 'IMG':
-                            entity_lines = []
-                            for line in tuple(zf.open(f'_images/{entity}.txt').readlines()):
-                                try:
-                                    entity_lines.append(line.decode().replace('\r','').replace('\n',''))
-                                except UnicodeDecodeError:
-                                    entity_lines.append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                            entity_lines = tuple(entity_lines)
+                            entity_lines = tuple([decodeZipTxtLine(line) for line in zf.open(f'_images/{entity}.txt').readlines()])
                         case _:
                             # Placeholder
                             continue
@@ -2077,10 +2072,7 @@ class ChloeAI:
                         for metadata_file in tuple([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
                             if len(metadata_file) == 13:
                                 for line in tuple([line for line in tuple(zf.open(metadata_file).readlines())]):
-                                    try:
-                                        line = line.decode().replace('\r','').replace('\n','')
-                                    except UnicodeDecodeError:
-                                        line = line.decode('latin-1',errors='replace').replace('\r','').replace('\n','')
+                                    line = decodeZipTxtLine(line)
                                     if f"{sub_current_db_name}|" + (entry := line[:line.find('|')]) in checked_entities:
                                         checked_entities.remove(f'{sub_current_db_name}|{entry}')
                                         continue
@@ -2100,11 +2092,7 @@ class ChloeAI:
                                     continue
                                 with zf.open(metadata_file) as tf:
                                     line = tf.readline()
-                                try:
-                                    line = line.decode().replace('\r','').replace('\n','')
-                                except UnicodeDecodeError:
-                                    line = line.decode('latin-1',errors='replace').replace('\r','').replace('\n','')
-                                sub_entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(line.split('|'))})
+                                sub_entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(decodeZipTxtLine(line).split('|'))})
                                 del line
                     for sub_entity in sub_entity_metadata.keys():
                         if sub_entity_metadata[sub_entity][0] != entity_type:
@@ -2113,14 +2101,7 @@ class ChloeAI:
                             case 'TXT':
                                 if entity_data[0] == sub_entity_metadata[sub_entity][1]:
                                     matching_lines = True
-                                    with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
-                                        sub_entity_lines = []
-                                        for line in tuple(zf.open(f'_txt_files/{sub_entity}.txt').readlines()):
-                                            try:
-                                                sub_entity_lines.append(line.decode().replace('\r','').replace('\n',''))
-                                            except UnicodeDecodeError:
-                                                sub_entity_lines.append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                                    sub_entity_lines = tuple(sub_entity_lines)
+                                    sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'_txt_files/{sub_entity}.txt').readlines()])
                                     for n in range(entity_data[0]):
                                         if entity_lines[n] != sub_entity_lines[n]:
                                             matching_lines = False
@@ -2133,14 +2114,7 @@ class ChloeAI:
                             case 'SHP':
                                 if entity_data[0] == sub_entity_metadata[sub_entity][1]:
                                     matching_lines = True
-                                    with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
-                                        sub_entity_lines = []
-                                        for line in tuple(zf.open(f'_shp_files/{sub_entity}.txt').readlines()):
-                                            try:
-                                                sub_entity_lines.append(line.decode().replace('\r','').replace('\n',''))
-                                            except UnicodeDecodeError:
-                                                sub_entity_lines.append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                                    sub_entity_lines = tuple(sub_entity_lines)
+                                    sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'_shp_files/{sub_entity}.txt').readlines()])
                                     for n in range(entity_data[0]):
                                         if entity_lines[n] != sub_entity_lines[n]:
                                             matching_lines = False
@@ -2154,14 +2128,7 @@ class ChloeAI:
                                 if entity_data[0] == sub_entity_metadata[sub_entity][1]:
                                     if entity_data[0] == sub_entity_metadata[sub_entity][1]:
                                         matching_lines = True
-                                        with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
-                                            sub_entity_lines = []
-                                            for line in tuple(zf.open(f'_images/{sub_entity}.txt').readlines()):
-                                                try:
-                                                    sub_entity_lines.append(line.decode().replace('\r','').replace('\n',''))
-                                                except UnicodeDecodeError:
-                                                    sub_entity_lines.append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                                        sub_entity_lines = tuple(sub_entity_lines)
+                                        sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'_images/{sub_entity}.txt').readlines()])
                                         for n in range(entity_data[0]):
                                             if entity_lines[n] != sub_entity_lines[n]:
                                                 matching_lines = False
@@ -2175,14 +2142,7 @@ class ChloeAI:
                                 if entity_data[0] == sub_entity_metadata[sub_entity][1] and entity_data[1] == sub_entity_metadata[sub_entity][2]:
                                     matching_lines = True
                                     if sub_entity_metadata[sub_entity][1]:
-                                        with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
-                                            sub_entity_lines = []
-                                            for line in tuple(zf.open(f'{sub_entity}/pdf_extracted_text.txt').readlines()):
-                                                try:
-                                                    sub_entity_lines.append(line.decode().replace('\r','').replace('\n',''))
-                                                except UnicodeDecodeError:
-                                                    sub_entity_lines.append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                                        sub_entity_lines = tuple(sub_entity_lines)
+                                        sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/pdf_extracted_text.txt').readlines()])
                                         for n in range(len(entity_lines[0])):
                                             if entity_lines[0][n] != sub_entity_lines[n]:
                                                 matching_lines = False
@@ -2191,14 +2151,7 @@ class ChloeAI:
                                         del sub_entity_lines
                                         continue
                                     if sub_entity_metadata[sub_entity][2]:
-                                        with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
-                                            sub_entity_lines = []
-                                            for line in tuple(zf.open(f'{sub_entity}/image_histogram_data.txt').readlines()):
-                                                try:
-                                                    sub_entity_lines.append(line.decode().replace('\r','').replace('\n',''))
-                                                except UnicodeDecodeError:
-                                                    sub_entity_lines.append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                                        sub_entity_lines = tuple(sub_entity_lines)
+                                        sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/image_histogram_data.txt').readlines()])
                                         for n in range(len(entity_lines[1])):
                                             if entity_lines[1][n] != sub_entity_lines:
                                                 matching_lines = False
@@ -2211,14 +2164,7 @@ class ChloeAI:
                                 if entity_data[0] == sub_entity_metadata[sub_entity][1] and entity_data[1] == sub_entity_metadata[sub_entity][2]:
                                     matching_lines = True
                                     if sub_entity_metadata[sub_entity][1]:
-                                        with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
-                                            sub_entity_lines = []
-                                            for line in tuple(zf.open(f'{sub_entity}/doc_extracted_text.txt').readlines()):
-                                                try:
-                                                    sub_entity_lines.append(line.decode().replace('\r','').replace('\n',''))
-                                                except UnicodeDecodeError:
-                                                    sub_entity_lines.append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                                        sub_entity_lines = tuple(sub_entity_lines)
+                                        sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/doc_extracted_text.txt').readlines()])
                                         for n in range(len(entity_lines[0])):
                                             if entity_lines[0][n] != sub_entity_lines[n]:
                                                 matching_lines = False
@@ -2227,14 +2173,7 @@ class ChloeAI:
                                         del sub_entity_lines
                                         continue
                                     if sub_entity_metadata[sub_entity][2]:
-                                        with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
-                                            sub_entity_lines = []
-                                            for line in tuple(zf.open(f'{sub_entity}/image_histogram_data.txt').readlines()):
-                                                try:
-                                                    sub_entity_lines.append(line.decode().replace('\r','').replace('\n',''))
-                                                except UnicodeDecodeError:
-                                                    sub_entity_lines.append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                                        sub_entity_lines = tuple(sub_entity_lines)
+                                        sub_entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/image_histogram_data.txt').readlines())])
                                         for n in range(len(entity_lines[1])):
                                             if entity_lines[1][n] != sub_entity_lines:
                                                 matching_lines = False
@@ -2246,17 +2185,8 @@ class ChloeAI:
                             case 'GDB':
                                 if (temp_num := len(entity_data[0])) == len(sub_entity_metadata[sub_entity][1]):
                                     matching_lines = True
-                                    sub_entity_lines = []
                                     with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
-                                        for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{sub_entity}/')])):
-                                            sub_entity_lines.append([])
-                                            for line in tuple(zf.open(f'{sub_entity}/{gdb_object_txt_file}').readlines()):
-                                                try:
-                                                    sub_entity_lines[-1].append(line.decode().replace('\r','').replace('\n',''))
-                                                except UnicodeDecodeError:
-                                                    sub_entity_lines[-1].append(line.decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-                                            sub_entity_lines[-1] = tuple(sub_entity_lines[-1])
-                                    sub_entity_lines = tuple(sub_entity_lines)
+                                        sub_entity_lines = tuple([tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{sub_entity}/{gdb_object_txt_file}').readlines())]) for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{sub_entity}/')]))])
                                     for a in range(temp_num):
                                         if len(entity_lines[a]) != len(sub_entity_lines[b]):
                                             matching_lines = False
@@ -2311,7 +2241,7 @@ class ChloeAI:
         if not exists(item_path):
             return None
 
-        if terminal_progress_display_enabled:
+        if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
 
         num_dbs = len((db_names := tuple(self.used_names)))
@@ -2379,73 +2309,102 @@ class ChloeAI:
 
     def getTotalNumberOfReferencedEntities(self, check_type : str = 'any', terminal_progress_display_enabled : bool = False) -> int:
 
+        if terminal_progress_display_enabled and tqdm_imported:
+            sys_clear()
+
 
         def genRefCountFunc(archive_db_path : str, exclusive_ending : str) -> int:
 
             counter = 0
 
             with ZipFile(archive_db_path) as zf:
-                with zf.open('_metadata.txt') as tf:
-                    while True:
-                        line = tf.readline()
-                        if not line:
-                            break
-                        if line[:line.find('|')].lower().endswith(exclusive_ending):
-                            counter += 1
+                if '_metadata.txt' in set(zf.namelist()):
+                    with zf.open('_metadata.txt') as tf:
+                        while True:
+                            line = tf.readline()
+                            if not line:
+                                break
+                            line = decodeZipTxtLine(line)
+                            if line[:line.find('|')].lower().endswith(exclusive_ending):
+                                counter += 1
 
-            return None
+            return counter
 
-
-        if terminal_progress_display_enabled:
-            sys_clear()
 
         entity_counter = 0
 
+        if tqdm_imported:
+            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled)
+        else:
+            iterator = tuple(self.used_names)
+
         if isinstance(check_type,str):
-            match check_type.lower().strip():
+            match (checking_type := check_type.lower().strip()):
                 case 'any' | 'all' | 'every':
-                    for used_name in tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled):
+                    for used_name in iterator:
                         with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
                             # accounts for GDB reference metadata files.
-                            entity_counter += len([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item])-1
-                            with zf.open('_metadata.txt') as tf:
-                                while True:
-                                    line = tf.readline()
-                                    if not line:
-                                        break
-                                    entity_counter += 1
-                case 'txt':
-                    for used_name in tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled):
-                        entity_counter += genRefCountFunc(f'{self.db_path}/{used_name}.zip')
-                case 'pdf':
-                    for used_name in tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled):
-                        entity_counter += genRefCountFunc(f'{self.db_path}/{used_name}.zip')
-                case 'doc' | 'docx':
-                    for used_name in tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled):
-                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            with zf.open('_metadata.txt') as tf:
-                                while True:
-                                    line = tf.readline()
-                                    if not line:
-                                        break
-                                    if line[:line.find('|')].lower().endswith('_doc') or line[:line.find('|')].lower().endswith('_docx'):
+                            entities = set(zf.namelist())
+                            entity_counter += len([item for item in tuple(entities) if not '/' in item and '_metadata.txt' in item])-1
+                            if '_metadata.txt' in entities:
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
                                         entity_counter += 1
-                case 'shp':
-                    for used_name in tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled):
-                        entity_counter += genRefCountFunc(f'{self.db_path}/{used_name}.zip')
-                case 'gdb':
-                    for used_name in tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled):
+                case 'doc' | 'docx':
+                    for used_name in iterator:
                         with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            # accounts for GDB reference metadata files.
+                            if '_metadata.txt' in set(zf.namelist()):
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line)
+                                        if line[:line.find('|')].lower().endswith('_doc') or line[:line.find('|')].lower().endswith('_docx'):
+                                            entity_counter += 1
+                case 'gdb':
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
                             entity_counter += len([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item])-1
+                case 'img':
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_metadata.txt' in set(zf.namelist()):
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line)
+                                        if f"{line[line.rfind('_')+1:]}." in self.accepted_image_extensions:
+                                            entity_counter += 1
                 case _:
-                    return 0
+                    for used_name in iterator:
+                        entity_counter += genRefCountFunc(f'{self.db_path}/{used_name}.zip',checking_type)
         elif isinstance(check_type,(set,tuple,list)):
             check_type = {item.lower().replace(' ','') for item in tuple(check_type)}
             if 'img' in check_type:
                 for img_type in ('jpeg','jpg','tif','tiff','png','webp'):
                     check_type.add(img_type)
                 check_type.remove('img')
+            for used_name in iterator:
+                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                    entities = set(zf.namelist())
+                    if 'gdb' in check_type:
+                        entity_counter += len([item for item in tuple(entities) if not '/' in item and '_metadata.txt' in item])-1
+                    if '_metadata.txt' in entities:
+                        with zf.open('_metadata.txt') as zf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = decodeZipTxtLine(line)
+                                line = line[:line.find('|')]
+                                if line[line.rfind("_")+1:] in check_type:
+                                    entity_counter += 1
         else:
             return 0
 
