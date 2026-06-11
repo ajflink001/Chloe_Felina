@@ -11,6 +11,16 @@ felia = cat.CholeAI()
 felia.getNestedDirectoryData("path/to/directory/you/want/to/get/data/from/including/subdirectories")
 ```
 
-Currently, only the searchQuery and getTotalNumberOfReferencedEntities functions are fully implemented.
+It is extremely recommended to install the following modules via pip to get the most out of Chloe Felina:
+
+- pillow
+- openpyxl
+- docx
+- docx2python
+- pypdf
+
+```
+pip install pillow openpyxl docx docx2python pypdf
+```
 
 Made in loving dedication and memory to my frecious feline pet, friend, and family member: Chloe Link.
