@@ -1,14 +1,19 @@
 from typing import Union
 
+def decodeZipTxtLine(entry_string) -> str:
+
+    try:
+        return entry_string.decode().replace('\r','').replace('\n','')
+    except UnicodeDecodeError:
+        return entry_string.decode('latin-1',errors='replace').replace('\r','').replace('\n','')
+
+
 def isQueryMatchKether(entry_string : str, txt_lines : tuple) -> bool:
 
     if not (len_txt_lines := len(txt_lines)):
         return False
     elif len_txt_lines == 1:
-        try:
-            current_line = txt_lines[0].decode().replace('\r','').replace('\n','')
-        except UnicodeDecodeError:
-            current_line = txt_lines[0].decode('latin-1',errors='replace').replace('\r','').replace('\n','')
+        current_line = decodeZipTxtLine(txt_lines[0])
         for word in tuple(current_line.lower().split(' ')):
             if entry_string in word:
                 return True
@@ -17,17 +22,10 @@ def isQueryMatchKether(entry_string : str, txt_lines : tuple) -> bool:
         for n in range(len_txt_lines-1):
             if n == checked_index:
                 continue
-            try:
-                current_line = txt_lines[n].decode().replace('\r','').replace('\n','')
-            except UnicodeDecodeError:
-                current_line = txt_lines[n].decode('latin-1',errors='replace').replace('\r','').replace('\n','')
-            try:
-                next_line = txt_lines[n+1].decode().replace('\r','').replace('\n','')
-            except UnicodeDecodeError:
-                next_line = txt_lines[n+1].decode('latin-1',errors='replace').replace('\r','').replace('\n','')
-            for word in tuple(current_line.lower().split(' ')+next_line.lower().split(' ')):
-                if entry_string in word:
-                    return True
+            current_line = decodeZipTxtLine(txt_lines[n]) ; current_line_lower = current_line.lower()
+            next_line = decodeZipTxtLine(txt_lines[n+1]) ; next_line_lower = next_line.lower()
+            if entry_string in set((current_line_lower+' '+next_line_lower).split(' ') + (current_line_lower+next_line_lower).split() + (current_line_lower.rstrip('-')+next_line_lower).split(' ')):
+                return True
             checked_index = n+1
 
     return False
@@ -38,8 +36,7 @@ def isQueryMatchBinah(entry_string : str, txt_lines : tuple) -> bool:
     if not (len_txt_lines := len(txt_lines)):
         return False
     elif len_txt_lines == 1:
-        try: current_line = txt_lines[0].decode().replace('\r','').replace('\n','')
-        except UnicodeDecodeError: current_line = txt_lines[0].decode('latin-1',errors='replace').replace('\r','').replace('\n','')
+        current_line = decodeZipTxtLine(txt_lines[0])
         current_line = current_line.lower()
         while entry_string in current_line:
             # prevents index-related error.
@@ -53,10 +50,8 @@ def isQueryMatchBinah(entry_string : str, txt_lines : tuple) -> bool:
         for n in range(len_txt_lines-1):
             if n == checked_index:
                 continue
-            try: current_line = txt_lines[n].decode().replace('\r','').replace('\n','')
-            except UnicodeDecodeError: current_line = txt_lines[n].decode('latin-1',errors='replace').replace('\r','').replace('\n','')
-            try: next_line = txt_lines[n+1].decode().replace('\r','').replace('\n','')
-            except UnicodeDecodeError: next_line = txt_lines[n+1].decode('latin-1',errors='replace').replace('\r','').replace('\n','')
+            current_line = decodeZipTxtLine(txt_lines[n])
+            next_line = decodeZipTxtLine(txt_lines[n+1])
             current_line_lower = current_line.lower() ; next_line_lower = next_line.lower()
             if entry_string in (temp_str := f'{current_line_lower}{next_line_lower}'):
                 while entry_string in temp_str:
@@ -85,14 +80,10 @@ def isQueryMatchDaath(entry_string: str, entity_path : str, zf) -> bool:
             current_line = tf.readline()
             if not current_line:
                 break
-            try:
-                current_line = current_line.decode().replace('\r','').replace('\n','')
-            except UnicodeDecodeError:
-                current_line = current_line.decode('latin-1',errors='replace').replace('\r','').replace('\n','')
+            current_line = decodeZipTxtLine(current_line)
             for item in tuple(current_line.lower().split('|')):
-                for word in tuple(item.split(' ')):
-                    if entry_string in word:
-                        return True
+                if entry_string in set(item.split(' ') + item.replace('-','').split(' ') + item.replace('_','').split(' ')):
+                    return True
 
     return False
 
@@ -104,10 +95,7 @@ def isQueryMatchChochmah(entry_string : str, entity_path : str, zf) -> bool:
             current_line = tf.readline()
             if not current_line:
                 break
-            try:
-                current_line = current_line.decode().replace('\r','').replace('\n','')
-            except UnicodeDecodeError:
-                current_line = current_line.decode('latin-1',errors='replace').replace('\r','').replace('\n','')
+            current_line = decodeZipTxtLine(current_line)
             if entry_string in (current_line := current_line.lower()):
                 while entry_string in current_line:
                     # Prevents index-related error.
@@ -126,29 +114,19 @@ def isQueryMatchGewurah(entry_string : tuple, txt_lines : tuple, max_line_concat
     if not (len_txt_lines := len(txt_lines)):
         return False
     elif len_txt_lines == 1:
-        try:
-            current_line = txt_lines[0].decode().replace('\r','').replace('\n','')
-        except UnicodeDecodeError:
-            current_line = txt_lines[0].decode('latin-1',errors='replace').replace('\r','').replace('\n','')
-        if entry_string in current_line.lower():
+        if entry_string in decodeZipTxtLine(txt_lines[0]).lower():
             return True
     elif len_txt_lines < max_line_concat:
         for n in range(len((txt_lines := list(txt_lines)))):
-            try:
-                txt_lines[n] = txt_lines[n].decode().replace('\r','').replace('\n','')
-            except UnicodeDecodeError:
-                txt_lines[n] = txt_lines[n].decode('latin-1',errors='replace').replace('\r','').replace('\n','')
+            txt_lines[n] = decodeZipTxtLine(txt_lines[n])
         if entry_string in "".join((txt_lines := tuple(txt_lines))).lower() or " ".join(txt_lines).lower():
             return True
     else:
         for n in range(len_txt_lines-max_line_concat+1):
             current_lines = []
             for k in range(max_line_concat):
-                try:
-                    current_lines.append(txt_lines[n+k].decode().replace('\r','').replace('\n',''))
-                except UnicodeDecodeError:
-                    current_lines.append(txt_lines[n+k].decode('latin-1',errors='replace').replace('\r','').replace('\n',''))
-            if entry_string in ''.join((current_lines := tuple(current_lines))).lower() or entry_string in ' '.join(current_lines).lower():
+                current_lines.append(decodeZipTxtLine(txt_lines[n+k]))
+            if entry_string in ''.join((current_lines := tuple(current_lines))).lower() or entry_string in ' '.join(current_lines).lower() or entry_string in ''.join(current_lines).lower().replace('-','') or ' '.join(current_lines).lower().replace('-',''):
                 return True
 
     return False

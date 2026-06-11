@@ -47,4 +47,15 @@ Purpose: This is dynamic term searching system that scans the database for match
 
 Parameters:
 
-entry_string (String) - Input text to be searched across the database for instances of existing within files
+entry_string (String) - Input text to be searched across the database for instances of existing within files whose information has been archived in the database. Trailing spaces will be removed and multiple consecutive spaces will be simplified to single spaces. Capitalization does not matter. "day" and "Day" will be treated as the same thing. An empty string will result in no search being conducted.
+
+check_type (String/Tuple/List/Set) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of entry_string. If "doc"/"docx", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, and WebP), or file geodatabase, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked for the presence of entry_string. By default, the string is "any".
+
+include_entity_name (Boolean) - This determines if the name of the files themselves should be considered for being a valid match with entry_string. By default, this is True.
+
+return_tuple (Boolean) - This determines if the function will return a tuple that lists all explicit paths of files in database containing the entry_string. By default, this is False.
+
+max_line_concat (Integer) - This variable name is shorthand for "maximum number of lines allowed for concatenation". This pertains to Word Document files, text files, and PDFs only. Due to how text can be formatted for these particular files, new lines in text can prevent long entry_string inputs and/or any input with more than one "word" from correctly determining that a file contains the entry_string. So, by default, it is set so that 3 lines (or less) will be concatenated before trying to determine if entry_string is present within a file. For example, say if you give the entry string as "fossiliferous limestone". Well, for Word Document files, text files, and/or PDFs, one line ends with "fossilif" and then following line starts with "erous limestone". By concatenating subsequent lines, this oversight will not transpire.
+
+save_found_matches (Boolean) - This stores
+Note: How the saved search results are stored will be changed from being a folder with text files to a zip file to greatly reduce storage required for the this feature.

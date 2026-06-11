@@ -2175,7 +2175,8 @@ class ChloeAI:
                                                 matching_lines = False
                                                 break
                                     if not matching_lines:
-                                        del sub_entity_lines
+                                        try: del sub_entity_lines
+                                        except NameError: pass
                                         continue
                                     if sub_entity_metadata[sub_entity][2]:
                                         sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/image_histogram_data.txt').readlines()])
@@ -2184,9 +2185,10 @@ class ChloeAI:
                                                 matching_lines = False
                                                 break
                                     if matching_lines:
-                                        del sub_entity_lines
                                         checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
                                         duplicate_matches[-1].append(entry_name)
+                                    try: del sub_entity_lines
+                                    except NameError: pass
                             case 'DOC':
                                 if entity_data[0] == sub_entity_metadata[sub_entity][1] and entity_data[1] == sub_entity_metadata[sub_entity][2]:
                                     matching_lines = True
@@ -2197,7 +2199,8 @@ class ChloeAI:
                                                 matching_lines = False
                                                 break
                                     if not matching_lines:
-                                        del sub_entity_lines
+                                        try: del sub_entity_lines
+                                        except NameError: pass
                                         continue
                                     if sub_entity_metadata[sub_entity][2]:
                                         sub_entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/image_histogram_data.txt').readlines())])
@@ -2206,9 +2209,10 @@ class ChloeAI:
                                                 matching_lines = False
                                                 break
                                     if matching_lines:
-                                        del sub_entity_lines
                                         checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
                                         duplicate_matches[-1].append(entry_name)
+                                    try: del sub_entity_lines
+                                    except NameError: pass
                             case 'GDB':
                                 if (temp_num := len(entity_data[0])) == len(sub_entity_metadata[sub_entity][1]):
                                     matching_lines = True
@@ -2225,9 +2229,10 @@ class ChloeAI:
                                         if not matching_lines:
                                             break
                                     if matching_lines:
-                                        del sub_entity_lines
                                         checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
                                         duplicate_matches[-1].append(entry_name)
+                                    try: del sub_entity_lines
+                                    except NameError: pass
                             case _:
                                 # This should never happen. This is a placeholder.
                                 continue
@@ -2300,14 +2305,6 @@ class ChloeAI:
             case _:
                 # entity not accounted.
                 return None
-
-        return None
-
-
-    def organizeDirectory(self, directory_path : str, auto_open_upon_completion : bool = False) -> None:
-
-        if not exists((directory_path := directory_path.replace('\\','/'))):
-            return None
 
         return None
 
