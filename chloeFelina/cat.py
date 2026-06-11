@@ -2052,46 +2052,142 @@ class ChloeAI:
                             line = tf.readline()
                         entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(decodeZipTxtLine(line).split('|'))})
                         del line
-            for entity in entity_metadata.keys():
-                if f"{current_db_name}|{entity}" in checked_entities:
-                    checked_entities.remove(f"{current_db_name}|{entity}")
+            num_entities = len((entities := tuple(entity_metadata.keys())))
+            for n in range(num_entities-1):
+                if f'{current_db_name}|{entities[n]}' in checked_entities:
+                    checked_entities.remove(f'{current_db_name}|{entities[n]}')
                     continue
-                duplicate_matches.append([f'{current_db_name}|{entity}'])
+                duplicate_matches.append([f'{current_db_name}|{entities[n]}'])
                 with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
-                    match (entity_type := entity_metadata[entity][0]):
+                    match (entity_type := entity_metadata[entities[n]][0]):
                         case 'TXT':
-                            entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_txt_files/{entity}.txt').readlines())])
+                            entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_txt_files/{entities[n]}.txt').readlines())])
                         case 'PDF':
                             entity_lines = []
-                            if entity_metadata[entity][1]:
-                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entity}/pdf_extracted_text.txt').readlines())]))
+                            if entity_metadata[entities[n]][1]:
+                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[n]}/pdf_extracted_text.txt').readlines())]))
                             else:
                                 entity_lines.append(None)
-                            if entity_metadata[entity][2]:
-                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entity}/image_histogram_data.txt').readlines())]))
+                            if entity_metadata[entities[n]][2]:
+                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[n]}/image_histogram_data.txt').readlines())]))
                             else:
                                 entity_lines.append(None)
                         case 'DOC':
                             entity_lines = []
-                            if entity_metadata[entity][1]:
-                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entity}/doc_extracted_text.txt').readlines())]))
+                            if entity_metadata[entities[n]][1]:
+                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[n]}/doc_extracted_text.txt').readlines())]))
                             else:
                                 entity_lines.append(None)
-                            if entity_metadata[entity][2]:
-                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entity}/image_histogram_data.txt').readlines())]))
+                            if entity_metadata[entities[n]][2]:
+                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[n]}/image_histogram_data.txt').readlines())]))
                             else:
                                 entity_lines.append(None)
                             entity_lines = tuple(entity_lines)
                         case 'SHP':
-                            entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_shp_files/{entity}.txt').readlines())])
+                            entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_shp_files/{entities[n]}.txt').readlines())])
                         case 'GDB':
-                            entity_lines = tuple([tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entity}/{gdb_object_txt_file}').readlines())]) for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{entity}/')]))])
+                            entity_lines = tuple([tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[n]}/{gdb_object_txt_file}').readlines())]) for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{entities[n]}/')]))])
                         case 'IMG':
-                            entity_lines = tuple([decodeZipTxtLine(line) for line in zf.open(f'_images/{entity}.txt').readlines()])
+                            entity_lines = tuple([decodeZipTxtLine(line) for line in zf.open(f'_images/{entities[n]}.txt').readlines()])
                         case _:
                             # Placeholder
                             continue
-                entity_data = entity_metadata[entity][1:]
+                entity_data = entity_metadata[entities[n]][1:]
+                for x in range(a+1,num_entities):
+                    if entity_metadata[entities[x]][0] != entity_type or f'{current_db_name}|{entities[x]}' in checked_entities:
+                        continue
+                    with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
+                        match entity_type:
+                            case 'TXT':
+                                entity_lines_2 = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_txt_files/{entities[x]}.txt').readlines())])
+                            case 'PDF':
+                                entity_lines_2 = []
+                                if entity_metadata[entities[x]][1]:
+                                    entity_lines_2.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[x]}/pdf_extracted_text.txt').readlines())]))
+                                else:
+                                    entity_lines_2.append(None)
+                                if entity_metadata[entities[x]][2]:
+                                    entity_lines_2.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[x]}/image_histogram_data.txt').readlines())]))
+                                else:
+                                    entity_lines_2.append(None)
+                            case 'DOC':
+                                entity_lines_2 = []
+                                if entity_metadata[entities[x]][1]:
+                                    entity_lines_2.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[x]}/doc_extracted_text.txt').readlines())]))
+                                else:
+                                    entity_lines_2.append(None)
+                                if entity_metadata[entities[x]][2]:
+                                    entity_lines_2.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[x]}/image_histogram_data.txt').readlines())]))
+                                else:
+                                    entity_lines_2.append(None)
+                                entity_lines_2 = tuple(entity_lines_2)
+                            case 'SHP':
+                                entity_lines_2 = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_shp_files/{entities[x]}.txt').readlines())])
+                            case 'GDB':
+                                entity_lines_2 = []
+                                for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{entities[x]}/')])):
+                                    entity_lines_2.append((gdb_object_txt_file,tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[x]}/{gdb_object_txt_file}').readlines())])))
+                                entity_lines_2 = tuple([tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[x]}/{gdb_object_txt_file}').readlines())]) for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{entities[x]}/')]))])
+                            case 'IMG':
+                                entity_lines_2 = tuple([decodeZipTxtLine(line) for line in zf.open(f'_images/{entities[x]}.txt').readlines()])
+                            case _:
+                                # Placeholder
+                                continue
+                    entity_data_2 = entity_metadata[entities[x]][1:]
+                    match entity_type:
+                        case 'TXT' | 'SHP' | 'IMG':
+                            if entity_data[0] == entity_data_2[0]:
+                                matching_lines = True
+                                for k in range(entity_data[0]):
+                                    if entity_lines[k] != entity_lines_2[k]:
+                                        matching_lines = False
+                                        break
+                                    if matching_lines:
+                                        checked_entities.add((entry_name := f'{current_db_name}|{entities[x]}'))
+                                        duplicate_matches[-1].append(entry_name)
+                        case 'PDF' | 'DOC':
+                            if (num_1 := entity_data[0]) == entity_data_2[0] and (num_2 := entity_data[1]) == entity_data_2[1]:
+                                matching_lines = True
+                                if num_1:
+                                    for k in range(num_1):
+                                        if entity_lines[0][k] != entity_lines_2[0][k]:
+                                            matching_lines = False
+                                            break
+                                if not matching_lines:
+                                    continue
+                                if num_2:
+                                    for k in range(num_2):
+                                        if entity_lines[1][k] != entity_lines_2[1][k]:
+                                            matching_lines = False
+                                            break
+                                if matching_lines:
+                                    checked_entities.add((entry_name := f'{current_db_name}|{entities[x]}'))
+                                    duplicate_matches[-1].append(entry_name)
+                        case 'GDB':
+                            if (temp_num := len(entity_data[0])) == len(entity_data_2[0]):
+                                if (temp_keys := sorted(entity_data[0].keys())) != sorted(entity_data_2[0].keys()):
+                                    continue
+                                matching_lines = True
+                                for m in range((num_keys := len((temp_keys := tuple(temp_keys))))):
+                                    if (num_lines := len(entity_data[0][temp_keys[m]])) != len(entity_data_2[0][temp_keys[m]]):
+                                        matching_lines = False
+                                        break
+                                    for n in range(num_lines):
+                                        if entity_lines[m][n] != entity_lines_2[m][n]:
+                                            matching_lines = False
+                                            break
+                                    if not matching_lines:
+                                        break
+                                if matching_lines:
+                                    checked_entities.add((entry_name := f'{current_db_name}|{entities[x]}'))
+                                    duplicate_matches[-1].append(entry_name)
+                        case _:
+                            # This should never happen. This is a placeholder.
+                            continue
+                try: del entity_lines_2
+                except NameError: pass
+                try: del entity_data_2
+                except NameError: pass
                 for b in range(a+1,num_dbs):
                     sub_entity_metadata = {}
                     sub_current_db_name = db_names[b]
@@ -2153,24 +2249,23 @@ class ChloeAI:
                                     except NameError: pass
                             case 'IMG':
                                 if entity_data[0] == sub_entity_metadata[sub_entity][1]:
-                                    if entity_data[0] == sub_entity_metadata[sub_entity][1]:
-                                        matching_lines = True
-                                        sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'_images/{sub_entity}.txt').readlines()])
-                                        for n in range(entity_data[0]):
-                                            if entity_lines[n] != sub_entity_lines[n]:
-                                                matching_lines = False
-                                                break
-                                        if matching_lines:
-                                            checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
-                                            duplicate_matches[-1].append(entry_name)
-                                        try: del sub_entity_lines
-                                        except NameError: pass
-                            case 'PDF':
-                                if entity_data[0] == sub_entity_metadata[sub_entity][1] and entity_data[1] == sub_entity_metadata[sub_entity][2]:
                                     matching_lines = True
-                                    if sub_entity_metadata[sub_entity][1]:
+                                    sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'_images/{sub_entity}.txt').readlines()])
+                                    for n in range(entity_data[0]):
+                                        if entity_lines[n] != sub_entity_lines[n]:
+                                            matching_lines = False
+                                            break
+                                    if matching_lines:
+                                        checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
+                                        duplicate_matches[-1].append(entry_name)
+                                    try: del sub_entity_lines
+                                    except NameError: pass
+                            case 'PDF':
+                                if (num_1 := entity_data[0]) == sub_entity_metadata[sub_entity][1] and (num_2 := entity_data[1]) == sub_entity_metadata[sub_entity][2]:
+                                    matching_lines = True
+                                    if num_1:
                                         sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/pdf_extracted_text.txt').readlines()])
-                                        for n in range(len(entity_lines[0])):
+                                        for n in range(num_1):
                                             if entity_lines[0][n] != sub_entity_lines[n]:
                                                 matching_lines = False
                                                 break
@@ -2178,9 +2273,9 @@ class ChloeAI:
                                         try: del sub_entity_lines
                                         except NameError: pass
                                         continue
-                                    if sub_entity_metadata[sub_entity][2]:
+                                    if num_2:
                                         sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/image_histogram_data.txt').readlines()])
-                                        for n in range(len(entity_lines[1])):
+                                        for n in range(num_2):
                                             if entity_lines[1][n] != sub_entity_lines:
                                                 matching_lines = False
                                                 break
@@ -2190,11 +2285,11 @@ class ChloeAI:
                                     try: del sub_entity_lines
                                     except NameError: pass
                             case 'DOC':
-                                if entity_data[0] == sub_entity_metadata[sub_entity][1] and entity_data[1] == sub_entity_metadata[sub_entity][2]:
+                                if (num_1 := entity_data[0]) == sub_entity_metadata[sub_entity][1] and (num_2 := entity_data[1]) == sub_entity_metadata[sub_entity][2]:
                                     matching_lines = True
-                                    if sub_entity_metadata[sub_entity][1]:
+                                    if num_1:
                                         sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/doc_extracted_text.txt').readlines()])
-                                        for n in range(len(entity_lines[0])):
+                                        for n in range(num_1):
                                             if entity_lines[0][n] != sub_entity_lines[n]:
                                                 matching_lines = False
                                                 break
@@ -2202,9 +2297,9 @@ class ChloeAI:
                                         try: del sub_entity_lines
                                         except NameError: pass
                                         continue
-                                    if sub_entity_metadata[sub_entity][2]:
+                                    if num_2:
                                         sub_entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/image_histogram_data.txt').readlines())])
-                                        for n in range(len(entity_lines[1])):
+                                        for n in range(num_2):
                                             if entity_lines[1][n] != sub_entity_lines:
                                                 matching_lines = False
                                                 break
@@ -2215,15 +2310,17 @@ class ChloeAI:
                                     except NameError: pass
                             case 'GDB':
                                 if (temp_num := len(entity_data[0])) == len(sub_entity_metadata[sub_entity][1]):
+                                    if (temp_keys := sorted(entity_data[0].keys())) != sorted(entity_data_2[0].keys()):
+                                        continue
                                     matching_lines = True
                                     with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
                                         sub_entity_lines = tuple([tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{sub_entity}/{gdb_object_txt_file}').readlines())]) for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{sub_entity}/')]))])
-                                    for a in range(temp_num):
-                                        if len(entity_lines[a]) != len(sub_entity_lines[b]):
+                                    for m in range((num_keys := len((temp_keys := tuple(temp_keys))))):
+                                        if (num_lines := len(entity_data[0][temp_keys[m]])) != len(sub_entity_metadata[sub_entity][1][temp_keys[m]]):
                                             matching_lines = False
                                             break
-                                        for b in range(len(entity_lines[a])):
-                                            if entity_lines[a][b] != sub_entity_lines[a][b]:
+                                        for n in range(num_lines):
+                                            if entity_lines[m][n] != sub_entity_lines[m][n]:
                                                 matching_lines = False
                                                 break
                                         if not matching_lines:
