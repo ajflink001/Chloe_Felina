@@ -2019,7 +2019,7 @@ class ChloeAI:
         try: del num
         except NameError: pass
 
-        db_names = tuple([item for num in tuple(sorted(num_items_dict.keys())) for item in num_items_dict[num]])
+        db_names = tuple([item for num in tuple(sorted(num_items_dict.keys(),reverse=True)) for item in num_items_dict[num]])
 
         del num_items_dict
 
