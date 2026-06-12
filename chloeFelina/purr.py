@@ -1,4 +1,4 @@
-from typing import Union
+from typing import AnyStr
 
 def decodeZipTxtLine(entry_string) -> str:
 
@@ -8,7 +8,7 @@ def decodeZipTxtLine(entry_string) -> str:
         return entry_string.decode('latin-1',errors='replace').replace('\r','').replace('\n','')
 
 
-def isQueryMatchKether(entry_string : str, txt_lines : tuple) -> bool:
+def isQueryMatchKether(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
 
     if not (len_txt_lines := len(txt_lines)):
         return False
@@ -31,7 +31,7 @@ def isQueryMatchKether(entry_string : str, txt_lines : tuple) -> bool:
     return False
 
 
-def isQueryMatchBinah(entry_string : str, txt_lines : tuple) -> bool:
+def isQueryMatchBinah(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
 
     if not (len_txt_lines := len(txt_lines)):
         return False
@@ -109,7 +109,7 @@ def isQueryMatchChochmah(entry_string : str, entity_path : str, zf) -> bool:
     return False
 
 
-def isQueryMatchGewurah(entry_string : tuple, txt_lines : tuple, max_line_concat : int) -> bool:
+def isQueryMatchGewurah(entry_string : str, txt_lines : tuple[AnyStr], max_line_concat : int) -> bool:
 
     if not (len_txt_lines := len(txt_lines)):
         return False
@@ -132,7 +132,7 @@ def isQueryMatchGewurah(entry_string : tuple, txt_lines : tuple, max_line_concat
     return False
 
 
-def forcedTxtFileWrite(output_path : str, lines : Union[list,tuple]) -> None:
+def forcedTxtFileWrite(output_path : str, lines : list[str] | tuple[str]) -> None:
     '''
     This forces a text file to be generated even with unexpected encodings being
     used.

@@ -57,5 +57,27 @@ return_tuple (Boolean) - This determines if the function will return a tuple tha
 
 max_line_concat (Integer) - This variable name is shorthand for "maximum number of lines allowed for concatenation". This pertains to Word Document files, text files, and PDFs only. Due to how text can be formatted for these particular files, new lines in text can prevent long entry_string inputs and/or any input with more than one "word" from correctly determining that a file contains the entry_string. So, by default, it is set so that 3 lines (or less) will be concatenated before trying to determine if entry_string is present within a file. For example, say if you give the entry string as "fossiliferous limestone". Well, for Word Document files, text files, and/or PDFs, one line ends with "fossilif" and then following line starts with "erous limestone". By concatenating subsequent lines, this oversight will not transpire.
 
-save_found_matches (Boolean) - This stores
+save_found_matches (Boolean) - This allows the storage of individual "words" having their search results being stored in the "_terms_searched" folder (with said folder being automatically created if not already existing) for faster look up in the database. For example, if "plagioclase" has already been searched, if "plagioclase" is entry_string, the output will be identical to what is stored. However, continuing with this example, if "plagioclase feldspar" is entry_string, only the results from "plagioclase" will be checked for any instance of "plagioclase feldspar". Although, "feldspar" will not have search results for it only be stored because it is redundant. In addition, if "plagioclase" and "feldspar" already have search results stored, it will only check files that appear in both "plagioclase" and "feldspar" for the presence of "plagioclase feldspar". This is True by default and highly recommended to be kept as True.
 Note: How the saved search results are stored will be changed from being a folder with text files to a zip file to greatly reduce storage required for the this feature.
+
+save_results_to_file (Boolean) - This allows saving the results for files with instances of entry_string to an organized output file that can be an Excel, CSV, or delineated text file. By default, this is False.
+
+output_file_type (String) - This parameter only comes into effect if save_results_to_file is True. This specifies the file type that the results will be saved to. "xlsx"/"excel" will result in a Microsoft Excel file; "txt"/"text" will result in a delineated text file; and "csv" will result in a CSV file. By default, it is set as "excel" for a Microsoft Excel file.
+
+output_location (String/None) - This parameters only comes into effect if save_results_to_file is True. This specifies the location on the computer where the output results file will be saved to. If nothing is given or the specified location does not exist, it will default to the current user's Document folder. By default, this is None.
+
+output_name (String/None) - This parameter only comes into effect if save_results_to_file is True. This allows the output results file to have a specified name. If a file of the same name already exists in output_location or the same output_file_type, a random string of characters will be appended to the end of the inputted output_name to not overwrite any pre-existing file unless overwrite_existing_output is True. If nothing is given, it will generate a templated name for the output file. By default, this is None.
+
+overwrite_existing_output (Boolean) - This parameter only comes into effect if save_results_to_file is True. If True, if a pre-existing Excel file, text file, or CSV file already exists at the specified output_location, it will be overwritten. By default, this is False.
+
+csv_new_line (String) - This parameter only comes into effect if output_file_type is "csv".
+
+csv_field_size_limit (Integer) - This parameter only comes into effect if output_file_type is "csv".
+
+csv_quotechar (String) - This parameter only comes into effect if output_file_type is "csv".
+
+csv_quoating_minimal (Integer) - This parameter only comes into effect if output_file_type is "csv".
+
+overwrite_saved_found_matches (Boolean) - This parameter only comes into effect if save_found_matches is True.
+
+terminal_progress_display_enabled (Boolean) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.

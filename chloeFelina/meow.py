@@ -5,7 +5,7 @@ from pathlib import Path
 from os import stat as os_stat
 from os import getlogin,remove,listdir
 from os.path import getsize,getmtime,getctime,isdir,exists
-from typing import Union,Any
+from typing import Any
 from secrets import choice
 from time import ctime
 from decimal import Decimal
@@ -72,7 +72,7 @@ def backupGen(original_path : str, backup_path : str) -> None:
 
     return None
 
-def getSizeOfItem(item_path : str) -> Union[int,None]:
+def getSizeOfItem(item_path : str) -> int | None:
     '''
     Obtain the size of a file in bytes.
     '''
@@ -86,7 +86,7 @@ def getSizeOfItem(item_path : str) -> Union[int,None]:
 
     return None
 
-def getBaselineMetadata(item_path : str) -> Union[tuple,None]:
+def getBaselineMetadata(item_path : str) -> tuple[str] | None:
     '''
     Obtain basic metadata from item.
     '''
@@ -103,7 +103,7 @@ def getBaselineMetadata(item_path : str) -> Union[tuple,None]:
 
     return tuple(baseline_metadata)
 
-def determineEntityType(entity_path : str) -> Union[str,None]:
+def determineEntityType(entity_path : str) -> str | None:
 
     if not exists(entity_path):
         return None
@@ -121,7 +121,7 @@ def determineEntityType(entity_path : str) -> Union[str,None]:
     else:
         return None
 
-def convertValueToBytes(value : Union[int,float], unit : str) -> int:
+def convertValueToBytes(value : int | float, unit : str) -> int:
     '''
     This will result in inaccurate values if the resulting value exceeds or
     approaches:
@@ -177,7 +177,7 @@ def convertValueToBytes(value : Union[int,float], unit : str) -> int:
         case _:
             return round(value)
 
-def genSearchQueryResultFile(found_matches : tuple, output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, csv_quotechar : str, csv_quoting_minimal : int, csv_newline : str, overwriteOutput : bool) -> None:
+def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, csv_quotechar : str, csv_quoting_minimal : int, csv_newline : str, overwriteOutput : bool) -> None:
 
     csv.field_size_limit(csv_field_size_limit)
 
@@ -260,7 +260,7 @@ def genSearchQueryResultFile(found_matches : tuple, output_type : str, output_lo
 
     return None
 
-def forbidden_dirs() -> set:
+def forbidden_dirs() -> set[str]:
     '''
     This is a baseline protection against malicious executions of Chloe Felina on Windows OS.
     '''

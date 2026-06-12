@@ -63,7 +63,6 @@ from os import getlogin,listdir,mkdir,chdir,getcwd,remove,chmod,rename
 from os.path import exists,isfile,isdir
 from locale import setlocale,LC_ALL
 from zipfile import ZipFile,ZIP_DEFLATED
-from typing import Union
 from shutil import rmtree
 from string import ascii_letters,digits
 from stat import S_IRWXU
@@ -81,7 +80,7 @@ setlocale(LC_ALL,'')
 
 class ChloeAI:
 
-    def __init__(self, database_location : Union[str,None] = None, database_name : str = 'datenaro', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False):
+    def __init__(self, database_location : str | None = None, database_name : str = 'datenaro', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False):
 
         self.crintum_obfuscation = crintum_obfuscation
 
@@ -389,6 +388,9 @@ class ChloeAI:
         if reference_directory in self.paths_in_db or reference_directory.lower().endswith('.gdb') or reference_directory == self.db_path:
             return None
         else:
+            if exists(f'{self.db_path}/_terms_searched'):
+                try: rmtree(f'{self.db_path}/_terms_searched')
+                except Exception: pass
             items = {}
             for name in listdir(reference_directory):
                 # Files with more than one "." are considered "dirty files".
@@ -456,7 +458,7 @@ class ChloeAI:
         return None
 
 
-    def getImageInformation(self, image_path : str) -> Union[tuple,None]:
+    def getImageInformation(self, image_path : str) -> tuple[str] | None:
 
         # This seemingly overly complex algorithm for extracting histogram ratios
         # is necessary to condense the information into the fewest number of lines
@@ -1432,7 +1434,7 @@ class ChloeAI:
         return None
 
 
-    def searchQuery(self, entry_string : str, check_type : Union[str,tuple,list,set] = 'any', include_entity_name : bool = True, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : Union[str,None] = None, output_name : Union[str,None] = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> Union[None,tuple]:
+    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
         '''
         output_file_type can be the following:
         "xlsx" or "excel" (for Excel file)
@@ -1997,7 +1999,7 @@ class ChloeAI:
         return None
 
 
-    def findAllDuplicates(self, check_type : str = 'any', terminal_progress_display_enabled : bool = False) -> None:
+    def findAllDuplicates(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', terminal_progress_display_enabled : bool = False) -> None:
         '''
         Check items of matching type against each other.
         '''
@@ -2005,7 +2007,24 @@ class ChloeAI:
         if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
 
-        num_dbs = len((db_names := tuple(self.used_names)))
+        num_dbs = len(self.used_names)
+
+        num_items_dict = {}
+
+        for used_name in tuple(self.used_names):
+            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                num = len(zf.namelist())
+                if num in num_items_dict.keys():
+                    num_items_dict[num].append(used_name)
+                else:
+                    num_items_dict[num] = [used_name]
+
+        try: del num
+        except NameError: pass
+
+        db_names = tuple([item for num in tuple(sorted(num_items_dict.keys())) for item in num_items_dict[num]])
+
+        del num_items_dict
 
         duplicate_matches = []
         checked_entities = set()
@@ -2013,7 +2032,7 @@ class ChloeAI:
         documentation_types = {'docx','doc','pdf'}
 
         if tqdm_imported:
-            iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled)
+            iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, prefix="Searching and Checking for Duplicate Entities")
         else:
             iterator = range(num_dbs-1)
 
@@ -2051,7 +2070,6 @@ class ChloeAI:
                         with zf.open(metadata_file) as tf:
                             line = tf.readline()
                         entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(decodeZipTxtLine(line).split('|'))})
-                        del line
             num_entities = len((entities := tuple(entity_metadata.keys())))
             for n in range(num_entities-1):
                 if f'{current_db_name}|{entities[n]}' in checked_entities:
@@ -2184,9 +2202,9 @@ class ChloeAI:
                         case _:
                             # This should never happen. This is a placeholder.
                             continue
-                try: del entity_lines_2
-                except NameError: pass
                 try: del entity_data_2
+                except NameError: pass
+                try: del entity_lines_2
                 except NameError: pass
                 for b in range(a+1,num_dbs):
                     sub_entity_metadata = {}
@@ -2216,7 +2234,6 @@ class ChloeAI:
                                 with zf.open(metadata_file) as tf:
                                     line = tf.readline()
                                 sub_entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(decodeZipTxtLine(line).split('|'))})
-                                del line
                     for sub_entity in sub_entity_metadata.keys():
                         if sub_entity_metadata[sub_entity][0] != entity_type:
                             continue
@@ -2232,8 +2249,6 @@ class ChloeAI:
                                     if matching_lines:
                                         checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
                                         duplicate_matches[-1].append(entry_name)
-                                    try: del sub_entity_lines
-                                    except NameError: pass
                             case 'SHP':
                                 if entity_data[0] == sub_entity_metadata[sub_entity][1]:
                                     matching_lines = True
@@ -2245,8 +2260,6 @@ class ChloeAI:
                                     if matching_lines:
                                         checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
                                         duplicate_matches[-1].append(entry_name)
-                                    try: del sub_entity_lines
-                                    except NameError: pass
                             case 'IMG':
                                 if entity_data[0] == sub_entity_metadata[sub_entity][1]:
                                     matching_lines = True
@@ -2258,8 +2271,6 @@ class ChloeAI:
                                     if matching_lines:
                                         checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
                                         duplicate_matches[-1].append(entry_name)
-                                    try: del sub_entity_lines
-                                    except NameError: pass
                             case 'PDF':
                                 if (num_1 := entity_data[0]) == sub_entity_metadata[sub_entity][1] and (num_2 := entity_data[1]) == sub_entity_metadata[sub_entity][2]:
                                     matching_lines = True
@@ -2270,8 +2281,6 @@ class ChloeAI:
                                                 matching_lines = False
                                                 break
                                     if not matching_lines:
-                                        try: del sub_entity_lines
-                                        except NameError: pass
                                         continue
                                     if num_2:
                                         sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/image_histogram_data.txt').readlines()])
@@ -2282,8 +2291,6 @@ class ChloeAI:
                                     if matching_lines:
                                         checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
                                         duplicate_matches[-1].append(entry_name)
-                                    try: del sub_entity_lines
-                                    except NameError: pass
                             case 'DOC':
                                 if (num_1 := entity_data[0]) == sub_entity_metadata[sub_entity][1] and (num_2 := entity_data[1]) == sub_entity_metadata[sub_entity][2]:
                                     matching_lines = True
@@ -2294,8 +2301,6 @@ class ChloeAI:
                                                 matching_lines = False
                                                 break
                                     if not matching_lines:
-                                        try: del sub_entity_lines
-                                        except NameError: pass
                                         continue
                                     if num_2:
                                         sub_entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/image_histogram_data.txt').readlines())])
@@ -2306,8 +2311,6 @@ class ChloeAI:
                                     if matching_lines:
                                         checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
                                         duplicate_matches[-1].append(entry_name)
-                                    try: del sub_entity_lines
-                                    except NameError: pass
                             case 'GDB':
                                 if (temp_num := len(entity_data[0])) == len(sub_entity_metadata[sub_entity][1]):
                                     if (temp_keys := sorted(entity_data[0].keys())) != sorted(entity_data_2[0].keys()):
@@ -2328,8 +2331,6 @@ class ChloeAI:
                                     if matching_lines:
                                         checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
                                         duplicate_matches[-1].append(entry_name)
-                                    try: del sub_entity_lines
-                                    except NameError: pass
                             case _:
                                 # This should never happen. This is a placeholder.
                                 continue
@@ -2357,12 +2358,15 @@ class ChloeAI:
         except NameError: pass
 
         if len((duplicate_matches := tuple(duplicate_matches))):
-            pass
+            with open("C:/Users/AJL/Desktop/duplicate_matches_test.txt","w",encoding='utf-8') as tf:
+                tf.write(str(duplicate_matches[0]))
+                for n in range(1,len(duplicate_matches)):
+                    tf.write(f"\n{duplicate_matches[n]}")
 
         return None
 
 
-    def findEntityDuplicate(self, item_path : str, return_tuple : bool = False, save_results_to_file : bool = True, output_file_type : str = 'excel', output_location : Union[str,None] = None, output_name : Union[str,None] = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, terminal_progress_display_enabled : bool = False) -> Union[None,tuple]:
+    def findEntityDuplicate(self, item_path : str, return_tuple : bool = False, save_results_to_file : bool = True, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, terminal_progress_display_enabled : bool = False) -> tuple[tuple[str]] | None:
         '''
         Check specified item against items of matching type.
         '''
@@ -2428,7 +2432,7 @@ class ChloeAI:
     #     return int(total_database_size)
 
 
-    def getTotalNumberOfReferencedEntities(self, check_type : str = 'any', terminal_progress_display_enabled : bool = False) -> int:
+    def getTotalNumberOfReferencedEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', terminal_progress_display_enabled : bool = False) -> int:
 
         if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
