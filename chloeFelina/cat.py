@@ -388,9 +388,6 @@ class ChloeAI:
         if reference_directory in self.paths_in_db or reference_directory.lower().endswith('.gdb') or reference_directory == self.db_path:
             return None
         else:
-            if exists(f'{self.db_path}/_terms_searched'):
-                try: rmtree(f'{self.db_path}/_terms_searched')
-                except Exception: pass
             items = {}
             for name in listdir(reference_directory):
                 # Files with more than one "." are considered "dirty files".
