@@ -147,6 +147,16 @@ class ChloeAI:
                         self.path_pointer[line[line.find('|')+1:]] = line[:line.find('|')]
                     else:
                         empty_line_found = True
+            if len(self.crintum_pointer.keys()) > len((existing_zips := set(listdir(self.db_path))))-2:
+                for db_archive in tuple(self.path_pointer.keys()):
+                    if not f"{db_archive}.zip" in existing_zips:
+                        del self.crintum_pointer[self.path_pointer[db_archive]]
+                        del self.path_pointer[db_archive]
+                num_dbs = len((db_names := tuple(self.path_pointer.keys())))
+                with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
+                    tf.write(pax_encrypt(f"{self.path_pointer[db_names[0]]}|{db_names[0]}"))
+                    for n in range(1,num_dbs):
+                        tf.write("\n%s" % (pax_encrypt(f"{self.path_pointer[db_names[n]]}|{db_names[n]}")))
         else:
             with open(f'{self.db_path}/crintum_pointer.txt',encoding='utf-8') as tf:
                 while True:
@@ -158,6 +168,16 @@ class ChloeAI:
                         self.path_pointer[line[line.find('|')+1:].rstrip('\n')] = line[:line.find('|')]
                     else:
                         empty_line_found = True
+            if len(self.crintum_pointer.keys()) > len((existing_zips := set(listdir(self.db_path))))-2:
+                for db_archive in tuple(self.path_pointer.keys()):
+                    if not f"{db_archive}.zip" in existing_zips:
+                        del self.crintum_pointer[self.path_pointer[db_archive]]
+                        del self.path_pointer[db_archive]
+                num_dbs = len((db_names := tuple(self.path_pointer.keys())))
+                with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
+                    tf.write(f"{self.path_pointer[db_names[0]]}|{db_names[0]}")
+                    for n in range(1,num_dbs):
+                        tf.write(f"\n{self.path_pointer[db_names[n]]}|{db_names[n]}")
 
         self.paths_in_db = set(self.crintum_pointer.keys())
         self.used_names = set(self.path_pointer.keys())
@@ -1079,7 +1099,7 @@ class ChloeAI:
 
         object_counters = []
 
-        def processGDBEntity(entity_name : str, dataset_name : str = '') -> None:
+        def processGDBEntity(entity_name : str, dataset_name : str = '') -> str:
 
             if dataset_name != '':
                 # $ is used to denote a separator and indicate the item is
@@ -1172,28 +1192,27 @@ class ChloeAI:
                 for oid in tuple(sorted(item_info.keys())):
                     tf.write(f'\n{item_info[oid]}')
                     counter += 1
-            object_counters.append(f'{entity_name} {counter}')
-            return None
+            return f'{entity_name} {counter}'
 
 
         for f_t in ('Point','Polyline','Polygon','Annotation'):
             if not (list_feature_classes := arcpy.ListFeatureClasses(feature_type=f_t)) is None:
                 for fc in list_feature_classes:
-                    processGDBEntity(fc)
+                    object_counters.append(processGDBEntity(fc))
 
         if not (list_tables := arcpy.ListTables()) is None:
             for table in list_tables:
-                processGDBEntity(table)
+                object_counters.append(processGDBEntity(table))
 
         for dataset in tuple(arcpy.ListDatasets()):
             arcpy.env.workspace = f'{gdb_path}/{dataset}'
             for f_t in ('Point','Polyline','Polygon','Annotation'):
                 if not (list_feature_classes := arcpy.ListFeatureClasses(feature_type=f_t)) is None:
                     for fc in list_feature_classes:
-                        processGDBEntity(fc,dataset)
+                        object_counters.append(processGDBEntity(fc,dataset))
             if not (list_tables := arcpy.ListTables()) is None:
                 for table in arcpy.ListTables():
-                    processGDBEntity(table,dataset)
+                    object_counters.append(processGDBEntity(table,dataset))
 
         object_counters = '|'.join(sorted(object_counters))
 
@@ -2028,6 +2047,20 @@ class ChloeAI:
         range_4 = range(4)
         documentation_types = {'docx','doc','pdf'}
 
+        # if not exists(f"{self.db_path}/_compiled_unique_line_counters"):
+        #     mkdir(f"{self.db_path}/_compiled_unique_line_counters")
+        #     txt_global_counter = {}
+        #     shp_global_counter = {}
+        #     img_global_counter = {}
+        #     doc_global_counter = {}
+        #     pdf_global_counter = {}
+        #     gdb_global_counter = {}
+        #     for db_name in db_names:
+        #         with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
+        #             pass
+        # else:
+        #     pass
+
         if tqdm_imported:
             iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, prefix="Searching and Checking for Duplicate Entities")
         else:
@@ -2355,7 +2388,7 @@ class ChloeAI:
         except NameError: pass
 
         if len((duplicate_matches := tuple(duplicate_matches))):
-            with open("C:/Users/AJL/Desktop/duplicate_matches_test.txt","w",encoding='utf-8') as tf:
+            with open("C:/Users/photi/Desktop/duplicate_matches_test.txt","w",encoding='utf-8') as tf:
                 tf.write(str(duplicate_matches[0]))
                 for n in range(1,len(duplicate_matches)):
                     tf.write(f"\n{duplicate_matches[n]}")
