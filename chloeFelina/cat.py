@@ -111,8 +111,8 @@ class ChloeAI:
                     items.remove('crintum_pointer.txt')
                 if '_backup_crintum_pointer.txt' in items:
                     items.remove('_backup_crintum_pointer.txt')
-                if '_compiled_unique_line_counters' in items:
-                    items.remove('_compiled_unique_line_counters')
+                if '_quick_duplicate_finder_reference' in items:
+                    items.remove('_quick_duplicate_finder_reference')
                 for item in (items:= tuple(items)):
                     if isdir((item_path := f'{self.db_path}/{item}')):
                         try:
@@ -2017,10 +2017,19 @@ class ChloeAI:
         return None
 
 
-    def findAllDuplicates(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', recompile_uniques : bool = False, terminal_progress_display_enabled : bool = False) -> None:
+    def findAllDuplicates(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', recompile_finder_refs : bool = False, recompile_uniques : bool = False, terminal_progress_display_enabled : bool = False) -> None:
         '''
         Check items of matching type against each other.
         '''
+
+        def writeQuickRefUniques(entity_type : str, entity_global_counter : dict, nums : tuple) -> None:
+
+            with open(f'{self.db_path}/_quick_duplicate_finder_reference/uniques_{entity_type}.txt','w',encoding='utf-8') as tf:
+                tf.write(entity_global_counter[nums[0]])
+                for n in range(1,len(nums)):
+                    tf.write(f'\n{entity_global_counter[nums[n]]}')
+
+            return None
 
         if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
@@ -2046,15 +2055,17 @@ class ChloeAI:
 
         duplicate_matches = []
         checked_entities = set()
+        db_present_types = {}
+        db_line_counts = {}
         range_4 = range(4)
         documentation_types = {'docx','doc','pdf'}
 
-        if not (collection_exists := exists(f"{self.db_path}/_compiled_unique_line_counters")) or recompile_uniques:
-            if collection_exists:
-                rmtree(f"{self.db_path}/_compiled_unique_line_counters")
-                mkdir(f"{self.db_path}/_compiled_unique_line_counters")
+        if not (collection_exists := exists(f"{self.db_path}/_quick_duplicate_finder_reference")) or recompile_finder_refs:
+            if not collection_exists:
+                mkdir(f"{self.db_path}/_quick_duplicate_finder_reference")
             else:
-                mkdir(f"{self.db_path}/_compiled_unique_line_counters")
+                rmtree(f"{self.db_path}/_quick_duplicate_finder_reference")
+                mkdir(f"{self.db_path}/_quick_duplicate_finder_reference")
             txt_global_counter = {} ; txt_redundant_nums = set()
             shp_global_counter = {} ; shp_redundant_nums = set()
             img_global_counter = {} ; img_redundant_nums = set()
@@ -2062,6 +2073,7 @@ class ChloeAI:
             pdf_global_counter = {} ; pdf_redundant_nums = set()
             gdb_global_counter = {} ; gdb_redundant_nums = set()
             for db_name in db_names:
+                found_types = set()
                 with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
                     for metadata_file in tuple([item for item in tuple(zf.namelist()) if '_metadata.txt' in item and not '/' in item]):
                         with zf.open(metadata_file) as tf:
@@ -2074,18 +2086,27 @@ class ChloeAI:
                                     nomin = line[:line.find('|')]
                                     match (suffix := nomin[nomin.rfind("_")+1:].lower()):
                                         case 'txt':
+                                            found_types.add("TXT")
                                             if (num := int(line[line.rfind("|")+1:])) in txt_global_counter.keys():
                                                 del txt_global_counter[num]
                                                 txt_redundant_nums.add(num)
                                             elif not num in txt_redundant_nums:
                                                 txt_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
+                                            if db_name in db_line_counts.keys():
+                                                db_line_counts[db_name].add(line[line.rfind("|")+1:])
                                         case 'shp':
+                                            found_types.add("SHP")
                                             if (num := int(line[line.rfind("|")+1:])) in shp_global_counter.keys():
                                                 del shp_global_counter[num]
                                                 shp_redundant_nums.add(num)
                                             elif not num in shp_redundant_nums:
                                                 shp_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
+                                            if db_name in db_line_counts.keys():
+                                                db_line_counts[db_name].add(line[line.rfind("|")+1:])
+                                            else:
+                                                db_line_counts[db_name] = {line[line.rfind("|")+1:]}
                                         case 'doc' | 'docx':
+                                            found_types.add("DOC")
                                             num = line[:]
                                             while num.count('|') != 1:
                                                 num = num[num.find('|')+1:]
@@ -2094,7 +2115,14 @@ class ChloeAI:
                                                 doc_redundant_nums.add(num)
                                             elif not num in doc_redundant_nums:
                                                 doc_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
+                                            while line.count('|') != 1:
+                                                line = line[line.find("|")+1:]
+                                            if db_name in db_line_counts.keys():
+                                                db_line_counts[db_name].append(line)
+                                            else:
+                                                db_line_counts[db_name] = {line}
                                         case 'pdf':
+                                            found_types.add("PDF")
                                             num = line[:]
                                             while num.count('|') != 1:
                                                 num = num[num.find('|')+1:]
@@ -2103,84 +2131,91 @@ class ChloeAI:
                                                 pdf_redundant_nums.add(num)
                                             elif not num in pdf_redundant_nums:
                                                 pdf_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
+                                            while line.count('|') != 1:
+                                                line = line[line.find("|")+1:]
+                                            if db_name in db_line_counts.keys():
+                                                db_line_counts[db_name].append(line)
+                                            else:
+                                                db_line_counts[db_name] = {line}
                                         case _:
+                                            found_types.add("IMG")
                                             # assumed to be an image file
                                             if (num := int(line[line.rfind("|")+1:])) in img_global_counter.keys():
                                                 del img_global_counter[num]
                                                 img_redundant_nums.add(num)
                                             elif not num in img_redundant_nums:
                                                 img_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
+                                            if db_name in db_line_counts.keys():
+                                                db_line_counts[db_name].add(line[line.rfind("|")+1:])
+                                            else:
+                                                db_line_counts[db_name] = {line[line.rfind("|")+1:]}
                             else:
+                                found_types.add("GDB")
                                 if (line := decodeZipTxtLine(tf.readline())) in gdb_global_counter.keys():
                                     del gdb_global_counter[line]
                                     gdb_redundant_nums.add(line)
                                 elif not line in gdb_redundant_nums:
-                                    gdb_global_counter[line] = f"{db_name}|{metadata_file[:metadata.rfind('_')]}"
+                                    gdb_global_counter[line] = f"{db_name}|{metadata_file[:metadata_file.rfind('_')]}"
+                db_present_types[db_name] = found_types
+            try: del found_types
+            except NameError: pass
+            try: del line ; del nomin ; del suffix
+            except NameError: pass
             try: del num
-            except NameError: pass
-            try: del line
-            except NameError: pass
-            try: del nomin
-            except NameError: pass
-            try: del collection_exists
             except NameError: pass
             del txt_redundant_nums ; del img_redundant_nums ; del shp_redundant_nums ; del doc_redundant_nums ; del pdf_redundant_nums ; del gdb_redundant_nums
             if len(txt_global_counter.keys()):
                 for num in (nums := tuple(txt_global_counter.keys())):
                     checked_entities.add(txt_global_counter[num])
-                with open(f'{self.db_path}/_compiled_unique_line_counters/txt_uniques.txt','w',encoding='utf-8') as tf:
-                    tf.write(txt_global_counter[nums[0]])
-                    for n in range(1,len(nums)):
-                        tf.write(f'\n{txt_global_counter[nums[n]]}')
+                writeQuickRefUniques("txt",txt_global_counter,nums)
             del txt_global_counter
             if len(shp_global_counter.keys()):
                 for num in (nums := tuple(shp_global_counter.keys())):
                     checked_entities.add(shp_global_counter[num])
-                with open(f'{self.db_path}/_compiled_unique_line_counters/shp_uniques.txt','w',encoding='utf-8') as tf:
-                    tf.write(shp_global_counter[nums[0]])
-                    for n in range(1,len(nums)):
-                        tf.write(f'\n{shp_global_counter[nums[n]]}')
+                writeQuickRefUniques('shp',shp_global_counter,nums)
             del shp_global_counter
             if len(img_global_counter.keys()):
                 for num in (nums := tuple(img_global_counter.keys())):
                     checked_entities.add(img_global_counter[num])
-                with open(f'{self.db_path}/_compiled_unique_line_counters/img_uniques.txt','w',encoding='utf-8') as tf:
-                    tf.write(img_global_counter[nums[0]])
-                    for n in range(1,len(nums)):
-                        tf.write(f'\n{img_global_counter[nums[n]]}')
+                writeQuickRefUniques('img',img_global_counter,nums)
             del img_global_counter
             if len(doc_global_counter.keys()):
                 for num in (nums := tuple(doc_global_counter.keys())):
                     checked_entities.add(doc_global_counter[num])
-                with open(f'{self.db_path}/_compiled_unique_line_counters/doc_uniques.txt','w',encoding='utf-8') as tf:
-                    tf.write(doc_global_counter[nums[0]])
-                    for n in range(1,len(nums)):
-                        tf.write(f'\n{doc_global_counter[nums[n]]}')
+                writeQuickRefUniques('doc',doc_global_counter,nums)
             del doc_global_counter
             if len(pdf_global_counter.keys()):
                 for num in (nums := tuple(pdf_global_counter.keys())):
                     checked_entities.add(pdf_global_counter[num])
-                with open(f'{self.db_path}/_compiled_unique_line_counters/pdf_uniques.txt','w',encoding='utf-8') as tf:
-                    tf.write(pdf_global_counter[nums[0]])
-                    for n in range(1,len(nums)):
-                        tf.write(f'\n{pdf_global_counter[nums[n]]}')
+                writeQuickRefUniques('pdf',pdf_global_counter,nums)
             del pdf_global_counter
             if len(gdb_global_counter.keys()):
                 for num in (nums := tuple(gdb_global_counter.keys())):
                     checked_entities.add(gdb_global_counter[num])
-                with open(f'{self.db_path}/_compiled_unique_line_counters/gdb_uniques.txt','w',encoding='utf-8') as tf:
-                    tf.write(gdb_global_counter[nums[0]])
-                    for n in range(1,len(nums)):
-                        tf.write(f'\n{gdb_global_counter[nums[n]]}')
+                writeQuickRefUniques('gdb',gdb_global_counter,nums)
             del gdb_global_counter
+            with open(f"{self.db_path}/_quick_duplicate_finder_reference/db_present_types.txt",'w',encoding='utf-8') as tf:
+                tf.write("%s|%s" % (db_names[0],",".join(db_present_types[db_names[0]])))
+                for n in range(1,num_dbs):
+                    tf.write("\n%s|%s" % (db_names[n],",".join(db_present_types[db_names[n]])))
         else:
-            for text_file in tuple(listdir(f'{self.db_path}/_compiled_unique_line_counters')):
-                with open(f'{self.db_path}/_compiled_unique_line_counters/{text_file}',encoding='utf-8') as tf:
-                    while True:
-                        line = tf.readline()
-                        if not line:
-                            break
-                        checked_entities.add(line.rstrip('\n'))
+            for text_file in tuple(listdir(f'{self.db_path}/_quick_duplicate_finder_reference')):
+                with open(f'{self.db_path}/_quick_duplicate_finder_reference/{text_file}',encoding='utf-8') as tf:
+                    if text_file.startswith("uniques"):
+                        while True:
+                            line = tf.readline()
+                            if not line:
+                                break
+                            checked_entities.add(line.rstrip('\n'))
+                    elif text_file == "db_present_types.txt":
+                        while True:
+                            line = tf.readline()
+                            if not line:
+                                break
+                            line = line.rstrip("\n")
+                            db_present_types[line[:line.find("|")]] = set(line[line.find("|")+1:].split(","))
+
+        del collection_exists
 
         if tqdm_imported:
             iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, prefix="Searching and Checking for Duplicate Entities")
@@ -2356,7 +2391,8 @@ class ChloeAI:
                 except NameError: pass
                 for b in range(a+1,num_dbs):
                     sub_entity_metadata = {}
-                    sub_current_db_name = db_names[b]
+                    if not entity_type in db_present_types[(sub_current_db_name := db_names[b])]:
+                        continue
                     with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
                         for metadata_file in tuple([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
                             if len(metadata_file) == 13:
@@ -2504,7 +2540,10 @@ class ChloeAI:
         except NameError: pass
 
         if len((duplicate_matches := tuple(duplicate_matches))):
-            pass
+            with open('C:/Users/photi/Desktop/duplicate_matches.txt','w',encoding='utf-8') as tf:
+                tf.write(str(duplicate_matches[0]))
+                for n in range(1,len(duplicate_matches)):
+                    tf.write(f"\n{str(duplicate_matches[n])}")
 
         return None
 
