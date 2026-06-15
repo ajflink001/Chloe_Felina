@@ -23,4 +23,4 @@ It is extremely recommended to install the following modules via pip to get the 
 pip install pillow openpyxl docx docx2python pypdf
 ```
 
-Made in loving dedication and memory to my frecious feline pet, friend, and family member: Chloe Link.
+Made in loving dedication and memory to my precious feline pet, friend, and family member: Chloe Link.
