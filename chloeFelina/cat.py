@@ -135,6 +135,12 @@ class ChloeAI:
             with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
                 pass
 
+        other_num = 1
+        if exists(f'{self.db_path}/_terms_searched'):
+            other_num += 1
+        if exists(f'{self.db_path}/_quick_duplicate_finder_reference'):
+            other_num += 1
+
         self.crintum_pointer = {}
         self.path_pointer = {}
         empty_line_found = False
@@ -149,7 +155,9 @@ class ChloeAI:
                         self.path_pointer[line[line.find('|')+1:]] = line[:line.find('|')]
                     else:
                         empty_line_found = True
-            if len(self.crintum_pointer.keys()) > len((existing_zips := set(listdir(self.db_path))))-2:
+            if len(self.crintum_pointer.keys()) != len((existing_zips := set(listdir(self.db_path))))-other_num:
+                if exists(f'{self.db_path}/_quick_duplicate_finder_reference'):
+                    remove(f'{self.db_path}/_quick_duplicate_finder_reference')
                 for db_archive in tuple(self.path_pointer.keys()):
                     if not f"{db_archive}.zip" in existing_zips:
                         del self.crintum_pointer[self.path_pointer[db_archive]]
@@ -170,7 +178,9 @@ class ChloeAI:
                         self.path_pointer[line[line.find('|')+1:].rstrip('\n')] = line[:line.find('|')]
                     else:
                         empty_line_found = True
-            if len(self.crintum_pointer.keys()) > len((existing_zips := set(listdir(self.db_path))))-2:
+            if len(self.crintum_pointer.keys()) != len((existing_zips := set(listdir(self.db_path))))-other_num:
+                if exists(f'{self.db_path}/_quick_duplicate_finder_reference'):
+                    remove(f'{self.db_path}/_quick_duplicate_finder_reference')
                 for db_archive in tuple(self.path_pointer.keys()):
                     if not f"{db_archive}.zip" in existing_zips:
                         del self.crintum_pointer[self.path_pointer[db_archive]]
@@ -2049,13 +2059,12 @@ class ChloeAI:
         try: del num
         except NameError: pass
 
-        db_names = tuple([item for num in tuple(sorted(num_items_dict.keys())) for item in num_items_dict[num]])
+        db_names = tuple([item for num in tuple(sorted(num_items_dict.keys(),reverse=False)) for item in num_items_dict[num]])
 
         del num_items_dict
 
         duplicate_matches = []
         checked_entities = set()
-        db_present_types = {}
         db_line_counts = {}
         range_4 = range(4)
         documentation_types = {'docx','doc','pdf'}
@@ -2073,7 +2082,6 @@ class ChloeAI:
             pdf_global_counter = {} ; pdf_redundant_nums = set()
             gdb_global_counter = {} ; gdb_redundant_nums = set()
             for db_name in db_names:
-                found_types = set()
                 with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
                     for metadata_file in tuple([item for item in tuple(zf.namelist()) if '_metadata.txt' in item and not '/' in item]):
                         with zf.open(metadata_file) as tf:
@@ -2086,27 +2094,32 @@ class ChloeAI:
                                     nomin = line[:line.find('|')]
                                     match (suffix := nomin[nomin.rfind("_")+1:].lower()):
                                         case 'txt':
-                                            found_types.add("TXT")
                                             if (num := int(line[line.rfind("|")+1:])) in txt_global_counter.keys():
                                                 del txt_global_counter[num]
                                                 txt_redundant_nums.add(num)
                                             elif not num in txt_redundant_nums:
                                                 txt_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
                                             if db_name in db_line_counts.keys():
-                                                db_line_counts[db_name].add(line[line.rfind("|")+1:])
+                                                if "TXT" in db_line_counts[db_name].keys():
+                                                    db_line_counts[db_name]["TXT"].add(line[line.rfind('|')+1:])
+                                                else:
+                                                    db_line_counts[db_name] = {"TXT" : {line[line.rfind("|")+1:]}}
+                                            else:
+                                                db_line_counts[db_name] = {"TXT" : {line[line.rfind('|')+1:]}}
                                         case 'shp':
-                                            found_types.add("SHP")
                                             if (num := int(line[line.rfind("|")+1:])) in shp_global_counter.keys():
                                                 del shp_global_counter[num]
                                                 shp_redundant_nums.add(num)
                                             elif not num in shp_redundant_nums:
                                                 shp_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
                                             if db_name in db_line_counts.keys():
-                                                db_line_counts[db_name].add(line[line.rfind("|")+1:])
+                                                if "SHP" in db_line_counts[db_name].keys():
+                                                    db_line_counts[db_name]["SHP"].add(line[line.rfind('|')+1:])
+                                                else:
+                                                    db_line_counts[db_name] = {"SHP" : {line[line.rfind("|")+1:]}}
                                             else:
-                                                db_line_counts[db_name] = {line[line.rfind("|")+1:]}
+                                                db_line_counts[db_name] = {"SHP" : {line[line.rfind('|')+1:]}}
                                         case 'doc' | 'docx':
-                                            found_types.add("DOC")
                                             num = line[:]
                                             while num.count('|') != 1:
                                                 num = num[num.find('|')+1:]
@@ -2118,11 +2131,13 @@ class ChloeAI:
                                             while line.count('|') != 1:
                                                 line = line[line.find("|")+1:]
                                             if db_name in db_line_counts.keys():
-                                                db_line_counts[db_name].append(line)
+                                                if "DOC" in db_line_counts[db_name].keys():
+                                                    db_line_counts[db_name]["DOC"].add(line)
+                                                else:
+                                                    db_line_counts[db_name] = {"DOC" : {line}}
                                             else:
-                                                db_line_counts[db_name] = {line}
+                                                db_line_counts[db_name] = {"DOC" : {line}}
                                         case 'pdf':
-                                            found_types.add("PDF")
                                             num = line[:]
                                             while num.count('|') != 1:
                                                 num = num[num.find('|')+1:]
@@ -2134,11 +2149,13 @@ class ChloeAI:
                                             while line.count('|') != 1:
                                                 line = line[line.find("|")+1:]
                                             if db_name in db_line_counts.keys():
-                                                db_line_counts[db_name].append(line)
+                                                if "PDF" in db_line_counts[db_name].keys():
+                                                    db_line_counts[db_name]["PDF"].add(line)
+                                                else:
+                                                    db_line_counts[db_name] = {"PDF" : {line}}
                                             else:
-                                                db_line_counts[db_name] = {line}
+                                                db_line_counts[db_name] = {"PDF" : {line}}
                                         case _:
-                                            found_types.add("IMG")
                                             # assumed to be an image file
                                             if (num := int(line[line.rfind("|")+1:])) in img_global_counter.keys():
                                                 del img_global_counter[num]
@@ -2146,19 +2163,25 @@ class ChloeAI:
                                             elif not num in img_redundant_nums:
                                                 img_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
                                             if db_name in db_line_counts.keys():
-                                                db_line_counts[db_name].add(line[line.rfind("|")+1:])
+                                                if "IMG" in db_line_counts[db_name].keys():
+                                                    db_line_counts[db_name]["IMG"].add(line[line.rfind('|')+1:])
+                                                else:
+                                                    db_line_counts[db_name] = {"IMG" : {line[line.rfind("|")+1:]}}
                                             else:
-                                                db_line_counts[db_name] = {line[line.rfind("|")+1:]}
+                                                db_line_counts[db_name] = {"IMG" : {line[line.rfind('|')+1:]}}
                             else:
-                                found_types.add("GDB")
                                 if (line := decodeZipTxtLine(tf.readline())) in gdb_global_counter.keys():
                                     del gdb_global_counter[line]
                                     gdb_redundant_nums.add(line)
                                 elif not line in gdb_redundant_nums:
                                     gdb_global_counter[line] = f"{db_name}|{metadata_file[:metadata_file.rfind('_')]}"
-                db_present_types[db_name] = found_types
-            try: del found_types
-            except NameError: pass
+                                if db_name in db_line_counts.keys():
+                                    if "GDB" in db_line_counts[db_name].keys():
+                                        db_line_counts[db_name]["GDB"].add(line[line.rfind('|')+1:])
+                                    else:
+                                        db_line_counts[db_name] = {"GDB" : {line[line.rfind("|")+1:]}}
+                                else:
+                                    db_line_counts[db_name] = {"GDB" : {line[line.rfind('|')+1:]}}
             try: del line ; del nomin ; del suffix
             except NameError: pass
             try: del num
@@ -2194,31 +2217,71 @@ class ChloeAI:
                     checked_entities.add(gdb_global_counter[num])
                 writeQuickRefUniques('gdb',gdb_global_counter,nums)
             del gdb_global_counter
-            with open(f"{self.db_path}/_quick_duplicate_finder_reference/db_present_types.txt",'w',encoding='utf-8') as tf:
-                tf.write("%s|%s" % (db_names[0],",".join(db_present_types[db_names[0]])))
-                for n in range(1,num_dbs):
-                    tf.write("\n%s|%s" % (db_names[n],",".join(db_present_types[db_names[n]])))
+            for db_name in db_names:
+                with open(f"{self.db_path}/_quick_duplicate_finder_reference/nums_{db_name}.txt","w",encoding="utf-8") as tf:
+                    lines = tuple([f"{num}!{entity_type}" for entity_type in tuple(db_line_counts[db_name]) for num in tuple(db_line_counts[db_name][entity_type])])
+                    tf.write(lines[0])
+                    for n in range(1,len(lines)):
+                        tf.write(f"\n{lines[n]}")
+            try: del lines
+            except NameError: pass
         else:
             for text_file in tuple(listdir(f'{self.db_path}/_quick_duplicate_finder_reference')):
                 with open(f'{self.db_path}/_quick_duplicate_finder_reference/{text_file}',encoding='utf-8') as tf:
-                    if text_file.startswith("uniques"):
+                    if text_file.startswith("uniques_"):
                         while True:
                             line = tf.readline()
                             if not line:
                                 break
                             checked_entities.add(line.rstrip('\n'))
-                    elif text_file == "db_present_types.txt":
+                    elif text_file.startswith("nums_"):
+                        db_line_counts[(db_name := text_file[text_file.find("_")+1:text_file.rfind(".")])] = {}
                         while True:
                             line = tf.readline()
                             if not line:
                                 break
                             line = line.rstrip("\n")
-                            db_present_types[line[:line.find("|")]] = set(line[line.find("|")+1:].split(","))
+                            match line[line.rfind("!")+1:]:
+                                case "TXT":
+                                    if "TXT" in db_line_counts[db_name].keys():
+                                        db_line_counts[db_name]["TXT"].add(line[:line.rfind("!")])
+                                    else:
+                                        db_line_counts[db_name]["TXT"] = {line[:line.rfind("!")]}
+                                case "SHP":
+                                    if "SHP" in db_line_counts[db_name].keys():
+                                        db_line_counts[db_name]["SHP"].add(line[:line.rfind("!")])
+                                    else:
+                                        db_line_counts[db_name]["SHP"] = {line[:line.rfind("!")]}
+                                case "IMG":
+                                    if "IMG" in db_line_counts[db_name].keys():
+                                        db_line_counts[db_name]["IMG"].add(line[:line.rfind("!")])
+                                    else:
+                                        db_line_counts[db_name]["IMG"] = {line[:line.rfind("!")]}
+                                case "DOC":
+                                    if "DOC" in db_line_counts[db_name].keys():
+                                        db_line_counts[db_name]["DOC"].add(line[:line.rfind("!")])
+                                    else:
+                                        db_line_counts[db_name]["DOC"] = {line[:line.rfind("!")]}
+                                case "PDF":
+                                    if "PDF" in db_line_counts[db_name].keys():
+                                        db_line_counts[db_name]["PDF"].add(line[:line.rfind("!")])
+                                    else:
+                                        db_line_counts[db_name]["PDF"] = {line[:line.rfind("!")]}
+                                case _:
+                                    # GDB
+                                    if "GDB" in db_line_counts[db_name].keys():
+                                        db_line_counts[db_name]["GDB"].add(line[:line.rfind("!")])
+                                    else:
+                                        db_line_counts[db_name]["GDB"] = {line[:line.rfind("!")]}
+            try: del line
+            except NameError: pass
+            try: del db_name
+            except NameError: pass
 
         del collection_exists
 
         if tqdm_imported:
-            iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, prefix="Searching and Checking for Duplicate Entities")
+            iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, desc="Searching and Checking for Duplicate Entities")
         else:
             iterator = range(num_dbs-1)
 
@@ -2253,7 +2316,9 @@ class ChloeAI:
                             continue
                         with zf.open(metadata_file) as tf:
                             line = tf.readline()
-                        entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(decodeZipTxtLine(line).split('|'))})
+                        temp_str = decodeZipTxtLine(line)
+                        entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(temp_str.split('|'))},temp_str)
+                        del temp_str
             num_entities = len((entities := tuple(entity_metadata.keys())))
             for n in range(num_entities-1):
                 if f'{current_db_name}|{entities[n]}' in checked_entities:
@@ -2391,8 +2456,29 @@ class ChloeAI:
                 except NameError: pass
                 for b in range(a+1,num_dbs):
                     sub_entity_metadata = {}
-                    if not entity_type in db_present_types[(sub_current_db_name := db_names[b])]:
+                    if not entity_type in db_line_counts[(sub_current_db_name := db_names[b])].keys():
                         continue
+                    else:
+                        match entity_type:
+                            case "TXT":
+                                if not str(entity_data[0]) in db_line_counts[sub_current_db_name]["TXT"]:
+                                    continue
+                            case "SHP":
+                                if not str(entity_data[0]) in db_line_counts[sub_current_db_name]["SHP"]:
+                                    continue
+                            case "IMG":
+                                if not str(entity_data[0]) in db_line_counts[sub_current_db_name]["IMG"]:
+                                    continue
+                            case "DOC":
+                                if not f"{entity_data[0]}|{entity_data[1]}" in db_line_counts[sub_current_db_name]["DOC"]:
+                                    continue
+                            case "PDF":
+                                if not f"{entity_data[0]}|{entity_data[1]}" in db_line_counts[sub_current_db_name]["PDF"]:
+                                    continue
+                            case _:
+                                # GDB
+                                if not entity_data[2] in db_line_counts[sub_current_db_name]["GDB"]:
+                                    continue
                     with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
                         for metadata_file in tuple([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
                             if len(metadata_file) == 13:
@@ -2415,7 +2501,9 @@ class ChloeAI:
                                     continue
                                 with zf.open(metadata_file) as tf:
                                     line = tf.readline()
-                                sub_entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(decodeZipTxtLine(line).split('|'))})
+                                temp_str = decodeZipTxtLine(line)
+                                sub_entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(temp_str.split('|'))},temp_str)
+                                del temp_str
                     for sub_entity in sub_entity_metadata.keys():
                         if sub_entity_metadata[sub_entity][0] != entity_type:
                             continue
@@ -2525,6 +2613,7 @@ class ChloeAI:
                     for entry in entity_metadata.keys():
                         if f'{current_db_name}|{entry}' in checked_entities:
                             checked_entities.remove(f'{current_db_name}|{entry}')
+            del db_line_counts[current_db_name]
 
         try: del entry_name
         except NameError: pass
@@ -2540,7 +2629,7 @@ class ChloeAI:
         except NameError: pass
 
         if len((duplicate_matches := tuple(duplicate_matches))):
-            with open('C:/Users/photi/Desktop/duplicate_matches.txt','w',encoding='utf-8') as tf:
+            with open('C:/Users/AJL/Desktop/duplicate_matches.txt','w',encoding='utf-8') as tf:
                 tf.write(str(duplicate_matches[0]))
                 for n in range(1,len(duplicate_matches)):
                     tf.write(f"\n{str(duplicate_matches[n])}")
