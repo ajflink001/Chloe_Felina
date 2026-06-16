@@ -135,12 +135,6 @@ class ChloeAI:
             with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
                 pass
 
-        other_num = 1
-        if exists(f'{self.db_path}/_terms_searched'):
-            other_num += 1
-        if exists(f'{self.db_path}/_quick_duplicate_finder_reference'):
-            other_num += 1
-
         self.crintum_pointer = {}
         self.path_pointer = {}
         empty_line_found = False
@@ -155,14 +149,13 @@ class ChloeAI:
                         self.path_pointer[line[line.find('|')+1:]] = line[:line.find('|')]
                     else:
                         empty_line_found = True
-            if len(self.crintum_pointer.keys()) != len((existing_zips := set(listdir(self.db_path))))-other_num:
-                if exists(f'{self.db_path}/_quick_duplicate_finder_reference'):
-                    remove(f'{self.db_path}/_quick_duplicate_finder_reference')
-                for db_archive in tuple(self.path_pointer.keys()):
-                    if not f"{db_archive}.zip" in existing_zips:
-                        del self.crintum_pointer[self.path_pointer[db_archive]]
-                        del self.path_pointer[db_archive]
-                num_dbs = len((db_names := tuple(self.path_pointer.keys())))
+            existing_zips = {item for item in tuple(listdir(self.db_path)) if item.endswith('.zip')}
+            previous_count = len(self.crintum_pointer.keys())
+            for db_archive in tuple(self.path_pointer.keys()):
+                if not f"{db_archive}.zip" in existing_zips:
+                    del self.crintum_pointer[self.path_pointer[db_archive]]
+                    del self.path_pointer[db_archive]
+            if previous_count != (num_dbs := len((db_names := tuple(self.path_pointer.keys())))):
                 with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
                     tf.write(pax_encrypt(f"{self.path_pointer[db_names[0]]}|{db_names[0]}"))
                     for n in range(1,num_dbs):
@@ -178,14 +171,13 @@ class ChloeAI:
                         self.path_pointer[line[line.find('|')+1:].rstrip('\n')] = line[:line.find('|')]
                     else:
                         empty_line_found = True
-            if len(self.crintum_pointer.keys()) != len((existing_zips := set(listdir(self.db_path))))-other_num:
-                if exists(f'{self.db_path}/_quick_duplicate_finder_reference'):
-                    remove(f'{self.db_path}/_quick_duplicate_finder_reference')
-                for db_archive in tuple(self.path_pointer.keys()):
-                    if not f"{db_archive}.zip" in existing_zips:
-                        del self.crintum_pointer[self.path_pointer[db_archive]]
-                        del self.path_pointer[db_archive]
-                num_dbs = len((db_names := tuple(self.path_pointer.keys())))
+            existing_zips = {item for item in tuple(listdir(self.db_path)) if item.endswith('.zip')}
+            previous_count = len(self.crintum_pointer.keys())
+            for db_archive in tuple(self.path_pointer.keys()):
+                if not f"{db_archive}.zip" in existing_zips:
+                    del self.crintum_pointer[self.path_pointer[db_archive]]
+                    del self.path_pointer[db_archive]
+            if previous_count != (num_dbs := len((db_names := tuple(self.path_pointer.keys())))):
                 with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
                     tf.write(f"{self.path_pointer[db_names[0]]}|{db_names[0]}")
                     for n in range(1,num_dbs):
@@ -711,8 +703,6 @@ class ChloeAI:
                         if not len(listdir(txt_folder)):
                             rmtree(txt_folder)
                     return None
-
-            txt_lines = tuple(txt_lines)
 
             counter = 0
 
@@ -2065,6 +2055,7 @@ class ChloeAI:
 
         duplicate_matches = []
         checked_entities = set()
+        db_starting_chars = {}
         db_line_counts = {}
         range_4 = range(4)
         documentation_types = {'docx','doc','pdf'}
@@ -2082,6 +2073,7 @@ class ChloeAI:
             pdf_global_counter = {} ; pdf_redundant_nums = set()
             gdb_global_counter = {} ; gdb_redundant_nums = set()
             for db_name in db_names:
+                db_starting_chars[db_name] = {}
                 with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
                     for metadata_file in tuple([item for item in tuple(zf.namelist()) if '_metadata.txt' in item and not '/' in item]):
                         with zf.open(metadata_file) as tf:
@@ -2182,6 +2174,103 @@ class ChloeAI:
                                         db_line_counts[db_name] = {"GDB" : {line[line.rfind("|")+1:]}}
                                 else:
                                     db_line_counts[db_name] = {"GDB" : {line[line.rfind('|')+1:]}}
+
+                    for txt_file in tuple([item for item in tuple(zf.namelist()) if '/' in item and item.endswith(".txt")]):
+                        txt_file_lower = txt_file.lower()
+                        if txt_file.startswith('_txt_files/'):
+                            with zf.open(txt_file) as tf:
+                                line = tf.readline()
+                                if not line:
+                                    continue
+                            if len((line := decodeZipTxtLine(line))):
+                                if 'TXT' in db_starting_chars[db_name].keys():
+                                    db_starting_chars[db_name]["TXT"].add(line[0])
+                                else:
+                                    db_starting_chars[db_name]["TXT"] = {line[0]}
+                            else:
+                                if 'TXT' in db_starting_chars[db_name].keys():
+                                    db_starting_chars[db_name]["TXT"].add('')
+                                else:
+                                    db_starting_chars[db_name]["TXT"] = {''}
+                        elif txt_file.startswith('_shp_files/'):
+                            with zf.open(txt_file) as tf:
+                                line = tf.readline()
+                                if not line:
+                                    continue
+                            if len((line := decodeZipTxtLine(line))):
+                                if 'SHP' in db_starting_chars[db_name].keys():
+                                    db_starting_chars[db_name]["SHP"].add(line[0])
+                                else:
+                                    db_starting_chars[db_name]["SHP"] = {line[0]}
+                            else:
+                                if 'SHP' in db_starting_chars[db_name].keys():
+                                    db_starting_chars[db_name]["SHP"].add('')
+                                else:
+                                    db_starting_chars[db_name]["SHP"] = {''}
+                        elif txt_file.startswith('_images/'):
+                            with zf.open(txt_file) as tf:
+                                line = tf.readline()
+                                if not line:
+                                    continue
+                            if len((line := decodeZipTxtLine(line))):
+                                if 'IMG' in db_starting_chars[db_name].keys():
+                                    db_starting_chars[db_name]["IMG"].add(line[0])
+                                else:
+                                    db_starting_chars[db_name]["IMG"] = {line[0]}
+                            else:
+                                if 'IMG' in db_starting_chars[db_name].keys():
+                                    db_starting_chars[db_name]["IMG"].add('')
+                                else:
+                                    db_starting_chars[db_name]["IMG"] = {''}
+                        elif txt_file_lower.endswith('_doc/doc_extracted_text.txt') or txt_file_lower.endswith('_docx/doc_extracted_text.txt') or txt_file_lower.endswith('_doc/image_histogram_data.txt') or txt_file_lower.endswith('_docx/image_histogram_data.txt'):
+                            with zf.open(txt_file) as tf:
+                                line = tf.readline()
+                                if not line:
+                                    continue
+                            if len((line := decodeZipTxtLine(line))):
+                                if 'DOC' in db_starting_chars[db_name].keys():
+                                    db_starting_chars[db_name]["DOC"].add(line[0])
+                                else:
+                                    db_starting_chars[db_name]["DOC"] = {line[0]}
+                            else:
+                                if 'DOC' in db_starting_chars[db_name].keys():
+                                    db_starting_chars[db_name]["DOC"].add('')
+                                else:
+                                    db_starting_chars[db_name]["DOC"] = {''}
+                        elif txt_file_lower.endswith('_pdf/pdf_extracted_text.txt') or txt_file_lower.endswith('_pdf/image_histogram_data.txt'):
+                            with zf.open(txt_file) as tf:
+                                line = tf.readline()
+                                if not line:
+                                    continue
+                            if len((line := decodeZipTxtLine(line))):
+                                if 'PDF' in db_starting_chars[db_name].keys():
+                                    db_starting_chars[db_name]["PDF"].add(line[0])
+                                else:
+                                    db_starting_chars[db_name]["PDF"] = {line[0]}
+                            else:
+                                if 'PDF' in db_starting_chars[db_name].keys():
+                                    db_starting_chars[db_name]["PDF"].add('')
+                                else:
+                                    db_starting_chars[db_name]["PDF"] = {''}
+                        elif '_gdb/' in txt_file_lower:
+                            with zf.open(txt_file) as tf:
+                                line = tf.readline()
+                                if not line:
+                                    continue
+                            if len((line := decodeZipTxtLine(line))):
+                                if 'GDB' in db_starting_chars[db_name].keys():
+                                    db_starting_chars[db_name]["GDB"].add(line[0])
+                                else:
+                                    db_starting_chars[db_name]["GDB"] = {line[0]}
+                            else:
+                                if 'GDB' in db_starting_chars[db_name].keys():
+                                    db_starting_chars[db_name]["GDB"].add('')
+                                else:
+                                    db_starting_chars[db_name]["GDB"] = {''}
+                if not len(db_starting_chars[db_name].keys()):
+                    db_starting_chars[db_name] = None
+            try: del txt_file_lower
+            except NameError: pass
             try: del line ; del nomin ; del suffix
             except NameError: pass
             try: del num
@@ -2223,6 +2312,18 @@ class ChloeAI:
                     tf.write(lines[0])
                     for n in range(1,len(lines)):
                         tf.write(f"\n{lines[n]}")
+            for db_name in db_names:
+                with open(f"{self.db_path}/_quick_duplicate_finder_reference/chars_{db_name}.txt","w",encoding="utf-8") as tf:
+                    lines = []
+                    if db_starting_chars[db_name] is None:
+                        tf.write("NONE")
+                    else:
+                        for entity_type in tuple(db_starting_chars[db_name].keys()):
+                            for chr in tuple(db_starting_chars[db_name][entity_type]):
+                                lines.append(f"{chr} {entity_type}")
+                        tf.write(lines[0])
+                        for n in range(1,len(lines)):
+                            tf.write(f"\n{lines[n]}")
             try: del lines
             except NameError: pass
         else:
@@ -2273,6 +2374,48 @@ class ChloeAI:
                                         db_line_counts[db_name]["GDB"].add(line[:line.rfind("!")])
                                     else:
                                         db_line_counts[db_name]["GDB"] = {line[:line.rfind("!")]}
+                    elif text_file.startswith("chars_"):
+                        db_starting_chars[(db_name := text_file[text_file.find("_")+1:text_file.rfind(".")])] = {}
+                        while True:
+                            line = tf.readline()
+                            if not line:
+                                break
+                            if (line := line.rstrip("\n")) == "NONE":
+                                db_starting_chars[db_name] = None
+                                break
+                            else:
+                                match line[line.rfind(" ")+1:]:
+                                    case "TXT":
+                                        if "TXT" in db_starting_chars[db_name].keys():
+                                            db_starting_chars[db_name]["TXT"] = {line[:line.rfind(" ")]}
+                                        else:
+                                            db_starting_chars[db_name]["TXT"].add(line[:line.rfind(" ")])
+                                    case "SHP":
+                                        if "SHP" in db_starting_chars[db_name].keys():
+                                            db_starting_chars[db_name]["SHP"] = {line[:line.rfind(" ")]}
+                                        else:
+                                            db_starting_chars[db_name]["SHP"].add(line[:line.rfind(" ")])
+                                    case "IMG":
+                                        if "IMG" in db_starting_chars[db_name].keys():
+                                            db_starting_chars[db_name]["IMG"] = {line[:line.rfind(" ")]}
+                                        else:
+                                            db_starting_chars[db_name]["IMG"].add(line[:line.rfind(" ")])
+                                    case "DOC":
+                                        if "DOC" in db_starting_chars[db_name].keys():
+                                            db_starting_chars[db_name]["DOC"] = {line[:line.rfind(" ")]}
+                                        else:
+                                            db_starting_chars[db_name]["DOC"].add(line[:line.rfind(" ")])
+                                    case "PDF":
+                                        if "PDF" in db_starting_chars[db_name].keys():
+                                            db_starting_chars[db_name]["PDF"] = {line[:line.rfind(" ")]}
+                                        else:
+                                            db_starting_chars[db_name]["PDF"].add(line[:line.rfind(" ")])
+                                    case _:
+                                        # GDB
+                                        if "GDB" in db_starting_chars[db_name].keys():
+                                            db_starting_chars[db_name]["GDB"] = {line[:line.rfind(" ")]}
+                                        else:
+                                            db_starting_chars[db_name]["GDB"].add(line[:line.rfind(" ")])
             try: del line
             except NameError: pass
             try: del db_name
@@ -2292,8 +2435,16 @@ class ChloeAI:
             # entity_metadata = {entity : (Type, (# txt lines in metadata, # txt_lines in extracted text, # txt_lines in extracted images))}
             ## GDB
             # entity_metadata = {entity : (Type, {object name #1 : # txt_lines, object name #2 : # txt_lines, ...})}
-            current_db_name = db_names[a]
             entity_metadata = {}
+            current_starting_chars = {}
+            if db_starting_chars[(current_db_name := db_names[a])] is None:
+                # Gradually reduce memory overhead.
+                del db_line_counts[current_db_name]
+                del db_starting_chars[current_db_name]
+                continue
+            else:
+                for entity_type in db_starting_chars[(current_db_name := db_names[a])].keys():
+                    current_starting_chars[entity_type] = tuple(db_starting_chars[current_db_name][entity_type])
             with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
                 for metadata_file in tuple([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
                     if len(metadata_file) == 13:
@@ -2456,29 +2607,90 @@ class ChloeAI:
                 except NameError: pass
                 for b in range(a+1,num_dbs):
                     sub_entity_metadata = {}
+                    # These prevent redundant checks.
                     if not entity_type in db_line_counts[(sub_current_db_name := db_names[b])].keys():
                         continue
                     else:
                         match entity_type:
                             case "TXT":
                                 if not str(entity_data[0]) in db_line_counts[sub_current_db_name]["TXT"]:
-                                    continue
+                                    matching_starter = False
+                                    if not db_starting_chars[sub_current_db_name] is None:
+                                        temp_starters = db_starting_chars[sub_current_db_name]["TXT"]
+                                        for chr in current_starting_chars["TXT"]:
+                                            if chr in temp_starters:
+                                                matching_starter = True
+                                                break
+                                        if not matching_starter:
+                                            continue
+                                    else:
+                                        continue
                             case "SHP":
                                 if not str(entity_data[0]) in db_line_counts[sub_current_db_name]["SHP"]:
-                                    continue
+                                    matching_starter = False
+                                    if not db_starting_chars[sub_current_db_name] is None:
+                                        temp_starters = db_starting_chars[sub_current_db_name]["SHP"]
+                                        for chr in current_starting_chars["SHP"]:
+                                            if chr in temp_starters:
+                                                matching_starter = True
+                                                break
+                                        if not matching_starter:
+                                            continue
+                                    else:
+                                        continue
                             case "IMG":
                                 if not str(entity_data[0]) in db_line_counts[sub_current_db_name]["IMG"]:
-                                    continue
+                                    matching_starter = False
+                                    if not db_starting_chars[sub_current_db_name] is None:
+                                        temp_starters = db_starting_chars[sub_current_db_name]["IMG"]
+                                        for chr in current_starting_chars["IMG"]:
+                                            if chr in temp_starters:
+                                                matching_starter = True
+                                                break
+                                        if not matching_starter:
+                                            continue
+                                    else:
+                                        continue
                             case "DOC":
                                 if not f"{entity_data[0]}|{entity_data[1]}" in db_line_counts[sub_current_db_name]["DOC"]:
-                                    continue
+                                    matching_starter = False
+                                    if not db_starting_chars[sub_current_db_name] is None:
+                                        temp_starters = db_starting_chars[sub_current_db_name]["DOC"]
+                                        for chr in current_starting_chars["DOC"]:
+                                            if chr in temp_starters:
+                                                matching_starter = True
+                                                break
+                                        if not matching_starter:
+                                            continue
+                                    else:
+                                        continue
                             case "PDF":
                                 if not f"{entity_data[0]}|{entity_data[1]}" in db_line_counts[sub_current_db_name]["PDF"]:
-                                    continue
+                                    matching_starter = False
+                                    if not db_starting_chars[sub_current_db_name] is None:
+                                        temp_starters = db_starting_chars[sub_current_db_name]["PDF"]
+                                        for chr in current_starting_chars["PDF"]:
+                                            if chr in temp_starters:
+                                                matching_starter = True
+                                                break
+                                        if not matching_starter:
+                                            continue
+                                    else:
+                                        continue
                             case _:
                                 # GDB
                                 if not entity_data[2] in db_line_counts[sub_current_db_name]["GDB"]:
-                                    continue
+                                    matching_starter = False
+                                    if not db_starting_chars[sub_current_db_name] is None:
+                                        temp_starters = db_starting_chars[sub_current_db_name]["GDB"]
+                                        for chr in current_starting_chars["GDB"]:
+                                            if chr in temp_starters:
+                                                matching_starter = True
+                                                break
+                                        if not matching_starter:
+                                            continue
+                                    else:
+                                        continue
                     with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
                         for metadata_file in tuple([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
                             if len(metadata_file) == 13:
@@ -2609,11 +2821,14 @@ class ChloeAI:
                     del duplicate_matches[-1]
                 else:
                     duplicate_matches[-1] = tuple(duplicate_matches[-1])
-                if len(checked_entities):
-                    for entry in entity_metadata.keys():
-                        if f'{current_db_name}|{entry}' in checked_entities:
-                            checked_entities.remove(f'{current_db_name}|{entry}')
+            if len(checked_entities):
+                # Reduce redundant memory overhead.
+                for entry in entity_metadata.keys():
+                    if f'{current_db_name}|{entry}' in checked_entities:
+                        checked_entities.remove(f'{current_db_name}|{entry}')
+            # Gradually reduce memory overhead.
             del db_line_counts[current_db_name]
+            del db_starting_chars[current_db_name]
 
         try: del entry_name
         except NameError: pass
@@ -2681,26 +2896,16 @@ class ChloeAI:
         return None
 
 
-    # def getTotalBytesOfReferencedEntities(self) -> int:
-    #
-    #     total_database_size = Decimal(0)
-    #
-    #     for used_name in tuple(self.used_names):
-    #         with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-    #             items = tuple(zf.namelist())
-    #             gdb_metadata_files = [item for item in items if not '/' in item and '_metadata.txt' in item]
-    #             try:
-    #                 gdb_metadata_files.remove('_metadata.txt')
-    #             except Exception:
-    #                 pass
-    #             gdb_metadata_files = tuple(gdb_metadata_files)
-    #             if '_metadata.txt' in items:
-    #                 for txt_line in tuple(zf.open('_metadata.txt').readlines()):
-    #                     pass
-    #             if len(gdb_metadata_files):
-    #                 pass
-    #
-    #     return int(total_database_size)
+    def getTotalBytesOfReferencedEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', terminal_progress_display_enabled : bool = False) -> int:
+
+        total_size = Decimal(0)
+
+        for used_name in tuple(self.used_names):
+            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                pass
+
+
+        return int(total_size)
 
 
     def getTotalNumberOfReferencedEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', terminal_progress_display_enabled : bool = False) -> int:
