@@ -208,19 +208,21 @@ Parameters:
 
 
 
-**csv\_new\_line** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True.
+**csv\_new\_line** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This affects the newline parameter for csv.writer. This is an empty string by default.
 
 
 
-**csv\_field\_size\_limit** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True.
+**csv\_field\_size\_limit** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This sets the csv.field_size_limit value. By default, the value is 131,072.
+
+
+**csv\_delimiter** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This affects the delimiter parameter for csv.writer. This is "," by default.
+
+
+**csv\_quotechar** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This affects the quotechar parameter for csv.writer. This is "|" by default.
 
 
 
-**csv\_quotechar** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True.
-
-
-
-**csv\_quoating\_minimal** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True.
+**csv\_quoating\_minimal** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This affects the quoting value for csv.writer. This is 0 by default.
 
 
 
