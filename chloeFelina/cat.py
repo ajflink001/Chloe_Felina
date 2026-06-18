@@ -1625,7 +1625,7 @@ class ChloeAI:
                                                             if temp_entry_string in getTestName(relevant_archived_file):
                                                                 found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                                                 break
-                                                        if isQueryMatchDaath(entry_string,f'{starting_name}/{relevant_archived_file}',zf):
+                                                        if isQueryMatchDaath(entry_string,f'{starting_name}{relevant_archived_file}',zf):
                                                             found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                                             break
                                                 case 'jpg' | 'jpeg' | 'tif' | 'tiff' | 'png' | 'webp':
@@ -1738,7 +1738,7 @@ class ChloeAI:
                                                         if temp_entry_string in getTestName(relevant_archived_file):
                                                             found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                                             break
-                                                    if isQueryMatchDaath(entry_string,f'{starting_name}/{relevant_archived_file}',zf):
+                                                    if isQueryMatchDaath(entry_string,f'{starting_name}{relevant_archived_file}',zf):
                                                         found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                                         break
                                             case 'doc' | 'docx':
