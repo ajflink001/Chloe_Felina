@@ -28,7 +28,7 @@ It is extremely recommended to install the following modules via pip to get the 
 - pypdf (handles PDFs)
 
 ```
-pip install pillow openpyxl docx docx2python pypdf
+pip install pillow openpyxl docx docx2python pypdf pywin32
 ```
 
 Made in loving dedication and memory to my precious feline pet, friend, and family member: Chloe Link.
