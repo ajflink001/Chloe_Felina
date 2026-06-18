@@ -26,6 +26,7 @@ It is extremely recommended to install the following modules via pip to get the 
 - docx (handles Word files)
 - docx2python (mainly helps with reading .doc files)
 - pypdf (handles PDFs)
+- win32api (required to utilize the full functionality of chloeFelina.cat.ChloeAI.updateAndRefreshArchive)
 
 ```
 pip install pillow openpyxl docx docx2python pypdf pywin32
