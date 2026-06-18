@@ -17,7 +17,7 @@ from chloeFelina import cat
 felia = cat.ChloeAI(database_location="explict/path/to/directory", database_name="Custom Name Here")
 ```
 
-The main features of Chloe Felina are: finding items with a specified word/term/phrase embedded in them and scanning the database for duplicated instances of items.
+The main feature of Chloe Felina at the moment is: finding items with a specified word/term/phrase embedded in them.
 
 It is extremely recommended to install the following modules via pip to get the most out of Chloe Felina:
 
