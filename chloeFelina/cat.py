@@ -55,6 +55,11 @@ docx2_imported = True
 try: from docx2python import docx2python as docx2
 except ImportError: docx2_imported = False
 except ModuleNotFoundError: docx2_imported = False
+# pywin32
+win32api_imported = True
+try: from win32api import GetLocalDriveStrings
+except ImportError: win32api_imported = False
+except ModuleNotFoundError: win32api_imported = False
 
 # Built-In Python Modules
 import csv
@@ -72,7 +77,7 @@ from pathlib import Path
 
 # Custom Python Modules
 from chloeFelina.purr import isQueryMatchKether,isQueryMatchBinah,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName,decodeZipTxtLine
-from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,convertValueToBytes,genSearchQueryResultFile,forbidden_dirs,backupGen
+from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,genSearchQueryResultFile,forbidden_dirs,backupGen
 from chloeFelina.paxium import encrypt as pax_encrypt
 from chloeFelina.paxium import decrypt as pax_decrypt
 
@@ -111,8 +116,6 @@ class ChloeAI:
                     items.remove('crintum_pointer.txt')
                 if '_backup_crintum_pointer.txt' in items:
                     items.remove('_backup_crintum_pointer.txt')
-                if '_quick_duplicate_finder_reference' in items:
-                    items.remove('_quick_duplicate_finder_reference')
                 for item in (items:= tuple(items)):
                     if isdir((item_path := f'{self.db_path}/{item}')):
                         try:
@@ -221,6 +224,7 @@ class ChloeAI:
             self.accepted_suffixes.add('pdf')
 
         if pil_imported:
+            # More file types will be added after thorough testing.
             self.accepted_image_extensions = {'.jpg','.JPG','.jpeg','.JPEG','.png','.PNG','.tif','.TIF','.tiff','.TIFF','.webp','.WEBP'}
             # Maximum number of pixels that an image can have until the PIL module
             # throws an error.
@@ -239,8 +243,11 @@ class ChloeAI:
             arcpy.env.parallelProcessingFactor = "75%"
 
             self.accepted_suffixes.add('shp')
+            self.accepted_suffixes.add('gdb')
 
         self.histogram_ratio_precision = histogram_ratio_precision
+        # The following is required to heavily simplify and reduce storage space
+        # requirements for saving histogram ratio data.
         self.subbing = {".a":'È','.b':'É','.c':'Ê','.d':'Ë','.f':'Ì','.g':'Í','.h':'Î','.i':'Ï','.j':'Ð','.k':'Ñ'}
         self.sub_keys = tuple(self.subbing.keys())
         self.shorthand = ['000', '00', '111111', '11111', '1111', '111', '11', '222222', '22222', '2222', '222', '22', '333333', '33333', '3333', '333', '33', '444444', '44444', '4444', '444', '44', '555555', '55555', '5555', '555', '55', '666666', '66666', '6666', '666', '66', '777777', '77777', '7777', '777', '77', '888888', '88888', '8888', '888', '88', '999999', '99999', '9999', '999', '99', 'e-', '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '.0', '.1', '.2', '.3', '.4', '.5', '.6', '.7', '.8', '.9']
@@ -248,11 +255,11 @@ class ChloeAI:
         self.alphanum = tuple(f'{ascii_letters}{digits}')
 
 
-    def updateAndRefreshArchive(self, redact_criteria : int = 0, append_criteria : int = 0, keep_if_no_connection : bool = True, terminal_progress_display_enabled : bool = False) -> None:
+    def updateAndRefreshDatabase(self, keep_if_no_connection : bool = True, terminal_progress_display_enabled : bool = False) -> None:
         '''
-        0 == all
-        1 == just non-local drive
-        2 == just local drives
+        WIP
+        Checks data in database against referenced files for any new additions,
+        removals, and/or modifications and updates the database appropriately.
         '''
 
         if terminal_progress_display_enabled and tqdm_imported:
@@ -287,6 +294,17 @@ class ChloeAI:
             for zip_db in db_for_deletion:
                 remove(f"{self.db_path}/{zip_db}.zip")
         del db_for_deletion ; del existing_zips
+
+        if win32api_imported:
+            explicit_drives = GetLocalDriveStrings().split('\000')[:-1]
+            explicit_drives.remove('C:\\')
+            explicit_drives = tuple([unc_path(drive) for drive in explicit_drives])
+            redact_dbs = []
+            if not keep_if_no_connection:
+                for db_name in tuple(self.db_names):
+                    pass
+            else:
+                pass
 
         return None
 
@@ -337,8 +355,8 @@ class ChloeAI:
             return None
 
         for root,dirs,files in walker(top_directory_path):
-            if not "$RECYCLE.BIN" in root:
-                self.getDirectoryData(root.replace('\\','/'),terminal_progress_display_enabled)
+            if not "$RECYCLE.BIN" in (root := root.replace('\\','/')) and not self.db_path in root:
+                self.getDirectoryData(root,terminal_progress_display_enabled)
 
         return None
 
@@ -404,6 +422,8 @@ class ChloeAI:
         if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
 
+        reference_directory = reference_directory.replace('\\','/')
+
         # This is to account for mapped network drives.
         if not exists((reference_directory := unc_path(reference_directory))):
             # Account for weird abnormality.
@@ -414,10 +434,7 @@ class ChloeAI:
         else:
             items = {}
             for name in listdir(reference_directory):
-                # Files with more than one "." are considered "dirty files".
-                if name.count('.') > 1:
-                    continue
-                elif name.lower().endswith('.gdb'):
+                if name.lower().endswith('.gdb'):
                     items[name] = 'GDB'
                 elif name.lower().endswith('.shp'):
                     items[name] = 'SHP'
@@ -437,7 +454,7 @@ class ChloeAI:
                     archive_db_name = randstr(12)
                 mkdir((output_db_folder := f'{self.db_path}/{archive_db_name}'))
                 if tqdm_imported:
-                    names = tqdm(tuple(items.keys()), disable = not terminal_progress_display_enabled)
+                    names = tqdm(tuple(items.keys()), disable = not terminal_progress_display_enabled, desc = reference_directory[:])
                 else:
                     names = tuple(items.keys())
                 for name in names:
@@ -944,16 +961,6 @@ class ChloeAI:
 
         return None
 
-    # need to find a way to automatically determine the delimiter
-    def archive_csv_data(self, csv_path : str, archive_db_name : str) -> None:
-
-        if (baseline_metadata := getBaselineMetadata(csv_path)) is None:
-            return None
-
-        baseline_metadata = '|'.join(baseline_metadata)
-
-        return None
-
 
     def archive_shp_data(self, shp_path : str, archive_db_name : str) -> None:
 
@@ -977,11 +984,11 @@ class ChloeAI:
                 oid_name = field.name[:]
                 break
         except Exception:
-            # Shapfile cannot be read via ArcPy for unknown reasons.
+            # Shapefile cannot be read via ArcPy for unknown reasons.
             return None
         if oid_name is None:
             return None
-        fields = [field.name for field in tuple(arcpy.ListFields(shapefile_name)) if not field.name.lower() in redundant_fields and not field.name.endswith('_ID')]
+        fields = [field.name for field in tuple(arcpy.ListFields(shapefile_name)) if not field.name.lower() in redundant_fields]
         fields.remove(oid_name)
         fields = sorted(fields)
         fields.insert(0,oid_name)
@@ -1026,7 +1033,7 @@ class ChloeAI:
             arcpy.env.overwriteOutput = False
             alter_fields = fields[:]
             for field in arcpy.ListFields(temp_shp):
-                if not field.name in fields and not field.name.endswith("_ID") and not field.name.lower() in redundant_fields:
+                if not field.name in fields and not field.name.lower() in redundant_fields:
                     alter_fields.append(field.name)
             fields = fields + sql_fields
             ranger = range(1,len(sql_fields))
@@ -1121,7 +1128,7 @@ class ChloeAI:
                 return None
             if oid_name is None:
                 return None
-            fields = [field.name for field in tuple(arcpy.ListFields(entity_name)) if not field.name.lower() in redundant_fields and not field.name.endswith('_ID')]
+            fields = [field.name for field in tuple(arcpy.ListFields(entity_name)) if not field.name.lower() in redundant_fields]
             fields.remove(oid_name)
             fields = sorted(fields)
             fields.insert(0,oid_name)
@@ -1168,7 +1175,7 @@ class ChloeAI:
                 arcpy.env.overwriteOutput = False
                 alter_fields = fields[:]
                 for field in arcpy.ListFields(f'{temp_gdb}/{entity_name}'):
-                    if not field.name in fields and not field.name.endswith("_ID") and not field.name.lower() in redundant_fields:
+                    if not field.name in fields and not field.name.lower() in redundant_fields:
                         alter_fields.append(field.name)
                 fields = fields + sql_fields
                 ranger = range(1,len(sql_fields))
@@ -1215,6 +1222,10 @@ class ChloeAI:
             if not (list_tables := arcpy.ListTables()) is None:
                 for table in arcpy.ListTables():
                     object_counters.append(processGDBEntity(table,dataset))
+
+        if not len(object_counters):
+            rmtree(output_subfolder)
+            return None
 
         object_counters = '|'.join(sorted(object_counters))
 
@@ -1444,14 +1455,6 @@ class ChloeAI:
         return None
 
 
-    def clearSearchQueryMemory(self) -> None:
-
-        if not exists((search_results_folder := f'{self.db_path}/_terms_searched')):
-            rmtree(search_results_folder)
-
-        return None
-
-
     def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
         '''
         output_file_type can be the following:
@@ -1481,7 +1484,9 @@ class ChloeAI:
         while '  ' in entry_string:
             entry_string = entry_string.replace('  ',' ')
 
-        if not len(entry_string):
+        if len(entry_string) < 2:
+            if return_tuple:
+                return ()
             return None
 
         if output_name is None:
@@ -1577,7 +1582,7 @@ class ChloeAI:
                                 zip_file_path_to_files[current_path] = [relevant_file_path[relevant_file_path.rfind("/")+1:]]
                     del end_num
                     if tqdm_imported:
-                        item_file_paths = tqdm(tuple(zip_file_path_to_files.keys()), disable = not terminal_progress_display_enabled)
+                        item_file_paths = tqdm(tuple(zip_file_path_to_files.keys()), disable = not terminal_progress_display_enabled, desc = f"Searching for instances of {entry_string}")
                     else:
                         item_file_paths = tuple(zip_file_path_to_files.keys())
                     if isinstance(check_type,str):
@@ -1768,7 +1773,7 @@ class ChloeAI:
         found_matches = []
         # memory overhead needs to be reduced.
         if tqdm_imported:
-            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled)
+            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled, desc = f"Searching for instances of {entry_string}")
         else:
             iterator = tuple(self.used_names)
         if not ' ' in entry_string:
@@ -1788,18 +1793,18 @@ class ChloeAI:
                             for txt_file in extracted_data[classify]:
                                 if include_entity_name:
                                     if temp_entry_string in getTestName(txt_file):
-                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.find('.')]))
+                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
                                         continue
                                 if isQueryMatchKether(entry_string,tuple(zf.open(f'_txt_files/{txt_file}').readlines())):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.find('.')]))
+                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
                         elif classify == '_shp_files':
                             for txt_file in extracted_data[classify]:
                                 if include_entity_name:
                                     if temp_entry_string in getTestName(txt_file):
-                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.find('.')]))
+                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
                                         continue
                                 if isQueryMatchDaath(entry_string,f'_shp_files/{txt_file}',zf):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.find('.')]))
+                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
                         elif classify.lower().endswith('_gdb'):
                             found_equal = False
                             for txt_file in extracted_data[classify]:
@@ -1861,10 +1866,10 @@ class ChloeAI:
                             for txt_file in extracted_data[classify]:
                                 if include_entity_name:
                                     if temp_entry_string in getTestName(txt_file):
-                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file('.')]))
+                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
                                         continue
                                 if isQueryMatchGewurah(entry_string,(txt_lines := tuple(zf.open(f'_txt_files/{txt_file}').readlines())),max_line_concat):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file('.')]))
+                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
                                 if save_found_matches:
                                     for term in terms:
                                         if include_entity_name:
@@ -2017,837 +2022,30 @@ class ChloeAI:
         return None
 
 
-    def findAllDuplicates(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', recompile_finder_refs : bool = False, recompile_uniques : bool = False, terminal_progress_display_enabled : bool = False) -> None:
+    def clearSearchQueryMemory(self) -> None:
+
+        if exists((search_results_folder := f'{self.db_path}/_terms_searched')):
+            rmtree(search_results_folder)
+            mkdir(search_results_folder)
+
+        return None
+
+
+    def findAllDuplicates(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', return_tuple : bool = False, terminal_progress_display_enabled : bool = False) -> None | tuple:
         '''
         Check items of matching type against each other.
+        WIP
         '''
-
-        def writeQuickRefUniques(entity_type : str, entity_global_counter : dict, nums : tuple) -> None:
-
-            with open(f'{self.db_path}/_quick_duplicate_finder_reference/uniques_{entity_type}.txt','w',encoding='utf-8') as tf:
-                tf.write(entity_global_counter[nums[0]])
-                for n in range(1,len(nums)):
-                    tf.write(f'\n{entity_global_counter[nums[n]]}')
-
-            return None
 
         if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
 
-        num_dbs = len(self.used_names)
-
-        num_items_dict = {}
-
-        for used_name in tuple(self.used_names):
-            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                num = len(zf.namelist())
-                if num in num_items_dict.keys():
-                    num_items_dict[num].append(used_name)
-                else:
-                    num_items_dict[num] = [used_name]
-
-        try: del num
-        except NameError: pass
-
-        db_names = tuple([item for num in tuple(sorted(num_items_dict.keys(),reverse=False)) for item in num_items_dict[num]])
-
-        del num_items_dict
-
-        duplicate_matches = []
-        checked_entities = set()
-        db_starting_chars = {}
-        db_line_counts = {}
-        range_4 = range(4)
-        documentation_types = {'docx','doc','pdf'}
-
-        if not (collection_exists := exists(f"{self.db_path}/_quick_duplicate_finder_reference")) or recompile_finder_refs:
-            if not collection_exists:
-                mkdir(f"{self.db_path}/_quick_duplicate_finder_reference")
-            else:
-                rmtree(f"{self.db_path}/_quick_duplicate_finder_reference")
-                mkdir(f"{self.db_path}/_quick_duplicate_finder_reference")
-            txt_global_counter = {} ; txt_redundant_nums = set()
-            shp_global_counter = {} ; shp_redundant_nums = set()
-            img_global_counter = {} ; img_redundant_nums = set()
-            doc_global_counter = {} ; doc_redundant_nums = set()
-            pdf_global_counter = {} ; pdf_redundant_nums = set()
-            gdb_global_counter = {} ; gdb_redundant_nums = set()
-            for db_name in db_names:
-                db_starting_chars[db_name] = {}
-                with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                    for metadata_file in tuple([item for item in tuple(zf.namelist()) if '_metadata.txt' in item and not '/' in item]):
-                        with zf.open(metadata_file) as tf:
-                            if len(metadata_file) == 13:
-                                while True:
-                                    line = tf.readline()
-                                    if not line:
-                                        break
-                                    line = decodeZipTxtLine(line)
-                                    nomin = line[:line.find('|')]
-                                    match (suffix := nomin[nomin.rfind("_")+1:].lower()):
-                                        case 'txt':
-                                            if (num := int(line[line.rfind("|")+1:])) in txt_global_counter.keys():
-                                                del txt_global_counter[num]
-                                                txt_redundant_nums.add(num)
-                                            elif not num in txt_redundant_nums:
-                                                txt_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
-                                            if db_name in db_line_counts.keys():
-                                                if "TXT" in db_line_counts[db_name].keys():
-                                                    db_line_counts[db_name]["TXT"].add(line[line.rfind('|')+1:])
-                                                else:
-                                                    db_line_counts[db_name] = {"TXT" : {line[line.rfind("|")+1:]}}
-                                            else:
-                                                db_line_counts[db_name] = {"TXT" : {line[line.rfind('|')+1:]}}
-                                        case 'shp':
-                                            if (num := int(line[line.rfind("|")+1:])) in shp_global_counter.keys():
-                                                del shp_global_counter[num]
-                                                shp_redundant_nums.add(num)
-                                            elif not num in shp_redundant_nums:
-                                                shp_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
-                                            if db_name in db_line_counts.keys():
-                                                if "SHP" in db_line_counts[db_name].keys():
-                                                    db_line_counts[db_name]["SHP"].add(line[line.rfind('|')+1:])
-                                                else:
-                                                    db_line_counts[db_name] = {"SHP" : {line[line.rfind("|")+1:]}}
-                                            else:
-                                                db_line_counts[db_name] = {"SHP" : {line[line.rfind('|')+1:]}}
-                                        case 'doc' | 'docx':
-                                            num = line[:]
-                                            while num.count('|') != 1:
-                                                num = num[num.find('|')+1:]
-                                            if num in doc_global_counter.keys():
-                                                del doc_global_counter[num]
-                                                doc_redundant_nums.add(num)
-                                            elif not num in doc_redundant_nums:
-                                                doc_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
-                                            while line.count('|') != 1:
-                                                line = line[line.find("|")+1:]
-                                            if db_name in db_line_counts.keys():
-                                                if "DOC" in db_line_counts[db_name].keys():
-                                                    db_line_counts[db_name]["DOC"].add(line)
-                                                else:
-                                                    db_line_counts[db_name] = {"DOC" : {line}}
-                                            else:
-                                                db_line_counts[db_name] = {"DOC" : {line}}
-                                        case 'pdf':
-                                            num = line[:]
-                                            while num.count('|') != 1:
-                                                num = num[num.find('|')+1:]
-                                            if num in pdf_global_counter.keys():
-                                                del pdf_global_counter[num]
-                                                pdf_redundant_nums.add(num)
-                                            elif not num in pdf_redundant_nums:
-                                                pdf_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
-                                            while line.count('|') != 1:
-                                                line = line[line.find("|")+1:]
-                                            if db_name in db_line_counts.keys():
-                                                if "PDF" in db_line_counts[db_name].keys():
-                                                    db_line_counts[db_name]["PDF"].add(line)
-                                                else:
-                                                    db_line_counts[db_name] = {"PDF" : {line}}
-                                            else:
-                                                db_line_counts[db_name] = {"PDF" : {line}}
-                                        case _:
-                                            # assumed to be an image file
-                                            if (num := int(line[line.rfind("|")+1:])) in img_global_counter.keys():
-                                                del img_global_counter[num]
-                                                img_redundant_nums.add(num)
-                                            elif not num in img_redundant_nums:
-                                                img_global_counter[num] = f"{db_name}|{line[:line.find('|')]}"
-                                            if db_name in db_line_counts.keys():
-                                                if "IMG" in db_line_counts[db_name].keys():
-                                                    db_line_counts[db_name]["IMG"].add(line[line.rfind('|')+1:])
-                                                else:
-                                                    db_line_counts[db_name] = {"IMG" : {line[line.rfind("|")+1:]}}
-                                            else:
-                                                db_line_counts[db_name] = {"IMG" : {line[line.rfind('|')+1:]}}
-                            else:
-                                if (line := decodeZipTxtLine(tf.readline())) in gdb_global_counter.keys():
-                                    del gdb_global_counter[line]
-                                    gdb_redundant_nums.add(line)
-                                elif not line in gdb_redundant_nums:
-                                    gdb_global_counter[line] = f"{db_name}|{metadata_file[:metadata_file.rfind('_')]}"
-                                if db_name in db_line_counts.keys():
-                                    if "GDB" in db_line_counts[db_name].keys():
-                                        db_line_counts[db_name]["GDB"].add(line[line.rfind('|')+1:])
-                                    else:
-                                        db_line_counts[db_name] = {"GDB" : {line[line.rfind("|")+1:]}}
-                                else:
-                                    db_line_counts[db_name] = {"GDB" : {line[line.rfind('|')+1:]}}
-
-                    for txt_file in tuple([item for item in tuple(zf.namelist()) if '/' in item and item.endswith(".txt")]):
-                        txt_file_lower = txt_file.lower()
-                        if txt_file.startswith('_txt_files/'):
-                            with zf.open(txt_file) as tf:
-                                line = tf.readline()
-                                if not line:
-                                    continue
-                            if len((line := decodeZipTxtLine(line))):
-                                if 'TXT' in db_starting_chars[db_name].keys():
-                                    db_starting_chars[db_name]["TXT"].add(line[0])
-                                else:
-                                    db_starting_chars[db_name]["TXT"] = {line[0]}
-                            else:
-                                if 'TXT' in db_starting_chars[db_name].keys():
-                                    db_starting_chars[db_name]["TXT"].add('')
-                                else:
-                                    db_starting_chars[db_name]["TXT"] = {''}
-                        elif txt_file.startswith('_shp_files/'):
-                            with zf.open(txt_file) as tf:
-                                line = tf.readline()
-                                if not line:
-                                    continue
-                            if len((line := decodeZipTxtLine(line))):
-                                if 'SHP' in db_starting_chars[db_name].keys():
-                                    db_starting_chars[db_name]["SHP"].add(line[0])
-                                else:
-                                    db_starting_chars[db_name]["SHP"] = {line[0]}
-                            else:
-                                if 'SHP' in db_starting_chars[db_name].keys():
-                                    db_starting_chars[db_name]["SHP"].add('')
-                                else:
-                                    db_starting_chars[db_name]["SHP"] = {''}
-                        elif txt_file.startswith('_images/'):
-                            with zf.open(txt_file) as tf:
-                                line = tf.readline()
-                                if not line:
-                                    continue
-                            if len((line := decodeZipTxtLine(line))):
-                                if 'IMG' in db_starting_chars[db_name].keys():
-                                    db_starting_chars[db_name]["IMG"].add(line[0])
-                                else:
-                                    db_starting_chars[db_name]["IMG"] = {line[0]}
-                            else:
-                                if 'IMG' in db_starting_chars[db_name].keys():
-                                    db_starting_chars[db_name]["IMG"].add('')
-                                else:
-                                    db_starting_chars[db_name]["IMG"] = {''}
-                        elif txt_file_lower.endswith('_doc/doc_extracted_text.txt') or txt_file_lower.endswith('_docx/doc_extracted_text.txt') or txt_file_lower.endswith('_doc/image_histogram_data.txt') or txt_file_lower.endswith('_docx/image_histogram_data.txt'):
-                            with zf.open(txt_file) as tf:
-                                line = tf.readline()
-                                if not line:
-                                    continue
-                            if len((line := decodeZipTxtLine(line))):
-                                if 'DOC' in db_starting_chars[db_name].keys():
-                                    db_starting_chars[db_name]["DOC"].add(line[0])
-                                else:
-                                    db_starting_chars[db_name]["DOC"] = {line[0]}
-                            else:
-                                if 'DOC' in db_starting_chars[db_name].keys():
-                                    db_starting_chars[db_name]["DOC"].add('')
-                                else:
-                                    db_starting_chars[db_name]["DOC"] = {''}
-                        elif txt_file_lower.endswith('_pdf/pdf_extracted_text.txt') or txt_file_lower.endswith('_pdf/image_histogram_data.txt'):
-                            with zf.open(txt_file) as tf:
-                                line = tf.readline()
-                                if not line:
-                                    continue
-                            if len((line := decodeZipTxtLine(line))):
-                                if 'PDF' in db_starting_chars[db_name].keys():
-                                    db_starting_chars[db_name]["PDF"].add(line[0])
-                                else:
-                                    db_starting_chars[db_name]["PDF"] = {line[0]}
-                            else:
-                                if 'PDF' in db_starting_chars[db_name].keys():
-                                    db_starting_chars[db_name]["PDF"].add('')
-                                else:
-                                    db_starting_chars[db_name]["PDF"] = {''}
-                        elif '_gdb/' in txt_file_lower:
-                            with zf.open(txt_file) as tf:
-                                line = tf.readline()
-                                if not line:
-                                    continue
-                            if len((line := decodeZipTxtLine(line))):
-                                if 'GDB' in db_starting_chars[db_name].keys():
-                                    db_starting_chars[db_name]["GDB"].add(line[0])
-                                else:
-                                    db_starting_chars[db_name]["GDB"] = {line[0]}
-                            else:
-                                if 'GDB' in db_starting_chars[db_name].keys():
-                                    db_starting_chars[db_name]["GDB"].add('')
-                                else:
-                                    db_starting_chars[db_name]["GDB"] = {''}
-                if not len(db_starting_chars[db_name].keys()):
-                    db_starting_chars[db_name] = None
-            try: del txt_file_lower
-            except NameError: pass
-            try: del line ; del nomin ; del suffix
-            except NameError: pass
-            try: del num
-            except NameError: pass
-            del txt_redundant_nums ; del img_redundant_nums ; del shp_redundant_nums ; del doc_redundant_nums ; del pdf_redundant_nums ; del gdb_redundant_nums
-            if len(txt_global_counter.keys()):
-                for num in (nums := tuple(txt_global_counter.keys())):
-                    checked_entities.add(txt_global_counter[num])
-                writeQuickRefUniques("txt",txt_global_counter,nums)
-            del txt_global_counter
-            if len(shp_global_counter.keys()):
-                for num in (nums := tuple(shp_global_counter.keys())):
-                    checked_entities.add(shp_global_counter[num])
-                writeQuickRefUniques('shp',shp_global_counter,nums)
-            del shp_global_counter
-            if len(img_global_counter.keys()):
-                for num in (nums := tuple(img_global_counter.keys())):
-                    checked_entities.add(img_global_counter[num])
-                writeQuickRefUniques('img',img_global_counter,nums)
-            del img_global_counter
-            if len(doc_global_counter.keys()):
-                for num in (nums := tuple(doc_global_counter.keys())):
-                    checked_entities.add(doc_global_counter[num])
-                writeQuickRefUniques('doc',doc_global_counter,nums)
-            del doc_global_counter
-            if len(pdf_global_counter.keys()):
-                for num in (nums := tuple(pdf_global_counter.keys())):
-                    checked_entities.add(pdf_global_counter[num])
-                writeQuickRefUniques('pdf',pdf_global_counter,nums)
-            del pdf_global_counter
-            if len(gdb_global_counter.keys()):
-                for num in (nums := tuple(gdb_global_counter.keys())):
-                    checked_entities.add(gdb_global_counter[num])
-                writeQuickRefUniques('gdb',gdb_global_counter,nums)
-            del gdb_global_counter
-            for db_name in db_names:
-                with open(f"{self.db_path}/_quick_duplicate_finder_reference/nums_{db_name}.txt","w",encoding="utf-8") as tf:
-                    lines = tuple([f"{num}!{entity_type}" for entity_type in tuple(db_line_counts[db_name]) for num in tuple(db_line_counts[db_name][entity_type])])
-                    tf.write(lines[0])
-                    for n in range(1,len(lines)):
-                        tf.write(f"\n{lines[n]}")
-            for db_name in db_names:
-                with open(f"{self.db_path}/_quick_duplicate_finder_reference/chars_{db_name}.txt","w",encoding="utf-8") as tf:
-                    lines = []
-                    if db_starting_chars[db_name] is None:
-                        tf.write("NONE")
-                    else:
-                        for entity_type in tuple(db_starting_chars[db_name].keys()):
-                            for chr in tuple(db_starting_chars[db_name][entity_type]):
-                                lines.append(f"{chr} {entity_type}")
-                        tf.write(lines[0])
-                        for n in range(1,len(lines)):
-                            tf.write(f"\n{lines[n]}")
-            try: del lines
-            except NameError: pass
+        if isinstance(check_type,str):
+            pass
+        elif isinstance(check_type,(tuple,list,set)):
+            pass
         else:
-            for text_file in tuple(listdir(f'{self.db_path}/_quick_duplicate_finder_reference')):
-                with open(f'{self.db_path}/_quick_duplicate_finder_reference/{text_file}',encoding='utf-8') as tf:
-                    if text_file.startswith("uniques_"):
-                        while True:
-                            line = tf.readline()
-                            if not line:
-                                break
-                            checked_entities.add(line.rstrip('\n'))
-                    elif text_file.startswith("nums_"):
-                        db_line_counts[(db_name := text_file[text_file.find("_")+1:text_file.rfind(".")])] = {}
-                        while True:
-                            line = tf.readline()
-                            if not line:
-                                break
-                            line = line.rstrip("\n")
-                            match line[line.rfind("!")+1:]:
-                                case "TXT":
-                                    if "TXT" in db_line_counts[db_name].keys():
-                                        db_line_counts[db_name]["TXT"].add(line[:line.rfind("!")])
-                                    else:
-                                        db_line_counts[db_name]["TXT"] = {line[:line.rfind("!")]}
-                                case "SHP":
-                                    if "SHP" in db_line_counts[db_name].keys():
-                                        db_line_counts[db_name]["SHP"].add(line[:line.rfind("!")])
-                                    else:
-                                        db_line_counts[db_name]["SHP"] = {line[:line.rfind("!")]}
-                                case "IMG":
-                                    if "IMG" in db_line_counts[db_name].keys():
-                                        db_line_counts[db_name]["IMG"].add(line[:line.rfind("!")])
-                                    else:
-                                        db_line_counts[db_name]["IMG"] = {line[:line.rfind("!")]}
-                                case "DOC":
-                                    if "DOC" in db_line_counts[db_name].keys():
-                                        db_line_counts[db_name]["DOC"].add(line[:line.rfind("!")])
-                                    else:
-                                        db_line_counts[db_name]["DOC"] = {line[:line.rfind("!")]}
-                                case "PDF":
-                                    if "PDF" in db_line_counts[db_name].keys():
-                                        db_line_counts[db_name]["PDF"].add(line[:line.rfind("!")])
-                                    else:
-                                        db_line_counts[db_name]["PDF"] = {line[:line.rfind("!")]}
-                                case _:
-                                    # GDB
-                                    if "GDB" in db_line_counts[db_name].keys():
-                                        db_line_counts[db_name]["GDB"].add(line[:line.rfind("!")])
-                                    else:
-                                        db_line_counts[db_name]["GDB"] = {line[:line.rfind("!")]}
-                    elif text_file.startswith("chars_"):
-                        db_starting_chars[(db_name := text_file[text_file.find("_")+1:text_file.rfind(".")])] = {}
-                        while True:
-                            line = tf.readline()
-                            if not line:
-                                break
-                            if (line := line.rstrip("\n")) == "NONE":
-                                db_starting_chars[db_name] = None
-                                break
-                            else:
-                                match line[line.rfind(" ")+1:]:
-                                    case "TXT":
-                                        if "TXT" in db_starting_chars[db_name].keys():
-                                            db_starting_chars[db_name]["TXT"] = {line[:line.rfind(" ")]}
-                                        else:
-                                            db_starting_chars[db_name]["TXT"].add(line[:line.rfind(" ")])
-                                    case "SHP":
-                                        if "SHP" in db_starting_chars[db_name].keys():
-                                            db_starting_chars[db_name]["SHP"] = {line[:line.rfind(" ")]}
-                                        else:
-                                            db_starting_chars[db_name]["SHP"].add(line[:line.rfind(" ")])
-                                    case "IMG":
-                                        if "IMG" in db_starting_chars[db_name].keys():
-                                            db_starting_chars[db_name]["IMG"] = {line[:line.rfind(" ")]}
-                                        else:
-                                            db_starting_chars[db_name]["IMG"].add(line[:line.rfind(" ")])
-                                    case "DOC":
-                                        if "DOC" in db_starting_chars[db_name].keys():
-                                            db_starting_chars[db_name]["DOC"] = {line[:line.rfind(" ")]}
-                                        else:
-                                            db_starting_chars[db_name]["DOC"].add(line[:line.rfind(" ")])
-                                    case "PDF":
-                                        if "PDF" in db_starting_chars[db_name].keys():
-                                            db_starting_chars[db_name]["PDF"] = {line[:line.rfind(" ")]}
-                                        else:
-                                            db_starting_chars[db_name]["PDF"].add(line[:line.rfind(" ")])
-                                    case _:
-                                        # GDB
-                                        if "GDB" in db_starting_chars[db_name].keys():
-                                            db_starting_chars[db_name]["GDB"] = {line[:line.rfind(" ")]}
-                                        else:
-                                            db_starting_chars[db_name]["GDB"].add(line[:line.rfind(" ")])
-            try: del line
-            except NameError: pass
-            try: del db_name
-            except NameError: pass
-
-        del collection_exists
-
-        if tqdm_imported:
-            iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, desc="Searching and Checking for Duplicate Entities")
-        else:
-            iterator = range(num_dbs-1)
-
-        for a in iterator:
-            ## General
-            # entity_metadata = {entity : (Type, # txt lines)}
-            ## PDF/doc/docx
-            # entity_metadata = {entity : (Type, (# txt lines in metadata, # txt_lines in extracted text, # txt_lines in extracted images))}
-            ## GDB
-            # entity_metadata = {entity : (Type, {object name #1 : # txt_lines, object name #2 : # txt_lines, ...})}
-            entity_metadata = {}
-            current_starting_chars = {}
-            if db_starting_chars[(current_db_name := db_names[a])] is None:
-                # Gradually reduce memory overhead.
-                del db_line_counts[current_db_name]
-                del db_starting_chars[current_db_name]
-                continue
-            else:
-                for entity_type in db_starting_chars[(current_db_name := db_names[a])].keys():
-                    current_starting_chars[entity_type] = tuple(db_starting_chars[current_db_name][entity_type])
-            with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
-                for metadata_file in tuple([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
-                    if len(metadata_file) == 13:
-                        for line in tuple([item for item in tuple(zf.open(metadata_file).readlines())]):
-                            line = decodeZipTxtLine(line)
-                            if f'{current_db_name}|' + (entry := line[:line.find('|')]) in checked_entities:
-                                continue
-                            entity_metadata[entry] = []
-                            line = line[line.find('|')+1:]
-                            entity_metadata[entry].append(line[:line.find('|')]) # Type
-                            for _ in range_4:
-                                line = line[line.find('|')+1:]
-                            if entry.lower()[entry.rfind('_')+1:] in documentation_types:
-                                entity_metadata[entry].append(int(line[:line.find('|')]))
-                                entity_metadata[entry].append(int(line[line.find('|')+1:]))
-                            else:
-                                entity_metadata[entry].append(int(line))
-                    else:
-                        if f'{current_db_name}|' + (entry := metadata_file[:metadata_file.rfind('_')]) in checked_entities:
-                            continue
-                        with zf.open(metadata_file) as tf:
-                            line = tf.readline()
-                        temp_str = decodeZipTxtLine(line)
-                        entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(temp_str.split('|'))},temp_str)
-                        del temp_str
-            num_entities = len((entities := tuple(entity_metadata.keys())))
-            for n in range(num_entities-1):
-                if f'{current_db_name}|{entities[n]}' in checked_entities:
-                    continue
-                duplicate_matches.append([f'{current_db_name}|{entities[n]}'])
-                with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
-                    match (entity_type := entity_metadata[entities[n]][0]):
-                        case 'TXT':
-                            entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_txt_files/{entities[n]}.txt').readlines())])
-                        case 'PDF':
-                            entity_lines = []
-                            if entity_metadata[entities[n]][1]:
-                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[n]}/pdf_extracted_text.txt').readlines())]))
-                            else:
-                                entity_lines.append(None)
-                            if entity_metadata[entities[n]][2]:
-                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[n]}/image_histogram_data.txt').readlines())]))
-                            else:
-                                entity_lines.append(None)
-                        case 'DOC':
-                            entity_lines = []
-                            if entity_metadata[entities[n]][1]:
-                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[n]}/doc_extracted_text.txt').readlines())]))
-                            else:
-                                entity_lines.append(None)
-                            if entity_metadata[entities[n]][2]:
-                                entity_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[n]}/image_histogram_data.txt').readlines())]))
-                            else:
-                                entity_lines.append(None)
-                            entity_lines = tuple(entity_lines)
-                        case 'SHP':
-                            entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_shp_files/{entities[n]}.txt').readlines())])
-                        case 'GDB':
-                            entity_lines = tuple([tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[n]}/{gdb_object_txt_file}').readlines())]) for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{entities[n]}/')]))])
-                        case 'IMG':
-                            entity_lines = tuple([decodeZipTxtLine(line) for line in zf.open(f'_images/{entities[n]}.txt').readlines()])
-                        case _:
-                            # Placeholder
-                            continue
-                entity_data = entity_metadata[entities[n]][1:]
-                for x in range(a+1,num_entities):
-                    if entity_metadata[entities[x]][0] != entity_type or f'{current_db_name}|{entities[x]}' in checked_entities:
-                        continue
-                    with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
-                        match entity_type:
-                            case 'TXT':
-                                entity_lines_2 = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_txt_files/{entities[x]}.txt').readlines())])
-                            case 'PDF':
-                                entity_lines_2 = []
-                                if entity_metadata[entities[x]][1]:
-                                    entity_lines_2.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[x]}/pdf_extracted_text.txt').readlines())]))
-                                else:
-                                    entity_lines_2.append(None)
-                                if entity_metadata[entities[x]][2]:
-                                    entity_lines_2.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[x]}/image_histogram_data.txt').readlines())]))
-                                else:
-                                    entity_lines_2.append(None)
-                            case 'DOC':
-                                entity_lines_2 = []
-                                if entity_metadata[entities[x]][1]:
-                                    entity_lines_2.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[x]}/doc_extracted_text.txt').readlines())]))
-                                else:
-                                    entity_lines_2.append(None)
-                                if entity_metadata[entities[x]][2]:
-                                    entity_lines_2.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[x]}/image_histogram_data.txt').readlines())]))
-                                else:
-                                    entity_lines_2.append(None)
-                                entity_lines_2 = tuple(entity_lines_2)
-                            case 'SHP':
-                                entity_lines_2 = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_shp_files/{entities[x]}.txt').readlines())])
-                            case 'GDB':
-                                entity_lines_2 = []
-                                for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{entities[x]}/')])):
-                                    entity_lines_2.append((gdb_object_txt_file,tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[x]}/{gdb_object_txt_file}').readlines())])))
-                                entity_lines_2 = tuple([tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{entities[x]}/{gdb_object_txt_file}').readlines())]) for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{entities[x]}/')]))])
-                            case 'IMG':
-                                entity_lines_2 = tuple([decodeZipTxtLine(line) for line in zf.open(f'_images/{entities[x]}.txt').readlines()])
-                            case _:
-                                # Placeholder
-                                continue
-                    entity_data_2 = entity_metadata[entities[x]][1:]
-                    match entity_type:
-                        case 'TXT' | 'SHP' | 'IMG':
-                            if entity_data[0] == entity_data_2[0]:
-                                matching_lines = True
-                                for k in range(entity_data[0]):
-                                    if entity_lines[k] != entity_lines_2[k]:
-                                        matching_lines = False
-                                        break
-                                    if matching_lines:
-                                        checked_entities.add((entry_name := f'{current_db_name}|{entities[x]}'))
-                                        duplicate_matches[-1].append(entry_name)
-                        case 'PDF' | 'DOC':
-                            if (num_1 := entity_data[0]) == entity_data_2[0] and (num_2 := entity_data[1]) == entity_data_2[1]:
-                                matching_lines = True
-                                if num_1:
-                                    for k in range(num_1):
-                                        if entity_lines[0][k] != entity_lines_2[0][k]:
-                                            matching_lines = False
-                                            break
-                                if not matching_lines:
-                                    continue
-                                if num_2:
-                                    for k in range(num_2):
-                                        if entity_lines[1][k] != entity_lines_2[1][k]:
-                                            matching_lines = False
-                                            break
-                                if matching_lines:
-                                    checked_entities.add((entry_name := f'{current_db_name}|{entities[x]}'))
-                                    duplicate_matches[-1].append(entry_name)
-                        case 'GDB':
-                            if (temp_num := len(entity_data[0])) == len(entity_data_2[0]):
-                                if (temp_keys := sorted(entity_data[0].keys())) != sorted(entity_data_2[0].keys()):
-                                    continue
-                                matching_lines = True
-                                for m in range((num_keys := len((temp_keys := tuple(temp_keys))))):
-                                    if (num_lines := len(entity_data[0][temp_keys[m]])) != len(entity_data_2[0][temp_keys[m]]):
-                                        matching_lines = False
-                                        break
-                                    for n in range(num_lines):
-                                        if entity_lines[m][n] != entity_lines_2[m][n]:
-                                            matching_lines = False
-                                            break
-                                    if not matching_lines:
-                                        break
-                                if matching_lines:
-                                    checked_entities.add((entry_name := f'{current_db_name}|{entities[x]}'))
-                                    duplicate_matches[-1].append(entry_name)
-                        case _:
-                            # This should never happen. This is a placeholder.
-                            continue
-                try: del entity_data_2
-                except NameError: pass
-                try: del entity_lines_2
-                except NameError: pass
-                for b in range(a+1,num_dbs):
-                    sub_entity_metadata = {}
-                    # These prevent redundant checks.
-                    if not entity_type in db_line_counts[(sub_current_db_name := db_names[b])].keys():
-                        continue
-                    else:
-                        match entity_type:
-                            case "TXT":
-                                if not str(entity_data[0]) in db_line_counts[sub_current_db_name]["TXT"]:
-                                    matching_starter = False
-                                    if not db_starting_chars[sub_current_db_name] is None:
-                                        temp_starters = db_starting_chars[sub_current_db_name]["TXT"]
-                                        for chr in current_starting_chars["TXT"]:
-                                            if chr in temp_starters:
-                                                matching_starter = True
-                                                break
-                                        if not matching_starter:
-                                            continue
-                                    else:
-                                        continue
-                            case "SHP":
-                                if not str(entity_data[0]) in db_line_counts[sub_current_db_name]["SHP"]:
-                                    matching_starter = False
-                                    if not db_starting_chars[sub_current_db_name] is None:
-                                        temp_starters = db_starting_chars[sub_current_db_name]["SHP"]
-                                        for chr in current_starting_chars["SHP"]:
-                                            if chr in temp_starters:
-                                                matching_starter = True
-                                                break
-                                        if not matching_starter:
-                                            continue
-                                    else:
-                                        continue
-                            case "IMG":
-                                if not str(entity_data[0]) in db_line_counts[sub_current_db_name]["IMG"]:
-                                    matching_starter = False
-                                    if not db_starting_chars[sub_current_db_name] is None:
-                                        temp_starters = db_starting_chars[sub_current_db_name]["IMG"]
-                                        for chr in current_starting_chars["IMG"]:
-                                            if chr in temp_starters:
-                                                matching_starter = True
-                                                break
-                                        if not matching_starter:
-                                            continue
-                                    else:
-                                        continue
-                            case "DOC":
-                                if not f"{entity_data[0]}|{entity_data[1]}" in db_line_counts[sub_current_db_name]["DOC"]:
-                                    matching_starter = False
-                                    if not db_starting_chars[sub_current_db_name] is None:
-                                        temp_starters = db_starting_chars[sub_current_db_name]["DOC"]
-                                        for chr in current_starting_chars["DOC"]:
-                                            if chr in temp_starters:
-                                                matching_starter = True
-                                                break
-                                        if not matching_starter:
-                                            continue
-                                    else:
-                                        continue
-                            case "PDF":
-                                if not f"{entity_data[0]}|{entity_data[1]}" in db_line_counts[sub_current_db_name]["PDF"]:
-                                    matching_starter = False
-                                    if not db_starting_chars[sub_current_db_name] is None:
-                                        temp_starters = db_starting_chars[sub_current_db_name]["PDF"]
-                                        for chr in current_starting_chars["PDF"]:
-                                            if chr in temp_starters:
-                                                matching_starter = True
-                                                break
-                                        if not matching_starter:
-                                            continue
-                                    else:
-                                        continue
-                            case _:
-                                # GDB
-                                if not entity_data[2] in db_line_counts[sub_current_db_name]["GDB"]:
-                                    matching_starter = False
-                                    if not db_starting_chars[sub_current_db_name] is None:
-                                        temp_starters = db_starting_chars[sub_current_db_name]["GDB"]
-                                        for chr in current_starting_chars["GDB"]:
-                                            if chr in temp_starters:
-                                                matching_starter = True
-                                                break
-                                        if not matching_starter:
-                                            continue
-                                    else:
-                                        continue
-                    with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
-                        for metadata_file in tuple([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
-                            if len(metadata_file) == 13:
-                                for line in tuple([line for line in tuple(zf.open(metadata_file).readlines())]):
-                                    line = decodeZipTxtLine(line)
-                                    if f"{sub_current_db_name}|" + (entry := line[:line.find('|')]) in checked_entities:
-                                        continue
-                                    sub_entity_metadata[entry] = []
-                                    line = line[line.find('|')+1:]
-                                    sub_entity_metadata[entry].append(line[:line.find('|')]) # Type
-                                    for _ in range_4:
-                                        line = line[line.find('|')+1:]
-                                    if entry.lower()[entry.rfind('_')+1:] in documentation_types:
-                                        sub_entity_metadata[entry].append(int(line[:line.find('|')]))
-                                        sub_entity_metadata[entry].append(int(line[line.find('|')+1:]))
-                                    else:
-                                        sub_entity_metadata[entry].append(int(line))
-                            else:
-                                if f'{sub_current_db_name}|' + (entry := metadata_file[:metadata_file.rfind('_')]) in checked_entities:
-                                    continue
-                                with zf.open(metadata_file) as tf:
-                                    line = tf.readline()
-                                temp_str = decodeZipTxtLine(line)
-                                sub_entity_metadata[entry] = ('GDB',{gdb_object[:gdb_object.rfind(' ')] : gdb_object[gdb_object.rfind(' ')+1:] for gdb_object in tuple(temp_str.split('|'))},temp_str)
-                                del temp_str
-                    for sub_entity in sub_entity_metadata.keys():
-                        if sub_entity_metadata[sub_entity][0] != entity_type:
-                            continue
-                        match entity_type:
-                            case 'TXT':
-                                if entity_data[0] == sub_entity_metadata[sub_entity][1]:
-                                    matching_lines = True
-                                    sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'_txt_files/{sub_entity}.txt').readlines()])
-                                    for n in range(entity_data[0]):
-                                        if entity_lines[n] != sub_entity_lines[n]:
-                                            matching_lines = False
-                                            break
-                                    if matching_lines:
-                                        checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
-                                        duplicate_matches[-1].append(entry_name)
-                            case 'SHP':
-                                if entity_data[0] == sub_entity_metadata[sub_entity][1]:
-                                    matching_lines = True
-                                    sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'_shp_files/{sub_entity}.txt').readlines()])
-                                    for n in range(entity_data[0]):
-                                        if entity_lines[n] != sub_entity_lines[n]:
-                                            matching_lines = False
-                                            break
-                                    if matching_lines:
-                                        checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
-                                        duplicate_matches[-1].append(entry_name)
-                            case 'IMG':
-                                if entity_data[0] == sub_entity_metadata[sub_entity][1]:
-                                    matching_lines = True
-                                    sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'_images/{sub_entity}.txt').readlines()])
-                                    for n in range(entity_data[0]):
-                                        if entity_lines[n] != sub_entity_lines[n]:
-                                            matching_lines = False
-                                            break
-                                    if matching_lines:
-                                        checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
-                                        duplicate_matches[-1].append(entry_name)
-                            case 'PDF':
-                                if (num_1 := entity_data[0]) == sub_entity_metadata[sub_entity][1] and (num_2 := entity_data[1]) == sub_entity_metadata[sub_entity][2]:
-                                    matching_lines = True
-                                    if num_1:
-                                        sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/pdf_extracted_text.txt').readlines()])
-                                        for n in range(num_1):
-                                            if entity_lines[0][n] != sub_entity_lines[n]:
-                                                matching_lines = False
-                                                break
-                                    if not matching_lines:
-                                        continue
-                                    if num_2:
-                                        sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/image_histogram_data.txt').readlines()])
-                                        for n in range(num_2):
-                                            if entity_lines[1][n] != sub_entity_lines:
-                                                matching_lines = False
-                                                break
-                                    if matching_lines:
-                                        checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
-                                        duplicate_matches[-1].append(entry_name)
-                            case 'DOC':
-                                if (num_1 := entity_data[0]) == sub_entity_metadata[sub_entity][1] and (num_2 := entity_data[1]) == sub_entity_metadata[sub_entity][2]:
-                                    matching_lines = True
-                                    if num_1:
-                                        sub_entity_lines = tuple([decodeZipTxtLine(line) for line in ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/doc_extracted_text.txt').readlines()])
-                                        for n in range(num_1):
-                                            if entity_lines[0][n] != sub_entity_lines[n]:
-                                                matching_lines = False
-                                                break
-                                    if not matching_lines:
-                                        continue
-                                    if num_2:
-                                        sub_entity_lines = tuple([decodeZipTxtLine(line) for line in tuple(ZipFile(f'{self.db_path}/{sub_current_db_name}.zip').open(f'{sub_entity}/image_histogram_data.txt').readlines())])
-                                        for n in range(num_2):
-                                            if entity_lines[1][n] != sub_entity_lines:
-                                                matching_lines = False
-                                                break
-                                    if matching_lines:
-                                        checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
-                                        duplicate_matches[-1].append(entry_name)
-                            case 'GDB':
-                                if (temp_num := len(entity_data[0])) == len(sub_entity_metadata[sub_entity][1]):
-                                    if (temp_keys := sorted(entity_data[0].keys())) != sorted(entity_data_2[0].keys()):
-                                        continue
-                                    matching_lines = True
-                                    with ZipFile(f'{self.db_path}/{sub_current_db_name}.zip') as zf:
-                                        sub_entity_lines = tuple([tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{sub_entity}/{gdb_object_txt_file}').readlines())]) for gdb_object_txt_file in tuple(sorted([item for item in tuple(zf.namelist()) if item.startswith(f'{sub_entity}/')]))])
-                                    for m in range((num_keys := len((temp_keys := tuple(temp_keys))))):
-                                        if (num_lines := len(entity_data[0][temp_keys[m]])) != len(sub_entity_metadata[sub_entity][1][temp_keys[m]]):
-                                            matching_lines = False
-                                            break
-                                        for n in range(num_lines):
-                                            if entity_lines[m][n] != sub_entity_lines[m][n]:
-                                                matching_lines = False
-                                                break
-                                        if not matching_lines:
-                                            break
-                                    if matching_lines:
-                                        checked_entities.add((entry_name := f'{sub_current_db_name}|{sub_entity}'))
-                                        duplicate_matches[-1].append(entry_name)
-                            case _:
-                                # This should never happen. This is a placeholder.
-                                continue
-
-                if len(duplicate_matches[-1]) == 1:
-                    del duplicate_matches[-1]
-                else:
-                    duplicate_matches[-1] = tuple(duplicate_matches[-1])
-            if len(checked_entities):
-                # Reduce redundant memory overhead.
-                for entry in entity_metadata.keys():
-                    if f'{current_db_name}|{entry}' in checked_entities:
-                        checked_entities.remove(f'{current_db_name}|{entry}')
-            # Gradually reduce memory overhead.
-            del db_line_counts[current_db_name]
-            del db_starting_chars[current_db_name]
-
-        try: del entry_name
-        except NameError: pass
-        try: del entity_lines
-        except NameError: pass
-        try: del sub_entity_lines
-        except NameError: pass
-        try: del temp_num
-        except NameError: pass
-        try: del entity_metadata ; del current_db_name
-        except NameError: pass
-        try: del sub_entity_metadata ; del sub_current_db_name
-        except NameError: pass
-
-        if len((duplicate_matches := tuple(duplicate_matches))):
-            with open('C:/Users/AJL/Desktop/duplicate_matches.txt','w',encoding='utf-8') as tf:
-                tf.write(str(duplicate_matches[0]))
-                for n in range(1,len(duplicate_matches)):
-                    tf.write(f"\n{str(duplicate_matches[n])}")
+            return None
 
         return None
 
@@ -2855,6 +2053,7 @@ class ChloeAI:
     def findEntityDuplicate(self, item_path : str, return_tuple : bool = False, save_results_to_file : bool = True, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, terminal_progress_display_enabled : bool = False) -> tuple[tuple[str]] | None:
         '''
         Check specified item against items of matching type.
+        WIP
         '''
 
         if not exists(item_path):
@@ -2863,56 +2062,154 @@ class ChloeAI:
         if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
 
-        num_dbs = len((db_names := tuple(self.used_names)))
-
-        match determineEntityType(item_path):
-            case 'GDB':
-                for a in range(num_dbs-1):
-                    for b in range(a+1,num_dbs):
-                        pass
-            case 'SHP':
-                for a in range(num_dbs-1):
-                    for b in range(a+1,num_dbs):
-                        pass
-            case 'TXT':
-                for a in range(num_dbs-1):
-                    for b in range(a+1,num_dbs):
-                        pass
-            case 'PDF':
-                for a in range(num_dbs-1):
-                    for b in range(a+1,num_dbs):
-                        pass
-            case 'DOC':
-                for used_name in tuple(self.used_names):
-                    pass
-            case 'IMG':
-                for a in range(num_dbs-1):
-                    for b in range(a+1,num_dbs):
-                        pass
-            case _:
-                # entity not accounted.
-                return None
-
         return None
 
 
-    def getTotalBytesOfReferencedEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', terminal_progress_display_enabled : bool = False) -> int:
+    def getTotalSizeOfActualRefEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', terminal_progress_display_enabled : bool = False) -> int:
+        '''
+        The total size of actual referenced entities themselves.
+        '''
 
         total_size = Decimal(0)
 
-        for used_name in tuple(self.used_names):
-            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                pass
+        if terminal_progress_display_enabled and tqdm_imported:
+            sys_clear()
+
+        if tqdm_imported:
+            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled, desc = "Getting Total Size of Actual Referenced")
+        else:
+            iterator = tuple(self.used_names)
+
+        if isinstance(check_type,str):
+            match (check_type := check_type.lower().strip()):
+                case 'any' | 'all' | 'every':
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            for metadata_file in tuple([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
+                                if metadata_file == '_metadata.txt':
+                                    with zf.open(metadata_file) as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line)
+                                            for _ in range(4):
+                                                line = line[line.find('|')+1:]
+                                            total_size += Decimal(line[:line.find('|')])
+                                else:
+                                    # GDBs
+                                    with zf.open(metadata_file) as tf:
+                                        line = tf.readline() # First line is redundant in this case.
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line)
+                                            total_size += Decimal(line[line.rfind('|')+1:])
+                case 'txt' | 'pdf' | 'shp':
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_metadata.txt' in set(zf.namelist()):
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line).lower()
+                                        if line[:line.rfind('.')].endswith(f'_{check_type}'):
+                                            for _ in range(4):
+                                                line = line[line.find('|')+1:]
+                                            total_size += Decimal(line[:line.find("|")])
+                case 'doc' | 'docx':
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_metadata.txt' in set(zf.namelist()):
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line).lower()
+                                        if line[:line.rfind('.')].endswith('_doc') or line[:line.rfind('.')].endswith('_docx'):
+                                            for _ in range(4):
+                                                line = line[line.find('|')+1:]
+                                            total_size += Decimal(line[:line.find("|")])
+                case 'gdb':
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            metadata_files = [item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]
+                            if '_metadata.txt' in metadata_files:
+                                metadata_files.remove('_metadata.txt')
+                            for metadata_file in (metadata_files := tuple(metadata_files)):
+                                with zf.open(metadata_file) as tf:
+                                    line = tf.readline() # First line is redundant in this case.
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line)
+                                        total_size += Decimal(line[line.rfind('|')+1:])
+                case _:
+                    # assumed to be img
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_metadata.txt' in set(zf.namelist()):
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line)
+                                        if f".{line[line.rfind('_')+1:line.rfind('.')]}" in self.accepted_image_extensions:
+                                            for _ in range(4):
+                                                line = line[line.find('|')+1:]
+                                            total_size += Decimal(line[:line.find("|")])
+        elif isinstance(check_type,(tuple,list,set)):
+            check_type = {item.lower().replace(' ','') for item in tuple(check_type)}
+            if 'img' in check_type:
+                for img_type in ('jpeg','jpg','tif','tiff','png','webp'):
+                    check_type.add(img_type)
+                check_type.remove('img')
+            for used_name in iterator:
+                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                    if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
+                        with zf.open('_metadata.txt') as tf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = decodeZipTxtLine(line)
+                                temp_line = line[:line.find('|')]
+                                if temp_line[temp_line.find('_')+1:temp_line.rfind('.')].lower() in check_type:
+                                    for _ in range(4):
+                                        line = line[line.find('|')+1:]
+                                    total_size += Decimal(line[:line.find('|')])
+                        metadata_files.remove('_metadata.txt')
+                    if 'gdb' in check_type:
+                        for metadata_file in (metadata_files := tuple(metadata_files)):
+                            with zf.open(metadata_file) as tf:
+                                line = tf.readline() # First line is redundant in this case.
+                                while True:
+                                    line = tf.readline()
+                                    if not line:
+                                        break
+                                    line = decodeZipTxtLine(line)
+                                    total_size += Decimal(line[line.rfind('|')+1:])
+        else:
+            # invalid input.
+            return 0
 
 
         return int(total_size)
 
 
-    def getTotalNumberOfReferencedEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', terminal_progress_display_enabled : bool = False) -> int:
+    def getTotalNumRefEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', terminal_progress_display_enabled : bool = False) -> int:
+        '''
+        Number of entities in database.
+        '''
 
         if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
-
 
         def genRefCountFunc(archive_db_path : str, exclusive_ending : str) -> int:
 
@@ -2925,8 +2222,8 @@ class ChloeAI:
                             line = tf.readline()
                             if not line:
                                 break
-                            line = decodeZipTxtLine(line)
-                            if line[:line.find('|')].lower().endswith(exclusive_ending):
+                            line = decodeZipTxtLine(line).lower()
+                            if line[:line.find('|')].endswith(exclusive_ending):
                                 counter += 1
 
             return counter
@@ -2935,7 +2232,7 @@ class ChloeAI:
         entity_counter = 0
 
         if tqdm_imported:
-            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled)
+            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled, desc = "Counting Referenced Entities")
         else:
             iterator = tuple(self.used_names)
 
@@ -2963,8 +2260,8 @@ class ChloeAI:
                                         line = tf.readline()
                                         if not line:
                                             break
-                                        line = decodeZipTxtLine(line)
-                                        if line[:line.find('|')].lower().endswith('_doc') or line[:line.find('|')].lower().endswith('_docx'):
+                                        line = decodeZipTxtLine(line).lower()
+                                        if line[:line.find('|')].endswith('_doc') or line[:line.find('|')].endswith('_docx'):
                                             entity_counter += 1
                 case 'gdb':
                     for used_name in iterator:
@@ -2980,9 +2277,10 @@ class ChloeAI:
                                         if not line:
                                             break
                                         line = decodeZipTxtLine(line)
-                                        if f"{line[line.rfind('_')+1:]}." in self.accepted_image_extensions:
+                                        if f".{line[line.rfind('_')+1:line.rfind('.')]}" in self.accepted_image_extensions:
                                             entity_counter += 1
                 case _:
+                    # text files, shapefiles, and PDFs.
                     for used_name in iterator:
                         entity_counter += genRefCountFunc(f'{self.db_path}/{used_name}.zip',checking_type)
         elif isinstance(check_type,(set,tuple,list)):
@@ -3007,6 +2305,7 @@ class ChloeAI:
                                 if line[line.rfind("_")+1:] in check_type:
                                     entity_counter += 1
         else:
+            # invalid input.
             return 0
 
         return entity_counter

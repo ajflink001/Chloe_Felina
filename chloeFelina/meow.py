@@ -3,7 +3,7 @@ from string import ascii_letters,digits
 from shutil import copy2,copy,copyfile
 from pathlib import Path
 from os import stat as os_stat
-from os import getlogin,remove,listdir
+from os import getlogin,remove,listdir,mkdir
 from os.path import getsize,getmtime,getctime,isdir,exists
 from typing import Any
 from secrets import choice
@@ -121,61 +121,6 @@ def determineEntityType(entity_path : str) -> str | None:
     else:
         return None
 
-def convertValueToBytes(value : int | float, unit : str) -> int:
-    '''
-    This will result in inaccurate values if the resulting value exceeds or
-    approaches:
-    18_446_744_073_709_551_615 (i.e., unsigned 2^64 minus 1)
-    '''
-
-    # Zettabytes to quettabytes are excluded due to how extremely niche
-    # such high values would be in practical use-cases. They are left in
-    # case some methodology is determined on how to determine such extremely
-    # high values with true accuracy.
-
-    match unit.lower():
-        case 'kb' | 'kilobytes' | 'kilobyte':
-            return round(float(Decimal(value) * Decimal(1_000)))
-        case 'kib' | 'kilibytes' | 'kilibyte':
-            return round(float(Decimal(value) * Decimal(1_024)))
-        case 'mb' | 'megabytes' | 'megabyte':
-            return round(float(Decimal(value) * Decimal(1_000_000)))
-        case 'mib' | 'mebibytes' | 'mebibyte':
-            return round(float(Decimal(value) * Decimal(1_048_576)))
-        case 'gb' | 'gigabytes' | 'gigabyte':
-            return round(float(Decimal(value) * Decimal(1_000_000_000)))
-        case 'gib' | 'gibibytes' | 'gibibyte':
-            return round(float(Decimal(value) * Decimal(1_073_741_824)))
-        case 'tb' | 'terabytes' | 'terabyte':
-            return round(float(Decimal(value) * Decimal(1_000_000_000_000)))
-        case 'tib' | 'tebibytes' | 'tebibyte':
-            return round(float(Decimal(value) * Decimal(1_099_511_627_776)))
-        case 'pb' | 'petabytes' | 'petabytes':
-            return round(float(Decimal(value) * Decimal(1_000_000_000_000_000)))
-        case 'pib' | 'pebibytes' | 'pebibyte':
-            return round(float(Decimal(value) * Decimal(1_125_899_906_842_624)))
-        case 'eb' | 'exabytes' | 'exabyte':
-            return round(float(Decimal(value) * Decimal(1_000_000_000_000_000_000)))
-        case 'eib' | 'exbibytes' | 'exbibyte':
-            return round(float(Decimal(value) * Decimal(1_152_921_504_606_845_976)))
-        case 'zb' | 'zettabytes' | 'zettabyte':
-            return round(value)
-        case 'zib' | 'zebibytes' | 'zebibyte':
-            return round(value)
-        case 'yb' | 'yottabytes' | 'yottabyte':
-            return round(value)
-        case 'yib' | 'yobibytes' | 'yobibyte':
-            return round(value)
-        case 'rb' | 'ronnabytes' | 'ronnabyte':
-            return round(value)
-        case 'rib' | 'robibytes' | 'robibyte':
-            return round(value)
-        case 'qb' | 'quettabytes' | 'quettabyte':
-            return round(value)
-        case 'qib' | 'quebibytes' | 'quebibyte':
-            return round(value)
-        case _:
-            return round(value)
 
 def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, csv_quotechar : str, csv_quoting_minimal : int, csv_newline : str, overwriteOutput : bool) -> None:
 
@@ -184,7 +129,10 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
     if output_location in (None,''):
         output_location = f'C:/Users/{getlogin()}/Documents'
     elif not exists((output_location := output_location.strip())):
-        output_location = f'C:/Users/{getlogin()}/Documents'
+        if exists(output_location.replace('\\','/')[:output_location.rfind("/")]):
+            mkdir(output_location)
+        else:
+            output_location = f'C:/Users/{getlogin()}/Documents'
     elif '\\' in output_location:
         output_location = output_location.replace('\\','/')
 
@@ -208,7 +156,7 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
 
     del output_suffix
 
-    organized_files = {'gdb':[],'img':[],'pdf':[],'shp':[],'txt':[]}
+    organized_files = {'gdb':[],'img':[],'pdf':[],'shp':[],'txt':[],'doc':[]}
     for item in found_matches:
         match item[item.rfind('.')+1:].lower():
             case 'txt':
@@ -219,15 +167,17 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
                 organized_files['shp'].append(item)
             case 'gdb':
                 organized_files['gdb'].append(item)
+            case 'doc' | 'docx':
+                organized_files['doc'].append(item)
             case _:
                 organized_files['img'].append(item)
 
     for entity_key in tuple(organized_files.keys()):
         organized_files[entity_key] = tuple(sorted(organized_files[entity_key]))
     if output_path.endswith('.xlsx') and openpyxl_imported:
-        key_association = {"File Geodatabases":"gdb","Images":"img","PDFs":"pdf","ShapeFiles":"shp","Text Files":"txt"}
+        key_association = {"File Geodatabases":"gdb","Images":"img","PDFs":"pdf","ShapeFiles":"shp","Text Files":"txt","Word Documents":"doc"}
         wb = Workbook()
-        for worksheet_name in ("File Geodatabases","Images","PDFs","ShapeFiles","Text Files"):
+        for worksheet_name in ("File Geodatabases","Images","PDFs","ShapeFiles","Text Files","Word Documents"):
             wb.create_sheet(worksheet_name)
             ws = wb[worksheet_name]
             for n in range(len(organized_files[key_association[worksheet_name]])):
