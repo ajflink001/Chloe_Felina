@@ -96,6 +96,18 @@ Parameters:
 
 
 
+**chloe\_vocalization** (*Boolean*) - This is for an explicitly optional feature of Chloe Felina. Upon successfully completing certain functions in the class, a randomly chosen audio clip of Chloe Link will be played of her either trilling or meowing happily by calling the **playChloeHappy** function. This is False by default.
+
+
+
+**use\_audio\_wakeup\_buffer** (*Boolean*) - This parameter only comes into effect if **chloe\_vocalization** is True. This is False by default. This addresses a niche scenario where the user's computer is only using an audio device like plugged in headphones. If no audio is being played or has been played recently, the computer will, for a lack of better phrasing, put audio outputs into a "sleep mode" or "power saving mode". This means when the computer tries to play audio to the headphones it first needs to "wake up"; however, it does not halt anything audio related and will only start playing audio after it "wakes up" resulting in a very small moment where audio is technically playing as far as the machine is concerned but no audio is being outputted. At least, that's what I have come to understand on how this works. For most users, this will not be an issue. However, if no audio is being played despite **chloe\_vocalization** being True, set this parameter as True. By default, this is False.
+
+
+
+**audio\_wakeup\_buffer** (*Integer*) - This parameter only comes into effect if both **chloe\_vocalization** and **use\_audio\_wakeup\_buffer** are True. The value represents milliseconds of playing a silent dummy audio file that is used to "wake up" the audio device from "sleep mode". By default, the value is 10 (i.e., 10 milliseconds.). If the audio is still "muted" or it seems like only part of the audio is being played, try using a higher value.
+
+
+
 
 
 **ChloeAI.updateAndRefreshDatabase**
@@ -208,21 +220,19 @@ Parameters:
 
 
 
-**csv\_new\_line** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This affects the newline parameter for csv.writer. This is an empty string by default.
+**csv\_new\_line** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True.
 
 
 
-**csv\_field\_size\_limit** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This sets the csv.field_size_limit value. By default, the value is 131,072.
-
-
-**csv\_delimiter** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This affects the delimiter parameter for csv.writer. This is "," by default.
-
-
-**csv\_quotechar** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This affects the quotechar parameter for csv.writer. This is "|" by default.
+**csv\_field\_size\_limit** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True.
 
 
 
-**csv\_quoating\_minimal** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This affects the quoting value for csv.writer. This is 0 by default.
+**csv\_quotechar** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True.
+
+
+
+**csv\_quoating\_minimal** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True.
 
 
 
