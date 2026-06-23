@@ -5,6 +5,16 @@ Chloe Felina has been designed with the philosophy of being able to function ful
 
 However, this is alone can be substantially helpful, especially for those with computers with disorganized files and/or want to find a particular file that has a certain name/word/phrase within it and cannot remember where or what the file is. While Windows has a built-in feature for File Explorer that allows you to search file and folder names as well as their content, you have to search within multiple folders to find what you are looking for or have it search the entirety of a drive, which tends to be slow, the Dynamic Term Search Query System is a lot faster and easier to use as it only requires Chloe Felina gathering data on a specified directory and/or nested directories for it to search for the existence of a term and then quickly check the database for any entities that have that term present. In addition, once a term has been search, if the term is search again or any future searches contain it, it will referenced the saved search results and use only those search results to check for the presence of the term. For example, say you inputted "plagioclase" as a search and got the results for it. The entities found to have that term present will be saved for future reference. If you then inputted "plagioclase feldspar" as a search, instead of checking the entirety of Chloe Felina's database, it will note that "plagioclase" has already had its results determined and check for all the entities that have "plagioclase" in them for "plagioclase feldspar" allowing the execution time for finding entities that have the term to be cut to a fraction of what it would be if the entire database was checked. It will not search for "plagioclase" and "feldspar" separately. In addition, capitalization is ignored when conducting searches. You can turn off/disable this "terms searched caching" feature; however, it is extremely recommended that you leave it enabled by default.
 
+A more practicle use case for searchQuery would be the following example. Say you are wanting to find that document of that thesis paper you worked on for college cannot remember what it is called but do remember some keywords of what the thesis paper entailed. Also, you know that it is located somewhere in your Documents folder but you don't know where as it is a cluttered mess of random files and folders. With Chloe Felina, all you'd need to do, for example, is:
+
+```python
+from chloeFelina import cat
+
+felia = cat.ChloeAI()
+felia.getNestedDirectoryData("C:/Users/YOURUSERNAME/Documents")
+felia.searchQuery("thesis",save_results_to_file=True,output_name="FindMyThesisPaper")
+```
+
 In order to properly utilize Chloe Felina, you must first initialize the database by:
 
 ```python
