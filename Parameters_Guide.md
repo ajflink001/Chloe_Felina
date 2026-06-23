@@ -72,7 +72,7 @@ Parameters:
 
 
 
-**database\_location** (*String* or *NoneType*) - This dictates the directory/folder where the database used by Chloe Felina will be generated. If this is not specified, it will try to default to the current user's Documents folder. Please note that specific locations on the user's local machine are forbidden from being used and will instead default to the current user's Documents folder.
+**database\_location** (*String* or *NoneType*) - This dictates the directory/folder where the database used by Chloe Felina will be generated. If this is not specified, it will try to default to the current user's Documents folder. Please note that specific locations on the user's local machine are forbidden from being used and will instead default to the current user's Documents folder if one of such locations is specified.
 
 
 
@@ -96,11 +96,11 @@ Parameters:
 
 
 
-**chloe\_vocalization** (*Boolean*) - This is for an explicitly optional feature of Chloe Felina. Upon successfully completing certain functions in the class, a randomly chosen audio clip of Chloe Link will be played of her either trilling or meowing happily by calling the **playChloeHappy** function. This is False by default.
+**chloe\_vocalization** (*Boolean*) - This is for an explicitly optional feature of Chloe Felina. Upon successfully completing certain functions in the **ChloeAI**, a randomly chosen audio clip of Chloe Link will be played of her either trilling or meowing happily by calling the **playChloeHappy** function. This is False by default.
 
 
 
-**use\_audio\_wakeup\_buffer** (*Boolean*) - This parameter only comes into effect if **chloe\_vocalization** is True. This is False by default. This addresses a niche scenario where the user's computer is only using an audio device like plugged in headphones. If no audio is being played or has been played recently, the computer will, for a lack of better phrasing, put audio outputs into a "sleep mode" or "power saving mode". This means when the computer tries to play audio to the headphones it first needs to "wake up"; however, it does not halt anything audio related and will only start playing audio after it "wakes up" resulting in a very small moment where audio is technically playing as far as the machine is concerned but no audio is being outputted. At least, that's what I have come to understand on how this works. For most users, this will not be an issue. However, if no audio is being played despite **chloe\_vocalization** being True, set this parameter as True. By default, this is False.
+**use\_audio\_wakeup\_buffer** (*Boolean*) - This parameter only comes into effect if **chloe\_vocalization** is True. This is False by default. This addresses a niche scenario where the user's computer is only using an audio device like plugged in headphones. If no audio is being played or has been played recently, the computer will, for a lack of better phrasing, put audio outputs into a "sleep mode" or "power saving mode". This means when the computer tries to play audio to the headphones it first needs to "wake up"; however, it does not halt anything audio related and will only start playing audio after it "wakes up" resulting in a very small moment where audio is technically playing as far as the machine is concerned but no audio is being outputted. At least, that's what I have come to understand on how this works. For the average users, this will not be an issue. However, if no audio is being played despite **chloe\_vocalization** being True, set this parameter as True. By default, this is False.
 
 
 
@@ -114,7 +114,23 @@ Parameters:
 
 
 
-NOT YET IMPLEMENTED
+Purpose: This checks the data in the database against the actual data that said data is referencing and makes appropriate changes by removing references to directories that no longer exist, items being modified, items being added, and/or items being removed. This ensures that the data in the Chloe Felina database is up to date and not referencing inaccurate and/or nonexistent data.
+
+
+
+Parameters:
+
+
+
+**keep\_db\_if\_no\_connection** (*Boolean*) - This requires the win32api (i.e., pywin32) module to be installed for this parameter to come into effect. If while getting data for the directory that a zip file in the database is referencing that the directory cannot be found or connection to it (i.e., the non-local drive) cannot be established, checks for that zip file are skipped and are assumed to be correct due to being unable to be verified. If this parameter is False, being unable to find the referenced directory or connect to the drive that the directory is located within will result in the zip file being deleted and its references removed from the database. By default, this is True.
+
+
+
+**clear\_terms\_searched** (*Boolean*) - If the "\_terms\_searched" folder has been generated or exists within the Chloe Felina database, it will be deleted. This is done since keeping the cached search results from **ChloeAI.searchQuery** may result in an error due to being unable to find a referenced entity or potentially untested behavior from **ChloeAI.searchQuery**. By default, this is True.
+
+
+
+**terminal\_progress\_display\_enabled** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
 
 
 
@@ -250,7 +266,7 @@ Parameters:
 
 
 
-Purpose: This will remove the "\_terms\_searched" folder that is used by **ChloeAI.searchQuery** in the database replace it will an empty folder of the same name.
+Purpose: This will remove the "\_terms\_searched" folder that is used by **ChloeAI.searchQuery** in the database replace it with an empty folder of the same name.
 
 
 
