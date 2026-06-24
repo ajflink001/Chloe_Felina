@@ -978,7 +978,12 @@ class ChloeAI:
                     match items[name]:
                         case 'GDB':
                             if arcpy_imported:
-                                self.archive_gdb_data(f'{reference_directory}/{name}',archive_db_name)
+                                try:
+                                    self.archive_gdb_data(f'{reference_directory}/{name}',archive_db_name)
+                                except Exception:
+                                    # accounts for unreadable/corrupted file geodatabases
+                                    if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")}_{name[name.rfind(".")+1:]}'):
+                                        rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")}_{name[name.rfind(".")+1:]}')
                         case 'SHP':
                             if arcpy_imported:
                                 try:
@@ -1755,7 +1760,7 @@ class ChloeAI:
         try:
             object_counters = '|'.join(sorted(object_counters))
         except TypeError:
-            # implies an empty file geodatabase
+            # implies a file geodatabase with empty items
             object_counters = "<|NONE|>"
 
         try:
