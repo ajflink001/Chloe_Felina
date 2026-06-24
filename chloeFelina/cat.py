@@ -1,11 +1,9 @@
-# Requires Python 3.10 (Official CPython Build) at least on Windows OS. Certain
-# parts of the algorithm would need to be reworked/adjusted to work for MacOS
-# and Linux builds like Ubuntu, Debian, and CachyOS, properly and without
-# issues.
-
 # Python 3.11+ (Official CPython Build) are recommended. Using the latest and
 # stable version of Python 3 will result in the best performance and behavior
 # of Chloe Felina.
+# This has been designed specifically for Windows 10/11. Although, it may work
+# on older versions of Windows if Python 3.11 or later are supported/usable on
+# said iteration/version of Windows.
 
 # Made in loving dedication and memory to my precious feline pet, friend, and
 # family member: Chloe Link.
@@ -78,7 +76,7 @@ from winsound import PlaySound,SND_FILENAME
 from secrets import choice
 
 # Custom Python Modules
-from chloeFelina.purr import isQueryMatchKether,isQueryMatchBinah,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName,decodeZipTxtLine
+from chloeFelina.purr import isQueryMatchKether,isQueryMatchBinah,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName,decodeZipTxtLine,getTxtFileLines
 from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,genSearchQueryResultFile,forbidden_dirs,backupGen
 from chloeFelina.paxium import encrypt as pax_encrypt
 from chloeFelina.paxium import decrypt as pax_decrypt
@@ -588,166 +586,171 @@ class ChloeAI:
                                     except Exception:
                                         revertChange(f'{db_path_db_name}',f'_txt_files/{changed_item}')
                                 case 'shp':
-                                    remove(f'{db_path_db_name}/_shp_files/{changed_item}.txt')
-                                    try:
-                                        self.archive_shp_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
-                                        adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
-                                    except Exception:
-                                        revertChange(f'{db_path_db_name}',f'_shp_files/{changed_item}')
+                                    if arcpy_imported:
+                                        remove(f'{db_path_db_name}/_shp_files/{changed_item}.txt')
+                                        try:
+                                            self.archive_shp_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
+                                            adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
+                                        except Exception:
+                                            revertChange(f'{db_path_db_name}',f'_shp_files/{changed_item}')
                                 case 'doc' | 'docx':
-                                    rmtree(f'{db_path_db_name}/{changed_item}')
-                                    try:
-                                        self.archive_doc_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
-                                        adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
-                                    except Exception:
-                                        mkdir(f'{db_path_db_name}/{changed_item}')
-                                        with ZipFile(f'{db_path_db_name}.zip') as zf:
-                                            for relevant_txt_file in tuple([item for item in tuple(zf.namelist()) if item.startswith(f'{changed_item}/')]):
-                                                match relevant_txt_file[relevant_txt_file.rfind('/')+1:]:
-                                                    case 'doc_extracted_text.txt':
-                                                        with zf.open(f'{changed_item}/doc_extracted_text.txt') as tf:
-                                                            lines = []
-                                                            while True:
-                                                                line = tf.readline()
-                                                                if not line:
-                                                                    break
-                                                                lines.append(decodeZipTxtLine(line))
-                                                        lines = tuple(lines)
-                                                        with open(f'{db_path_db_name}/{changed_item}/doc_extracted_text.txt','w',encoding='utf-8') as tf:
-                                                            tf.write(lines[0])
-                                                            for n in range(1,len(lines)):
-                                                                tf.write(f'\n{lines[n]}')
-                                                    case 'doc_metadata.txt':
-                                                        with zf.open(f'{changed_item}/doc_metadata.txt') as tf:
-                                                            lines = []
-                                                            while True:
-                                                                line = tf.readline()
-                                                                if not line:
-                                                                    break
-                                                                lines.append(decodeZipTxtLine(line))
-                                                        lines = tuple(lines)
-                                                        with open(f'{db_path_db_name}/{changed_item}/doc_metadata.txt','w',encoding='utf-8') as tf:
-                                                            tf.write(lines[0])
-                                                            for n in range(1,len(lines)):
-                                                                tf.write(f'\n{lines[n]}')
-                                                    case 'image_histogram_data.txt':
-                                                        with zf.open(f'{changed_item}/image_histogram_data.txt') as tf:
-                                                            lines = []
-                                                            while True:
-                                                                line = tf.readline()
-                                                                if not line:
-                                                                    break
-                                                                lines.append(decodeZipTxtLine(line))
-                                                        lines = tuple(lines)
-                                                        with open(f'{db_path_db_name}/{changed_item}/image_histogram_data.txt','w',encoding='utf-8') as tf:
-                                                            tf.write(lines[0])
-                                                            for n in range(1,len(lines)):
-                                                                tf.write(f'\n{lines[n]}')
-                                                    case _:
-                                                        #placeholder
-                                                        pass
-                                        try: del lines
-                                        except NameError: pass
+                                    if docx_imported and docx2_imported and pil_imported:
+                                        rmtree(f'{db_path_db_name}/{changed_item}')
+                                        try:
+                                            self.archive_doc_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
+                                            adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
+                                        except Exception:
+                                            mkdir(f'{db_path_db_name}/{changed_item}')
+                                            with ZipFile(f'{db_path_db_name}.zip') as zf:
+                                                for relevant_txt_file in tuple([item for item in tuple(zf.namelist()) if item.startswith(f'{changed_item}/')]):
+                                                    match relevant_txt_file[relevant_txt_file.rfind('/')+1:]:
+                                                        case 'doc_extracted_text.txt':
+                                                            with zf.open(f'{changed_item}/doc_extracted_text.txt') as tf:
+                                                                lines = []
+                                                                while True:
+                                                                    line = tf.readline()
+                                                                    if not line:
+                                                                        break
+                                                                    lines.append(decodeZipTxtLine(line))
+                                                            lines = tuple(lines)
+                                                            with open(f'{db_path_db_name}/{changed_item}/doc_extracted_text.txt','w',encoding='utf-8') as tf:
+                                                                tf.write(lines[0])
+                                                                for n in range(1,len(lines)):
+                                                                    tf.write(f'\n{lines[n]}')
+                                                        case 'doc_metadata.txt':
+                                                            with zf.open(f'{changed_item}/doc_metadata.txt') as tf:
+                                                                lines = []
+                                                                while True:
+                                                                    line = tf.readline()
+                                                                    if not line:
+                                                                        break
+                                                                    lines.append(decodeZipTxtLine(line))
+                                                            lines = tuple(lines)
+                                                            with open(f'{db_path_db_name}/{changed_item}/doc_metadata.txt','w',encoding='utf-8') as tf:
+                                                                tf.write(lines[0])
+                                                                for n in range(1,len(lines)):
+                                                                    tf.write(f'\n{lines[n]}')
+                                                        case 'image_histogram_data.txt':
+                                                            with zf.open(f'{changed_item}/image_histogram_data.txt') as tf:
+                                                                lines = []
+                                                                while True:
+                                                                    line = tf.readline()
+                                                                    if not line:
+                                                                        break
+                                                                    lines.append(decodeZipTxtLine(line))
+                                                            lines = tuple(lines)
+                                                            with open(f'{db_path_db_name}/{changed_item}/image_histogram_data.txt','w',encoding='utf-8') as tf:
+                                                                tf.write(lines[0])
+                                                                for n in range(1,len(lines)):
+                                                                    tf.write(f'\n{lines[n]}')
+                                                        case _:
+                                                            #placeholder
+                                                            pass
+                                            try: del lines
+                                            except NameError: pass
                                 case 'pdf':
-                                    rmtree(f'{self.db_path}/{db_name}/{changed_item}')
-                                    try:
-                                        self.archive_pdf_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
-                                        adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
-                                    except Exception:
-                                        mkdir(f'{db_path_db_name}/{changed_item}')
-                                        with ZipFile(f'{db_path_db_name}.zip') as zf:
-                                            for relevant_txt_file in tuple([item for item in tuple(zf.namelist()) if item.startswith(f'{changed_item}/')]):
-                                                match relevant_txt_file[relevant_txt_file.rfind('/')+1:]:
-                                                    case 'pdf_extracted_text.txt':
-                                                        with zf.open(f'{changed_item}/pdf_extracted_text.txt') as tf:
-                                                            lines = []
-                                                            while True:
-                                                                line = tf.readline()
-                                                                if not line:
-                                                                    break
-                                                                lines.append(decodeZipTxtLine(line))
-                                                        lines = tuple(lines)
-                                                        with open(f'{db_path_db_name}/{changed_item}/pdf_extracted_text.txt','w',encoding='utf-8') as tf:
-                                                            tf.write(lines[0])
-                                                            for n in range(1,len(lines)):
-                                                                tf.write(f'\n{lines[n]}')
-                                                    case 'pdf_metadata.txt':
-                                                        with zf.open(f'{changed_item}/pdf_metadata.txt') as tf:
-                                                            lines = []
-                                                            while True:
-                                                                line = tf.readline()
-                                                                if not line:
-                                                                    break
-                                                                lines.append(decodeZipTxtLine(line))
-                                                        lines = tuple(lines)
-                                                        with open(f'{db_path_db_name}/{changed_item}/pdf_metadata.txt','w',encoding='utf-8') as tf:
-                                                            tf.write(lines[0])
-                                                            for n in range(1,len(lines)):
-                                                                tf.write(f'\n{lines[n]}')
-                                                    case 'image_histogram_data.txt':
-                                                        with zf.open(f'{changed_item}/image_histogram_data.txt') as tf:
-                                                            lines = []
-                                                            while True:
-                                                                line = tf.readline()
-                                                                if not line:
-                                                                    break
-                                                                lines.append(decodeZipTxtLine(line))
-                                                        lines = tuple(lines)
-                                                        with open(f'{db_path_db_name}/{changed_item}/image_histogram_data.txt','w',encoding='utf-8') as tf:
-                                                            tf.write(lines[0])
-                                                            for n in range(1,len(lines)):
-                                                                tf.write(f'\n{lines[n]}')
-                                                    case _:
-                                                        #placeholder
-                                                        pass
-                                        try: del lines
-                                        except NameError: pass
+                                    if pil_imported and pypdf_imported:
+                                        rmtree(f'{self.db_path}/{db_name}/{changed_item}')
+                                        try:
+                                            self.archive_pdf_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
+                                            adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
+                                        except Exception:
+                                            mkdir(f'{db_path_db_name}/{changed_item}')
+                                            with ZipFile(f'{db_path_db_name}.zip') as zf:
+                                                for relevant_txt_file in tuple([item for item in tuple(zf.namelist()) if item.startswith(f'{changed_item}/')]):
+                                                    match relevant_txt_file[relevant_txt_file.rfind('/')+1:]:
+                                                        case 'pdf_extracted_text.txt':
+                                                            with zf.open(f'{changed_item}/pdf_extracted_text.txt') as tf:
+                                                                lines = []
+                                                                while True:
+                                                                    line = tf.readline()
+                                                                    if not line:
+                                                                        break
+                                                                    lines.append(decodeZipTxtLine(line))
+                                                            lines = tuple(lines)
+                                                            with open(f'{db_path_db_name}/{changed_item}/pdf_extracted_text.txt','w',encoding='utf-8') as tf:
+                                                                tf.write(lines[0])
+                                                                for n in range(1,len(lines)):
+                                                                    tf.write(f'\n{lines[n]}')
+                                                        case 'pdf_metadata.txt':
+                                                            with zf.open(f'{changed_item}/pdf_metadata.txt') as tf:
+                                                                lines = []
+                                                                while True:
+                                                                    line = tf.readline()
+                                                                    if not line:
+                                                                        break
+                                                                    lines.append(decodeZipTxtLine(line))
+                                                            lines = tuple(lines)
+                                                            with open(f'{db_path_db_name}/{changed_item}/pdf_metadata.txt','w',encoding='utf-8') as tf:
+                                                                tf.write(lines[0])
+                                                                for n in range(1,len(lines)):
+                                                                    tf.write(f'\n{lines[n]}')
+                                                        case 'image_histogram_data.txt':
+                                                            with zf.open(f'{changed_item}/image_histogram_data.txt') as tf:
+                                                                lines = []
+                                                                while True:
+                                                                    line = tf.readline()
+                                                                    if not line:
+                                                                        break
+                                                                    lines.append(decodeZipTxtLine(line))
+                                                            lines = tuple(lines)
+                                                            with open(f'{db_path_db_name}/{changed_item}/image_histogram_data.txt','w',encoding='utf-8') as tf:
+                                                                tf.write(lines[0])
+                                                                for n in range(1,len(lines)):
+                                                                    tf.write(f'\n{lines[n]}')
+                                                        case _:
+                                                            #placeholder
+                                                            pass
+                                            try: del lines
+                                            except NameError: pass
                                 case 'gdb':
-                                    rmtree(f'{db_path_db_name}/{changed_item}')
-                                    remove(f'{db_path_db_name}/{changed_item}_metadata.txt')
-                                    try:
-                                        self.archive_gdb_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
-                                    except Exception:
-                                        if exists(f'{db_path_db_name}/{changed_item}'):
-                                            rmtree(f'{db_path_db_name}/{changed_item}')
-                                        mkdir(f'{db_path_db_name}/{changed_item}')
-                                        with ZipFile(f'{db_path_db_name}.zip') as zf:
-                                            lines = []
-                                            with zf.open(f'{changed_item}_metadata.txt') as tf:
-                                                while True:
-                                                    line = tf.readline()
-                                                    if not line:
-                                                        break
-                                                    lines.append(decodeZipTxtLine(line))
-                                            lines = tuple(lines)
-                                            with open(f'{db_path_db_name}/{changed_item}_metadata.txt','w',encoding='utf-8') as tf:
-                                                tf.write(lines[0])
-                                                for n in range(1,len(lines)):
-                                                    tf.write(f'\n{lines[n]}')
-                                            for relevant_txt_file in tuple([item for item in tuple(zf.namelist()) if item.startswith(f'{changed_item}/')]):
-                                                line = []
-                                                with zf.open(relevant_txt_file) as tf:
+                                    if arcpy_imported:
+                                        rmtree(f'{db_path_db_name}/{changed_item}')
+                                        remove(f'{db_path_db_name}/{changed_item}_metadata.txt')
+                                        try:
+                                            self.archive_gdb_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
+                                        except Exception:
+                                            if exists(f'{db_path_db_name}/{changed_item}'):
+                                                rmtree(f'{db_path_db_name}/{changed_item}')
+                                            mkdir(f'{db_path_db_name}/{changed_item}')
+                                            with ZipFile(f'{db_path_db_name}.zip') as zf:
+                                                lines = []
+                                                with zf.open(f'{changed_item}_metadata.txt') as tf:
                                                     while True:
                                                         line = tf.readline()
                                                         if not line:
                                                             break
-                                                        line.append(decodeZipTxtLine(line))
+                                                        lines.append(decodeZipTxtLine(line))
                                                 lines = tuple(lines)
-                                                with open(f'{db_path_db_name}/{relevant_txt_file}','w',encoding='utf-8') as tf:
+                                                with open(f'{db_path_db_name}/{changed_item}_metadata.txt','w',encoding='utf-8') as tf:
                                                     tf.write(lines[0])
                                                     for n in range(1,len(lines)):
                                                         tf.write(f'\n{lines[n]}')
-                                        try: del lines
-                                        except NameError: pass
+                                                for relevant_txt_file in tuple([item for item in tuple(zf.namelist()) if item.startswith(f'{changed_item}/')]):
+                                                    line = []
+                                                    with zf.open(relevant_txt_file) as tf:
+                                                        while True:
+                                                            line = tf.readline()
+                                                            if not line:
+                                                                break
+                                                            line.append(decodeZipTxtLine(line))
+                                                    lines = tuple(lines)
+                                                    with open(f'{db_path_db_name}/{relevant_txt_file}','w',encoding='utf-8') as tf:
+                                                        tf.write(lines[0])
+                                                        for n in range(1,len(lines)):
+                                                            tf.write(f'\n{lines[n]}')
+                                            try: del lines
+                                            except NameError: pass
 
                                 case _:
                                     # assumed to be an image file
-                                    remove(f'{db_path_db_name}/_images/{changed_item}.txt')
-                                    try:
-                                        self.archive_img_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
-                                        adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
-                                    except Exception:
-                                        revertChange(f'{db_path_db_name}',f'_images/{changed_item}')
+                                    if pil_imported:
+                                        remove(f'{db_path_db_name}/_images/{changed_item}.txt')
+                                        try:
+                                            self.archive_img_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
+                                            adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
+                                        except Exception:
+                                            revertChange(f'{db_path_db_name}',f'_images/{changed_item}')
                     if len(additional_items):
                         for additional_item in additional_items:
                             match additional_item[additional_item.rfind('_')+1:].lower():
@@ -759,38 +762,43 @@ class ChloeAI:
                                             if not len(f'{db_path_db_name}/_txt_files'):
                                                 rmtree(f'{db_path_db_name}/_txt_files')
                                 case 'shp':
-                                    try:
-                                        self.archive_shp_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
-                                    except Exception:
-                                        if exists(f'{db_path_db_name}/_shp_files'):
-                                            if not len(f'{db_path_db_name}/_shp_files'):
-                                                rmtree(f'{db_path_db_name}/_shp_files')
+                                    if arcpy_imported:
+                                        try:
+                                            self.archive_shp_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
+                                        except Exception:
+                                            if exists(f'{db_path_db_name}/_shp_files'):
+                                                if not len(f'{db_path_db_name}/_shp_files'):
+                                                    rmtree(f'{db_path_db_name}/_shp_files')
                                 case 'pdf':
-                                    try:
-                                        self.archive_pdf_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
-                                    except Exception:
-                                        if exists(f'{db_path_db_name}/{additional_item}'):
-                                            rmtree(f'{db_path_db_name}/{additional_item}')
+                                    if pypdf_imported and pil_imported:
+                                        try:
+                                            self.archive_pdf_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
+                                        except Exception:
+                                            if exists(f'{db_path_db_name}/{additional_item}'):
+                                                rmtree(f'{db_path_db_name}/{additional_item}')
                                 case 'doc' | 'docx':
-                                    try:
-                                        self.archive_doc_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
-                                    except Exception:
-                                        if exists(f'{db_path_db_name}/{additional_item}'):
-                                            rmtree(f'{db_path_db_name}/{additional_item}')
+                                    if pil_imported and docx_imported and docx2_imported:
+                                        try:
+                                            self.archive_doc_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
+                                        except Exception:
+                                            if exists(f'{db_path_db_name}/{additional_item}'):
+                                                rmtree(f'{db_path_db_name}/{additional_item}')
                                 case 'gdb':
-                                    try:
-                                        self.archive_gdb_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
-                                    except Exception:
-                                        if exists(f'{db_path_db_name}/{additional_item}'):
-                                            rmtree(f'{db_path_db_name}/{additional_item}')
+                                    if arcpy_imported:
+                                        try:
+                                            self.archive_gdb_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
+                                        except Exception:
+                                            if exists(f'{db_path_db_name}/{additional_item}'):
+                                                rmtree(f'{db_path_db_name}/{additional_item}')
                                 case _:
                                     # assumed to be an image file.
-                                    try:
-                                        self.archive_img_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
-                                    except Exception:
-                                        if exists(f'{db_path_db_name}/_images'):
-                                            if not len(f'{db_path_db_name}/_images'):
-                                                rmtree(f'{db_path_db_name}/_images')
+                                    if pil_imported:
+                                        try:
+                                            self.archive_img_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
+                                        except Exception:
+                                            if exists(f'{db_path_db_name}/_images'):
+                                                if not len(f'{db_path_db_name}/_images'):
+                                                    rmtree(f'{db_path_db_name}/_images')
                     if not len(listdir(db_path_db_name)):
                         rmtree(db_path_db_name)
                         self.removeCrintumEntry(self.crintum_pointer[self.path_pointer[db_name]])
@@ -939,7 +947,7 @@ class ChloeAI:
         if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
 
-        reference_directory = reference_directory.replace('\\','/')
+        reference_directory = reference_directory.replace('\\','/').rstrip("/")
 
         # This is to account for mapped network drives.
         if not exists((reference_directory := unc_path(reference_directory))):
@@ -961,8 +969,6 @@ class ChloeAI:
                     items[name] = 'PDF'
                 elif name.lower().endswith('.docx') or name.lower().endswith('.doc'):
                     items[name] = 'DOC'
-                elif name.lower().endswith('.csv'):
-                    items[name] = 'CSV'
                 elif name[name.rfind("."):] in self.accepted_image_extensions:
                     items[name] = 'IMG'
             if len(items):
@@ -971,7 +977,7 @@ class ChloeAI:
                     archive_db_name = randstr(12)
                 mkdir(f'{self.db_path}/{archive_db_name}')
                 if tqdm_imported:
-                    names = tqdm(tuple(items.keys()), disable = not terminal_progress_display_enabled, desc = reference_directory[:])
+                    names = tqdm(tuple(items.keys()), disable = not terminal_progress_display_enabled, desc = reference_directory[reference_directory.rfind('/')+1:])
                 else:
                     names = tuple(items.keys())
                 for name in names:
@@ -982,8 +988,8 @@ class ChloeAI:
                                     self.archive_gdb_data(f'{reference_directory}/{name}',archive_db_name)
                                 except Exception:
                                     # accounts for unreadable/corrupted file geodatabases
-                                    if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")}_{name[name.rfind(".")+1:]}'):
-                                        rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")}_{name[name.rfind(".")+1:]}')
+                                    if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
+                                        rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
                         case 'SHP':
                             if arcpy_imported:
                                 try:
@@ -997,12 +1003,20 @@ class ChloeAI:
                             self.archive_txt_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'PDF':
                             if pypdf_imported and pil_imported:
-                                self.archive_pdf_data(f'{reference_directory}/{name}',archive_db_name)
+                                try:
+                                    self.archive_pdf_data(f'{reference_directory}/{name}',archive_db_name)
+                                except Exception:
+                                    # accounts for something going wrong when attempting to access information from PDFs
+                                    if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
+                                        rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
                         case 'DOC':
-                            if docx_imported and docx2_imported:
-                                self.archive_doc_data(f'{reference_directory}/{name}',archive_db_name)
-                        case 'CSV':
-                            pass
+                            if docx_imported and docx2_imported and pil_imported:
+                                try:
+                                    self.archive_doc_data(f'{reference_directory}/{name}',archive_db_name)
+                                except Exception:
+                                    # accounts for something going wrong when attempting to access information from Word documents
+                                    if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
+                                        rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
                         case 'IMG':
                             if pil_imported:
                                 self.archive_img_data(f'{reference_directory}/{name}',archive_db_name)
@@ -1198,58 +1212,11 @@ class ChloeAI:
             new_txt_file = renamed_txt_file[:]
             del renamed_txt_file
 
-            issue_encountered = True
-
-            try:
-                txt_lines = []
-                with open(new_txt_file,encoding='utf-8') as tf:
-                    while True:
-                        line = tf.readline()
-                        if not line:
-                            break
-                        line = line.rstrip('\n')
-                        line = line.strip()
-                        while '  ' in line:
-                            line = line.replace('  ',' ')
-                        txt_lines.append(line)
-                issue_encountered = False
-            except Exception:
-                pass
-
-            if issue_encountered:
-                try:
-                    txt_lines = []
-                    with open(new_txt_file,encoding='latin-1') as tf:
-                        while True:
-                            line = tf.readline()
-                            if not line:
-                                break
-                            line = line.rstrip('\n')
-                            line = line.strip()
-                            while '  ' in line:
-                                line = line.replace('  ',' ')
-                            txt_lines.append(line)
-                    issue_encountered = False
-                except Exception:
-                    pass
-                if issue_encountered:
-                    txt_lines = []
-                    try:
-                        with open(new_txt_file,encoding='cp1251') as tf:
-                            while True:
-                                line = tf.readline()
-                                if not line:
-                                    break
-                                line = line.rstrip('\n')
-                                line = line.strip()
-                                while '  ' in line:
-                                    line = line.replace('  ',' ')
-                                txt_lines.append(line)
-                    except Exception:
-                        if exists(txt_folder):
-                            if not len(listdir(txt_folder)):
-                                rmtree(txt_folder)
-                        return None
+            if (txt_lines := getTxtFileLines(new_txt_file)) is None:
+                if exists(txt_folder):
+                    if not len(listdir(txt_folder)):
+                        rmtree(txt_folder)
+                return None
 
             counter = 0
 
@@ -1762,7 +1729,6 @@ class ChloeAI:
         except TypeError:
             # implies a file geodatabase with empty items
             object_counters = "<|NONE|>"
-
         try:
             with open(f'{self.db_path}/{archive_db_name}/{gdb_path[gdb_path.rfind("/")+1:gdb_path.rfind(".")]}_{gdb_path[gdb_path.rfind(".")+1:]}_metadata.txt','w',encoding='utf-8') as tf:
                 gdb_items = tuple(gdb_files.keys())
@@ -2592,17 +2558,95 @@ class ChloeAI:
         return None
 
 
-    def findEntityDuplicate(self, item_path : str, return_tuple : bool = False, save_results_to_file : bool = True, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, terminal_progress_display_enabled : bool = False) -> tuple[tuple[str]] | None:
+    def findEntityDuplicate(self, item_path : str, txt_file_encoding : str = 'utf-8', terminal_progress_display_enabled : bool = False) -> tuple[tuple[str]] | None:
         '''
         Check specified item against items of matching type.
         WIP
         '''
 
-        if not exists(item_path):
+        if not exists((item_path := item_path.replace('\\','/'))):
             return None
 
         if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
+            iterator = tqdm(tuple(self.used_names, disable = not terminal_progress_display_enabled, desc = f"Finding duplicates of {item_path[item_path.rfind('/')+1:]}"))
+        else:
+            iterator = tuple(self.used_names)
+
+        match item_path[item_path.rfind(".")+1:].lower():
+            case 'txt':
+                selected_entity_info = []
+                if (metadata_info := list(getBaselineMetadata(item_path))) is None:
+                    return None
+                selected_entity_info += metadata_info
+                del metadata_info
+                if (lines := getTxtFileLines(item_path,txt_file_encoding)) is None:
+                    return None
+                selected_entity_info.append(tuple(lines))
+                num_lines = len(lines)
+                del lines
+                for db_name in iterator:
+                    with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
+                        if '_metadata.txt' in zf.namelist():
+                            with zf.open(f'_metadata.txt') as tf:
+                                pass
+            case 'shp':
+                if not arcpy_imported:
+                    return None
+                selected_entity_info = []
+                if (metadata_info := list(getBaselineMetadata(item_path))) is None:
+                    return None
+                selected_entity_info += metadata_info
+                del metadata_info
+                for db_name in iterator:
+                    with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
+                        if not len((items := tuple([item for item in tuple(zf.namelist()) if item.startswith('_shp_files/')]))):
+                            continue
+            case 'pdf':
+                if not pil_imported or not pypdf_imported:
+                    return None
+                selected_entity_info = []
+                if (metadata_info := list(getBaselineMetadata(item_path))) is None:
+                    return None
+                selected_entity_info += metadata_info
+                del metadata_info
+                for db_name in iterator:
+                    with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
+                        pass
+            case 'doc' | 'docx':
+                if not docx2_imported or not docx_imported or not pil_imported:
+                    return None
+                selected_entity_info = []
+                if (metadata_info := list(getBaselineMetadata(item_path))) is None:
+                    return None
+                selected_entity_info += metadata_info
+                del metadata_info
+                for db_name in iterator:
+                    with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
+                        pass
+            case 'gdb':
+                if not arcpy_imported or not isdir(item_path):
+                    return None
+                for db_name in iterator:
+                    with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
+                        pass
+            case _:
+                if not pil_imported:
+                    return None
+                # assumed to be an image file.
+                if f'.{item_path[item_path.rfind(".")+1:].lower()}' in self.accepted_image_extensions:
+                    selected_entity_info = []
+                    if (metadata_info := list(getBaselineMetadata(item_path))) is None:
+                        return None
+                    selected_entity_info += metadata_info
+                    del metadata_info
+                    for db_name in iterator:
+                        with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
+                            if not len((items := tuple([item for item in tuple(zf.namelist()) if item.startswith('_images/')]))):
+                                continue
+                else:
+                    # file type not supported.
+                    return None
 
         return None
 

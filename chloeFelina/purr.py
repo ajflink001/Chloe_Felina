@@ -8,6 +8,28 @@ def decodeZipTxtLine(entry_string) -> str:
         return entry_string.decode('latin-1',errors='replace').replace('\r','').replace('\n','')
 
 
+def getTxtFileLines(txt_file_path : str, expected_encoding : str = 'utf-8') -> tuple[str] | None:
+
+    for trial_encoding in tuple({expected_encoding,'utf-8','latin-1','cp1251'}):
+        try:
+            txt_lines = []
+            with open(txt_file_path,encoding=trial_encoding) as tf:
+                while True:
+                    line = tf.readline()
+                    if not line:
+                        break
+                    line = line.rstrip('\n')
+                    line = line.strip()
+                    while '  ' in line:
+                        line = line.replace('  ',' ')
+                    txt_lines.append(line)
+            return tuple(txt_lines)
+        except Exception:
+            pass
+
+    return None
+                
+
 def isQueryMatchKether(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
 
     if not (len_txt_lines := len(txt_lines)):

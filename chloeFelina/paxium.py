@@ -1,4 +1,3 @@
-from typing import Union
 from array import array
 from string import ascii_letters,digits
 from math import ceil
@@ -50,7 +49,7 @@ def mind_reader(thoughts : str, echo : int) -> str:
     return result
 
 
-def decrypt(entry_string : str, keypass : Union[str,None] = None) -> str:
+def decrypt(entry_string : str, keypass : str | None = None) -> str:
     '''Both entry_string and keypass are case-sensitive.'''
 
     if keypass is None:
@@ -96,7 +95,7 @@ def decrypt(entry_string : str, keypass : Union[str,None] = None) -> str:
     return mind_reader(f'{neo_alpha[-0o1]}{neo_alpha[0b1:-0x1]}{neo_alpha[0x0]}',omega)
 
 
-def encrypt(entry_string : str, keypass : Union[str,None] = None) -> str:
+def encrypt(entry_string : str, keypass : str | None = None) -> str:
     '''50 potential outputs for one input.'''
 
     if keypass is None:
