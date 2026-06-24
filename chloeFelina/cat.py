@@ -1744,7 +1744,11 @@ class ChloeAI:
             rmtree(output_subfolder)
             return None
 
-        object_counters = '|'.join(sorted(object_counters))
+        try:
+            object_counters = '|'.join(sorted(object_counters))
+        except TypeError:
+            # implies an empty file geodatabase
+            object_counters = "<|NONE|>"
 
         try:
             with open(f'{self.db_path}/{archive_db_name}/{gdb_path[gdb_path.rfind("/")+1:gdb_path.rfind(".")]}_{gdb_path[gdb_path.rfind(".")+1:]}_metadata.txt','w',encoding='utf-8') as tf:
