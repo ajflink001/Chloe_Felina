@@ -977,14 +977,17 @@ class ChloeAI:
                 for name in names:
                     match items[name]:
                         case 'GDB':
-                            # This allows the algorithm to function without the
-                            # ArcPy module being installed. Open source
-                            # alternatives to ArcPy should be considered.
                             if arcpy_imported:
                                 self.archive_gdb_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'SHP':
                             if arcpy_imported:
-                                self.archive_shp_data(f'{reference_directory}/{name}',archive_db_name)
+                                try:
+                                    self.archive_shp_data(f'{reference_directory}/{name}',archive_db_name)
+                                except Exception:
+                                    # accounts for unreadable/corrupted shapefiles
+                                    if exists(f'{self.db_path}/{archive_db_name}/_shp_files'):
+                                        if not len(listdir(f'{self.db_path}/{archive_db_name}/_shp_files')):
+                                            rmtree(f'{self.db_path}/{archive_db_name}/_shp_files')
                         case 'TXT':
                             self.archive_txt_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'PDF':
@@ -1190,7 +1193,7 @@ class ChloeAI:
             new_txt_file = renamed_txt_file[:]
             del renamed_txt_file
 
-            issued_encountered = True
+            issue_encountered = True
 
             try:
                 txt_lines = []
@@ -1204,25 +1207,14 @@ class ChloeAI:
                         while '  ' in line:
                             line = line.replace('  ',' ')
                         txt_lines.append(line)
-                issued_encountered = False
+                issue_encountered = False
             except Exception:
-                txt_lines = []
-                with open(new_txt_file,encoding='latin-1') as tf:
-                    while True:
-                        line = tf.readline()
-                        if not line:
-                            break
-                        line = line.rstrip('\n')
-                        line = line.strip()
-                        while '  ' in line:
-                            line = line.replace('  ',' ')
-                        txt_lines.append(line)
-                issued_encountered = False
+                pass
 
-            if issued_encountered:
-                txt_lines = []
+            if issue_encountered:
                 try:
-                    with open(new_txt_file,encoding='cp1251') as tf:
+                    txt_lines = []
+                    with open(new_txt_file,encoding='latin-1') as tf:
                         while True:
                             line = tf.readline()
                             if not line:
@@ -1232,11 +1224,27 @@ class ChloeAI:
                             while '  ' in line:
                                 line = line.replace('  ',' ')
                             txt_lines.append(line)
+                    issue_encountered = False
                 except Exception:
-                    if exists(txt_folder):
-                        if not len(listdir(txt_folder)):
-                            rmtree(txt_folder)
-                    return None
+                    pass
+                if issue_encountered:
+                    txt_lines = []
+                    try:
+                        with open(new_txt_file,encoding='cp1251') as tf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = line.rstrip('\n')
+                                line = line.strip()
+                                while '  ' in line:
+                                    line = line.replace('  ',' ')
+                                txt_lines.append(line)
+                    except Exception:
+                        if exists(txt_folder):
+                            if not len(listdir(txt_folder)):
+                                rmtree(txt_folder)
+                        return None
 
             counter = 0
 
