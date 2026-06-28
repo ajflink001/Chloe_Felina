@@ -62,7 +62,7 @@ except ModuleNotFoundError: win32api_imported = False
 # Built-In Python Modules
 import csv
 from os import walk as walker
-from os import getlogin,listdir,mkdir,chdir,getcwd,remove,chmod,rename
+from os import listdir,mkdir,chdir,getcwd,remove,chmod,rename
 from os.path import exists,isfile,isdir
 from locale import setlocale,LC_ALL
 from zipfile import ZipFile,ZIP_DEFLATED
@@ -110,7 +110,10 @@ class ChloeAI:
         self.crintum_obfuscation = crintum_obfuscation
 
         if database_location is None or not exists(database_location):
-            self.db_path = f'C:/Users/{getlogin()}/Documents/{database_name}'
+            user_path = str(Path.home()).replace('\\','/')
+            self.db_path = f'{user_path}/Documents/{database_name}'
+            if not exists(self.db_path):
+                mkdir(self.db_path)
         else:
             database_location = database_location.replace("\\","/")
             self.db_path = f'{database_location}/{database_name}'
@@ -118,6 +121,8 @@ class ChloeAI:
                 raise TypeError
             if self.db_path.startswith("C:/Windows") or self.db_path in forbidden_dirs():
                 raise BlockingIOError
+            if not exists(self.db_path):
+                mkdir(self.db_path)
 
         if exists(self.db_path):
             if not 'crintum_pointer.txt' in (items := set(listdir(self.db_path))) and not '_backup_crintum_pointer.txt' in items:

@@ -3,7 +3,7 @@ from string import ascii_letters,digits
 from shutil import copy2,copy,copyfile
 from pathlib import Path
 from os import stat as os_stat
-from os import getlogin,remove,listdir,mkdir
+from os import remove,listdir,mkdir
 from os.path import getsize,getmtime,getctime,isdir,exists
 from typing import Any
 from secrets import choice
@@ -127,12 +127,14 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
     csv.field_size_limit(csv_field_size_limit)
 
     if output_location in (None,''):
-        output_location = f'C:/Users/{getlogin()}/Documents'
+        user_path = str(Path.home()).replace('\\','/')
+        output_location = f'{user_path}/Documents'
     elif not exists((output_location := output_location.strip())):
         if exists(output_location.replace('\\','/')[:output_location.rfind("/")]):
             mkdir(output_location)
         else:
-            output_location = f'C:/Users/{getlogin()}/Documents'
+            user_path = str(Path.home()).replace('\\','/')
+            output_location = f'{user_path}/Documents'
     elif '\\' in output_location:
         output_location = output_location.replace('\\','/')
 
