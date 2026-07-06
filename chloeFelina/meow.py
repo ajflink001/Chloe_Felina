@@ -116,7 +116,7 @@ def determineEntityType(entity_path : str) -> str | None:
         return 'TXT'
     elif entity_path.lower().endswith('.pdf'):
         return 'PDF'
-    elif entity_path[entity_path.rfind(".")+1:].lower() in ('jpg','jpeg','png','tif','tiff','webp'):
+    elif entity_path[entity_path.rfind(".")+1:].lower() in ('jpg','jpeg','png','tif','tiff','webp','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm'):
         return 'IMG'
     else:
         return None
@@ -126,7 +126,7 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
 
     csv.field_size_limit(csv_field_size_limit)
 
-    if output_location in (None,''):
+    if output_location in (None,'') or not isinstance(output_location,str):
         user_path = str(Path.home()).replace('\\','/')
         output_location = f'{user_path}/Documents'
     elif not exists((output_location := output_location.strip())):
@@ -144,6 +144,9 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
         output_suffix = '.csv'
     else:
         output_suffix = '.txt'
+
+    if output_name in (None,'') or not isinstance(output_name,str):
+        output_name = randstr()
 
     if exists((output_path := f'{output_location}/{output_name}{output_suffix}')):
         if overwriteOutput:

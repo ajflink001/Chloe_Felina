@@ -105,7 +105,7 @@ class ChloeAI:
 
     def __init__(self, database_location : str | None = None, database_name : str = 'datenaro', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10):
 
-        self.accepted_suffixes = {'gdb','docx','doc','pdf','txt','shp','png','jpg','jpeg','tif','tiff','webp'}
+        self.accepted_suffixes = {'gdb','docx','doc','pdf','txt','shp','png','jpg','jpeg','tif','tiff','webp','jpg','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm'}
 
         self.crintum_obfuscation = crintum_obfuscation
 
@@ -137,6 +137,8 @@ class ChloeAI:
                 items = list(items)
                 if '_terms_searched' in items:
                     items.remove('_terms_searched')
+                if '_names_checked' in items:
+                    items.remove('_names_checked')
                 if 'crintum_pointer.txt' in items:
                     items.remove('crintum_pointer.txt')
                 if '_backup_crintum_pointer.txt' in items:
@@ -242,7 +244,8 @@ class ChloeAI:
 
         if pil_imported:
             # More file types will be added after thorough testing.
-            self.accepted_image_extensions = {'.jpg','.JPG','.jpeg','.JPEG','.png','.PNG','.tif','.TIF','.tiff','.TIFF','.webp','.WEBP'}
+            self.accepted_image_extensions = {'.jpg','.JPG','.jpeg','.JPEG','.png','.PNG','.tif','.TIF','.tiff','.TIFF','.webp','.WEBP','.bmp','.BMP','.dib','.DIB','.icns','.ICNS','.ico','.ICO','.jp2','.JP2','.j2k','.J2K','.jpx','.JPX','.pcx','.PCX','.tga','.TGA','.xbm','.XBM'}
+            self.image_types = ('jpg','jpeg','png','tif','tiff','webp','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm')
             # Maximum number of pixels that an image can have until the PIL module
             # throws an error.
             Image.MAX_IMAGE_PIXELS = maximum_pixels
@@ -274,7 +277,6 @@ class ChloeAI:
 
     def updateAndRefreshDatabase(self, keep_db_if_no_connection : bool = True, clear_terms_searched : bool = True, terminal_progress_display_enabled : bool = False) -> None:
         '''
-        WIP
         Checks data in database against referenced files for any new additions,
         removals, and/or modifications and updates the database appropriately.
         '''
@@ -333,7 +335,7 @@ class ChloeAI:
         # rename the local drive to something other C, you are in for an
         # "interesting" time.
 
-        ignored_items = {'crintum_pointer.txt','_terms_searched'}
+        ignored_items = {'crintum_pointer.txt','_terms_searched','_names_checked'}
 
         # Remove redundant files and folders.
         for item in tuple(listdir(self.db_path)):
@@ -390,8 +392,9 @@ class ChloeAI:
                 self.removeCrintumEntry(self.path_pointer[redact_db])
                 remove(f'{self.db_path}/{redact_db}')
             del redact_dbs
-            if terminal_progress_display_enabled and tqdm_imported:
-                sys_clear()
+            if tqdm_imported:
+                if terminal_progress_display_enabled:
+                    sys_clear()
                 iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display_enabled, desc = "Checking and Applying Changes to Database")
             else:
                 iterator = tuple(self.used_names)
@@ -1960,20 +1963,25 @@ class ChloeAI:
         return None
 
 
-    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
+    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, entity_names_only : bool = False, entity_name_extension : str | tuple[str] | list[str] | set[str] = 'any', return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
         '''
-        output_file_type can be the following:
-        "xlsx" or "excel" (for Excel file)
-        "txt" or "text" (for delinated text file)
-        "csv" (for csv file)
+        This allows, by default, the searching for the presence of specific
+        term(s) in entities with data in the database as well as the name of the
+        file, or the ability to check for entities of a specific name without
+        needing to consider capitalization, the presence of certain random
+        alphanumeric characters making things harder to find, and the file
+        extension, unless designated.
         '''
 
-        def getTestName(entry_string : str) -> str:
+        def getTestName(sub_entry_string : str) -> str:
 
-            test_name = entry_string.replace('_',' ') ; test_name = test_name.lower().strip()
+            test_name = sub_entry_string.lower().strip()
 
             while '  ' in test_name:
                 test_name = test_name.replace('  ',' ')
+
+            for n in "[]+=@#!$%^&;{}(),":
+                test_name = test_name.replace(n,' ')
 
             return test_name
 
@@ -1984,7 +1992,14 @@ class ChloeAI:
         if max_line_concat < 2:
             max_line_concat = 2
 
-        entry_string = entry_string.lower().strip() ; temp_entry_string = entry_string.replace('_'," ")
+        entry_string = entry_string.lower().strip()
+
+        temp_entry_string = entry_string[:]
+
+        for n in "[]+=@#!$%^&;{}(),":
+            temp_entry_string = temp_entry_string.replace(n,' ')
+
+        temp_entry_string = temp_entry_string.strip()
 
         while '  ' in entry_string:
             entry_string = entry_string.replace('  ',' ')
@@ -1996,12 +2011,12 @@ class ChloeAI:
 
         if output_name is None:
             if entry_string[0].isdigit() or not entry_string[0].isalnum():
-                output_name = f"searched_query_{entry_string}"
+                output_name = f"searched_term_query_{entry_string}"
             else:
                 output_name = entry_string[:]
         elif (output_name := output_name.strip()) == '':
             if entry_string[0].isdigit() or not entry_string[0].isalnum():
-                output_name = f"searched_query_{entry_string}"
+                output_name = f"searched_term_query_{entry_string}"
             else:
                 output_name = entry_string[:]
 
@@ -2009,12 +2024,147 @@ class ChloeAI:
             if n in output_name:
                 output_name = output_name.replace(n,'_')
 
-        output_file_type = output_file_type.lower().strip() ; output_file_type = output_file_type.replace(' ','')
+        output_file_type = output_file_type.lower().strip()
+        output_file_type = output_file_type.replace(' ','')
+
+        if entity_names_only:
+            if output_name == f"searched_term_query_{entry_string}":
+                output_name = f"searched_name_query_{entry_string}"
+            found_matches = {}
+            if "." in temp_entry_string:
+                temp_entry_string = temp_entry_string[:temp_entry_string.find(".")]
+            if not len(temp_entry_string):
+                if return_tuple:
+                    return ()
+                return None
+            if not exists((search_names_folder := f'{self.db_path}/_names_checked')):
+                mkdir(search_names_folder)
+            elif not overwrite_saved_found_matches:
+                for previous_search in tuple([txt_file[:txt_file.rfind(".")] for txt_file in tuple(listdir(search_names_folder))]):
+                    if previous_search in temp_entry_string:
+                        if isinstance(entity_name_extension,str):
+                            with open(f'{self.db_path}/_names_checked/{previous_search}.txt',encoding='utf-8') as tf:
+                                entity_name_extension = entity_name_extension.lower().replace(' ','')
+                                if '.' in entity_name_extension:
+                                    entity_name_extension = entity_name_extension[entity_name_extension.rfind('.')+1:]
+                                if not len(entity_name_extension):
+                                    if return_tuple:
+                                        return ()
+                                    return None
+                                if len((relevant_files := tuple([item.rstrip('\n') for item in tuple(tf.readlines())]))):
+                                    if entity_name_extension in ('any','all','every'):
+                                        if save_results_to_file:
+                                            genSearchQueryResultFile(relevant_files,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
+                                        if return_tuple:
+                                            return relevant_files
+                                        else:
+                                            return None
+                                    else:
+                                        entity_name_extension = f".{entity_name_extension}"
+                                        if len((specified_relevant_files := tuple([relevant_file for relevant_file in relevant_files if relevant_file.lower().endswith(entity_name_extension)]))):
+                                            if save_results_to_file:
+                                                genSearchQueryResultFile(specified_relevant_files,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
+                                            if self.chloe_vocalization:
+                                                playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
+                                            if return_tuple:
+                                                return specified_relevant_files
+                                            else:
+                                                return None
+                                        elif return_tuple:
+                                            return ()
+                                        else:
+                                            return None
+                                elif return_tuple:
+                                    return ()
+                                else:
+                                    return None
+                        elif isinstance(entity_name_extension,(tuple,list,set)):
+                            for n in range(len((entity_name_extension := list(entity_name_extension)))):
+                                entity_name_extension[n] = entity_name_extension[n].replace(' ','')
+                                entity_name_extension[n] = entity_name_extension[n].lower()[entity_name_extension[n].rfind(".")+1:]
+                        elif return_tuple:
+                            return ()
+                        else:
+                            return None
+
+            if tqdm_imported:
+                iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled, desc = f"Searching for relevant instances of {entry_string}")
+            else:
+                iterator = tuple(self.used_names)
+            for db_name in iterator:
+                items = []
+                with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
+                    metadata_files = [item for item in tuple(zf.namelist()) if not '/' in item]
+                    if '_metadata.txt' in metadata_files:
+                        with zf.open('_metadata.txt') as tf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = decodeZipTxtLine(line)
+                                line = line[:line.find('|')]
+                                items.append(f"{line[:line.rfind('_')]}.{line[line.rfind('_')+1:]}")
+                        metadata_files.remove('_metadata.txt')
+                    for metadata_file in (metadata_files := tuple(metadata_files)):
+                        gdb_file_name = metadata_file[:metadata_file.rfind('_')]
+                        items.append(f"{gdb_file_name[:gdb_file_name.rfind('_')]}.{gdb_file_name[gdb_file_name.rfind('_')+1:]}")
+                for item in (items := tuple(items)):
+                    if temp_entry_string in getTestName(item[:item.rfind(".")]):
+                        if not (extension_str := item[item.rfind(".")+1:]) in found_matches.keys():
+                            found_matches[extension_str] = [f"{db_name}|{item}"]
+                        else:
+                            found_matches[extension_str].append(f"{db_name}|{item}")
+            try: del items
+            except NameError: pass
+            try: del extension_str
+            except NameError: pass
+
+            if len(found_matches.keys()):
+                output_tuple = []
+                for extension_str in tuple(sorted(found_matches.keys())):
+                    for item in found_matches[extension_str]:
+                        output_tuple.append("%s\\%s" % (self.path_pointer[item[:item.find('|')]].replace('/','\\'),item))
+                del found_matches
+                if save_found_matches:
+                    with open(f"{self.db_path}/_names_checked/{temp_entry_string}.txt",'w',encoding='utf-8') as tf:
+                        tf.write(output_tuple[0])
+                        for n in range(1,len(output_tuple)):
+                            tf.write(f"\n{output_tuple[n]}")
+                if isinstance(entity_name_extension,str):
+                    entity_name_extension = entity_name_extension.replace('.','')
+                    if (entity_name_extension := entity_name_extension.lower().strip()) in ('any','all','every'):
+                        relevant_output_tuple = tuple(output_tuple)
+                    else:
+                        relevant_output_tuple = tuple([item for item in tuple(output_tuple) if item[item.rfind(".")+1:].lower() == entity_name_extension])
+                elif isinstance(entity_name_extension,(tuple,list,set)):
+                    try:
+                        entity_name_extension = {name_extension.lower().strip().replace('.','') for name_extension in tuple(entity_name_extension)}
+                    except TypeError:
+                        if return_tuple:
+                            return ()
+                        return None
+                    relevant_output_tuple = tuple([item for item in tuple(output_tuple) if item[item.rfind(".")+1:].lower() in entity_name_extension])
+                elif return_tuple:
+                    return ()
+                else:
+                    return None
+                try: del output_tuple
+                except NameError: pass
+                try: del entity_name_extension
+                except NameError: pass
+                if save_results_to_file:
+                    genSearchQueryResultFile(relevant_output_tuple,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
+                if return_tuple:
+                    return relevant_output_tuple
+            elif return_tuple:
+                return ()
+            return None
+
+        found_matches = []
 
         if not exists((search_results_folder := f'{self.db_path}/_terms_searched')):
             mkdir(search_results_folder)
         elif not overwrite_saved_found_matches:
-            found_matches = []
             if not ' ' in entry_string:
                 for previous_search in tuple([txt_file[:txt_file.rfind(".")] for txt_file in tuple(listdir(search_results_folder))]):
                     if previous_search in entry_string:
@@ -2035,18 +2185,21 @@ class ChloeAI:
                                 case 'img':
                                     if not include_entity_name:
                                         return None
-                                    check_type = {'jpeg','jpg','tif','tiff','png','webp'}
+                                    check_type = set(self.image_types)
                                     found_matches = tuple([line.rstrip('\n') for line in open(f'{search_results_folder}/{previous_search}.txt','r',encoding='utf-8').readlines() if line.rstrip('\n').lower()[:line.rfind('.')] in check_type])
                                 case _:
                                     return None
                         elif isinstance(check_type,(tuple,list,set)):
                             try:
                                 if 'img' in (check_type := {item.lower().replace(' ','') for item in tuple(check_type)}):
-                                    for img_type in ('jpeg','jpg','tif','tiff','png','webp'):
+                                    for img_type in self.image_types:
                                         check_type.add(img_type)
                                     check_type.remove('img')
                             except TypeError:
-                                return None
+                                if return_tuple:
+                                    return ()
+                                else:
+                                    return None
                             found_matches = tuple([line.rstrip('\n') for line in open(f'{search_results_folder}/{previous_search}.txt','r',encoding='utf-8').readlines() if line.rstrip('\n')[item.rfind('.')+1:].lower() if check_type])
                         else:
                             return None
@@ -2089,12 +2242,12 @@ class ChloeAI:
                     else:
                         item_file_paths = tuple(zip_file_path_to_files.keys())
                     if isinstance(check_type,str):
-                        match check_type.lower().replace(' ',''):
+                        match (temp_ending := check_type.lower().replace(' ','')):
                             case 'any' | 'all' | 'every':
                                 for item_file_path in item_file_paths:
                                     with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
                                         for item in zip_file_path_to_files[item_file_path]:
-                                            match item[item.rfind(".")+1:].lower():
+                                            match (temp_ending := item[item.rfind(".")+1:].lower()):
                                                 case 'txt':
                                                     if include_entity_name:
                                                         if temp_entry_string in getTestName(item):
@@ -2131,13 +2284,11 @@ class ChloeAI:
                                                         if isQueryMatchDaath(entry_string,f'{starting_name}{relevant_archived_file}',zf):
                                                             found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                                             break
-                                                case 'jpg' | 'jpeg' | 'tif' | 'tiff' | 'png' | 'webp':
-                                                    if include_entity_name:
-                                                        if temp_entry_string in getTestName(item):
-                                                            found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                                 case _:
-                                                    # placeholder
-                                                    continue
+                                                    if temp_ending in self.image_types:
+                                                        if include_entity_name:
+                                                            if temp_entry_string in getTestName(item):
+                                                                found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                             case 'txt':
                                 for item_file_path in item_file_paths:
                                     with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
@@ -2186,22 +2337,25 @@ class ChloeAI:
                                                 if isQueryMatchDaath(entry_string,f'{starting_name}{relevant_archived_file}',zf):
                                                     found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                                     break
-                            case 'jpeg' | 'jpg' | 'tif' | 'tiff' | 'png' | 'webp':
-                                for item_file_path in item_file_paths:
-                                    with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
-                                        for item in zip_file_path_to_files[item_file_path]:
-                                            if include_entity_name:
-                                                if temp_entry_string in getTestName(item):
-                                                    found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                             case _:
-                                return None
+                                if temp_ending in self.image_types:
+                                    for item_file_path in item_file_paths:
+                                        with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
+                                            for item in zip_file_path_to_files[item_file_path]:
+                                                if include_entity_name:
+                                                    if temp_entry_string in getTestName(item):
+                                                        found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
+                                else:
+                                    return None
                     elif isinstance(check_type,(tuple,list,set)):
                         try:
                             if 'img' in (check_type := {item.lower().replace(' ','') for item in tuple(check_type)}):
-                                for img_type in ('jpeg','jpg','tif','tiff','png','webp'):
+                                for img_type in self.image_types:
                                     check_type.add(img_type)
                                 check_type.remove('img')
                         except TypeError:
+                            if return_tuple:
+                                return ()
                             return None
                         for item_file_path in item_file_paths:
                             with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
@@ -2254,14 +2408,12 @@ class ChloeAI:
                                                     if isQueryMatchKether(entry_string,tuple(zf.open(f'{starting_name}{relevant_archived_file}').readlines())):
                                                         found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                                         break
-                                            case 'jpeg' | 'jpg' | 'png' | 'tif' | 'tiff' | 'webp':
-                                                for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith('_images/')]):
-                                                    if include_entity_name:
-                                                        if temp_entry_string in getTestName(relevant_archived_file):
-                                                            found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                             case _:
-                                                # Placeholder
-                                                pass
+                                                if entity_type in self.image_types:
+                                                    for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith('_images/')]):
+                                                        if include_entity_name:
+                                                            if temp_entry_string in getTestName(relevant_archived_file):
+                                                                found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                     else:
                         return None
                     if save_results_to_file:
@@ -2278,7 +2430,6 @@ class ChloeAI:
         del search_results_folder
 
         found_matches = []
-        # memory overhead needs to be reduced.
         if tqdm_imported:
             iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled, desc = f"Searching for instances of {entry_string}")
         else:
@@ -2504,7 +2655,7 @@ class ChloeAI:
                 case 'img':
                     if not include_entity_name:
                         return None
-                    check_type = {'.jpeg','.jpg','.tif','.tiff','.png','.webp'}
+                    check_type = set(self.image_types)
                     found_matches = tuple([found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.'):] in check_type])
                 case _:
                     # Invalid output type.
@@ -2512,10 +2663,15 @@ class ChloeAI:
         elif isinstance(check_type,(tuple,list,set)):
             check_type = {item.lower().replace(' ','') for item in tuple(check_type)}
             if 'img' in check_type:
-                for img_type in ('jpeg','jpg','tif','tiff','png','webp'):
+                for img_type in self.image_types:
                     check_type.add(img_type)
                 check_type.remove('img')
-            found_matches = tuple([found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.')+1:] in check_type])
+            try:
+                found_matches = tuple([found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.')+1:] in check_type])
+            except TypeError:
+                if return_tuple:
+                    return ()
+                return None
         else:
             return None
 
@@ -2572,8 +2728,9 @@ class ChloeAI:
         if not exists((item_path := item_path.replace('\\','/'))):
             return None
 
-        if terminal_progress_display_enabled and tqdm_imported:
-            sys_clear()
+        if tqdm_imported:
+            if terminal_progress_display_enabled:
+                sys_clear()
             iterator = tqdm(tuple(self.used_names, disable = not terminal_progress_display_enabled, desc = f"Finding duplicates of {item_path[item_path.rfind('/')+1:]}"))
         else:
             iterator = tuple(self.used_names)
@@ -2639,7 +2796,7 @@ class ChloeAI:
                 if not pil_imported:
                     return None
                 # assumed to be an image file.
-                if f'.{item_path[item_path.rfind(".")+1:].lower()}' in self.accepted_image_extensions:
+                if f'.{item_path[item_path.rfind(".")+1:]}' in self.accepted_image_extensions:
                     selected_entity_info = []
                     if (metadata_info := list(getBaselineMetadata(item_path))) is None:
                         return None
@@ -2663,10 +2820,9 @@ class ChloeAI:
 
         total_size = Decimal(0)
 
-        if terminal_progress_display_enabled and tqdm_imported:
-            sys_clear()
-
         if tqdm_imported:
+            if terminal_progress_display_enabled:
+                sys_clear()
             iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled, desc = "Getting Total Size of Actual Referenced")
         else:
             iterator = tuple(self.used_names)
@@ -2758,7 +2914,7 @@ class ChloeAI:
         elif isinstance(check_type,(tuple,list,set)):
             check_type = {item.lower().replace(' ','') for item in tuple(check_type)}
             if 'img' in check_type:
-                for img_type in ('jpeg','jpg','tif','tiff','png','webp'):
+                for img_type in self.image_types:
                     check_type.add(img_type)
                 check_type.remove('img')
             for used_name in iterator:
@@ -2801,9 +2957,6 @@ class ChloeAI:
         Number of entities in database.
         '''
 
-        if terminal_progress_display_enabled and tqdm_imported:
-            sys_clear()
-
         def genRefCountFunc(archive_db_path : str, exclusive_ending : str) -> int:
 
             counter = 0
@@ -2825,6 +2978,8 @@ class ChloeAI:
         entity_counter = 0
 
         if tqdm_imported:
+            if terminal_progress_display_enabled:
+                sys_clear()
             iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled, desc = "Counting Referenced Entities")
         else:
             iterator = tuple(self.used_names)
@@ -2879,7 +3034,7 @@ class ChloeAI:
         elif isinstance(check_type,(set,tuple,list)):
             check_type = {item.lower().replace(' ','') for item in tuple(check_type)}
             if 'img' in check_type:
-                for img_type in ('jpeg','jpg','tif','tiff','png','webp'):
+                for img_type in self.image_types:
                     check_type.add(img_type)
                 check_type.remove('img')
             for used_name in iterator:
