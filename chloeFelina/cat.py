@@ -2154,6 +2154,8 @@ class ChloeAI:
                 except NameError: pass
                 if save_results_to_file:
                     genSearchQueryResultFile(relevant_output_tuple,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
+                if self.chloe_vocalization:
+                    playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
                 if return_tuple:
                     return relevant_output_tuple
             elif return_tuple:
