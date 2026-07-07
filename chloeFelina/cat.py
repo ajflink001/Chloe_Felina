@@ -27,6 +27,7 @@ arcpy_imported = True
 try: import arcpy
 except ImportError: arcpy_imported = False
 except ModuleNotFoundError: arcpy_imported = False
+except RuntimeError: arcpy_imported = False
 # PyPDF
 pypdf_imported = True
 try:
