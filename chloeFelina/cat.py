@@ -1707,7 +1707,7 @@ class ChloeAI:
                 for oid in tuple(sorted(item_info.keys())):
                     tf.write(f'\n{item_info[oid]}')
                     counter += 1
-            return f'{entity_name} {counter}'
+            return f'{dataset_name}{entity_name} {counter}'
 
 
         for f_t in ('Point','Polyline','Polygon','Annotation'):
