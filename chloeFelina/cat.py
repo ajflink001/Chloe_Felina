@@ -1420,6 +1420,9 @@ class ChloeAI:
                 if not (histo_ratio := self.getImageInformation(f'{temp_folder}/{temp_images[0]}')) is None:
                     for num in histo_ratio:
                         tf.write(f'\n{num}')
+                    try: entropy_val = round(Image.open(f'{temp_folder}/{temp_images[0]}').entropy(),8)
+                    except Exception: entropy_val = 0
+                    tf.write(f"\n{entropy_val}")
                 else:
                     tf.write("\nNO DATA")
                 for n in range(1,len(temp_images)):
@@ -1427,6 +1430,11 @@ class ChloeAI:
                     if not (histo_ratio := self.getImageInformation(f'{temp_folder}/{temp_images[n]}')) is None:
                         for num in histo_ratio:
                             tf.write(f"\n{num}")
+                        try: entropy_val = round(Image.open(f'{temp_folder}/{temp_images[n]}').entropy(),8)
+                        except Exception: entropy_val = 0
+                        tf.write(f"\n{entropy_val}")
+                    else:
+                        tf.write("\nNO DATA")
 
         try:
             remove(temp_folder)
@@ -1908,11 +1916,24 @@ class ChloeAI:
                                 tf.write(f"{count}{image_file_object.name}")
                                 for line in histo_info:
                                     tf.write(f'\n{line}')
+                                try: entropy_val = round(Image.open(temp_image_file).entropy(),8)
+                                except Exception: entropy_val = 0
+                                tf.write(f"\n{entropy_val}")
                         else:
                             with open(image_histogram_data,'a',encoding='utf-8') as tf:
                                 tf.write(f"\n{count}{image_file_object.name}")
                                 for line in histo_info:
                                     tf.write(f'\n{line}')
+                                try: entropy_val = round(Image.open(temp_image_file).entropy(),8)
+                                except Exception: entropy_val = 0
+                                tf.write(f'\n{entropy_val}')
+                    else:
+                        if not exists((image_histogram_data := f"{pdf_folder}/image_histogram_data.txt")):
+                            with open(image_histogram_data,'w',encoding='utf-8') as tf:
+                                tf.write(f"{count}{image_file_object.name}\nNO DATA")
+                        else:
+                            with open(image_histogram_data,'a',encoding='utf-8') as tf:
+                                tf.write(f"\n{count}{image_file_object.name}\nNO DATA")
                     remove(temp_image_file)
             except Exception:
                 try:
