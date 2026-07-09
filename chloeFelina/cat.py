@@ -1424,7 +1424,6 @@ class ChloeAI:
 
         if len((temp_images := tuple(listdir(temp_folder)))):
             with open(f'{doc_folder}/image_histogram_data.txt','w',encoding='utf-8') as tf:
-                print(temp_images[0])
                 tf.write(temp_images[0])
                 if not (histo_ratio := self.getImageInformation(f'{temp_folder}/{temp_images[0]}')) is None:
                     for num in histo_ratio:
