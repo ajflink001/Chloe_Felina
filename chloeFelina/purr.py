@@ -10,7 +10,7 @@ def decodeZipTxtLine(entry_string) -> str:
 
 def getTxtFileLines(txt_file_path : str, expected_encoding : str = 'utf-8') -> tuple[str] | None:
 
-    for trial_encoding in tuple({expected_encoding,'utf-8','latin-1','cp1251'}):
+    for trial_encoding in tuple({expected_encoding,'utf-8','latin-1','cp1251','ascii'}):
         try:
             txt_lines = []
             with open(txt_file_path,encoding=trial_encoding) as tf:
@@ -28,7 +28,7 @@ def getTxtFileLines(txt_file_path : str, expected_encoding : str = 'utf-8') -> t
             pass
 
     return None
-                
+
 
 def isQueryMatchKether(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
 
