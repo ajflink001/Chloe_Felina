@@ -1896,7 +1896,7 @@ class ChloeAI:
 
         extracted_text_path = f"{pdf_folder}/pdf_extracted_text.txt"
 
-        for n in range(4294967296):
+        for n in range(4_294_967_296):
             try:
                 pdf_info = reader.pages[n]
             except Exception:
@@ -3376,7 +3376,51 @@ class ChloeAI:
                                     if item.startswith(f"{current_db_name}|"):
                                         checked.remove(item)
                 case 'pdf':
-                    pass
+                    # This enables greater redundancy reduction.
+                    db_names = []
+                    for db_name in tuple(self.used_names):
+                        with ZipFile(f"{self.db_path}/{db_name}.zip") as zf:
+                            if '_metadata.txt' in zf.namelist():
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line).split('|')
+                                        if line[1] == 'PDF':
+                                            db_names.append(db_name)
+                                            break
+                    try: del line
+                    except NameError: pass
+                    num_dbs = len((db_names := tuple(db_names)))
+                    if tqdm_imported:
+                        if terminal_progress_display_enabled:
+                            sys_clear()
+                        iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, desc = f"Checking for duplicates in {self.database_name}")
+                    else:
+                        iterator = range(num_dbs-1)
+                    # This enables even greater redundancy reduction.
+                    line_num_checker = {}
+                    for db_name in db_names:
+                        with ZipFile(f"{self.db_path}/{db_name}.zip") as zf:
+                            if '_metadata.txt' in [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]:
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line).split('|')
+                                        if line[1] == 'PDF':
+                                            if not f'{line[5]}|{line[6]}|{line[1]}' in line_num_checker.keys():
+                                                line_num_checker[f'{line[5]}|{line[6]}|{line[1]}'] = {db_name}
+                                            else:
+                                                line_num_checker[f'{line[5]}|{line[6]}|{line[1]}'].add(db_name)
+                    try: del line
+                    except NameError: pass
+                    for a in iterator:
+
+                        for b in range(a+1,num_dbs):
+                            pass
                 case 'img':
                     # This enables greater redundancy reduction.
                     db_names = []
@@ -3489,13 +3533,126 @@ class ChloeAI:
                                 if item.startswith(f"{current_db_name}|"):
                                     checked.remove(item)
                 case 'doc' | 'docx':
+                    # This enables greater redundancy reduction.
+                    db_names = []
+                    for db_name in tuple(self.used_names):
+                        with ZipFile(f"{self.db_path}/{db_name}.zip") as zf:
+                            if '_metadata.txt' in zf.namelist():
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line).split('|')
+                                        if line[1] == 'DOC':
+                                            db_names.append(db_name)
+                                            break
+                    try: del line
+                    except NameError: pass
+                    num_dbs = len((db_names := tuple(db_names)))
+                    # This enables even greater redundancy reduction.
+                    line_num_checker = {}
+                    for db_name in db_names:
+                        with ZipFile(f"{self.db_path}/{db_name}.zip") as zf:
+                            if '_metadata.txt' in [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]:
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line).split('|')
+                                        if line[1] == 'DOC':
+                                            if not f'{line[5]}|{line[6]}|{line[1]}' in line_num_checker.keys():
+                                                line_num_checker[f'{line[5]}|{line[6]}|{line[1]}'] = {db_name}
+                                            else:
+                                                line_num_checker[f'{line[5]}|{line[6]}|{line[1]}'].add(db_name)
+                    try: del line
+                    except NameError: pass
                     for a in iterator:
                         current_db_name = db_names[a]
-                        for b in range(a+1,num_dbs):
-                            pass
-                        for item in tuple(checked):
-                            if item.startswith(f"{current_db_name}|"):
-                                checked.remove(item)
+                        current_entities = []
+                        current_line_counters = {}
+                        with ZipFile(f'{self.db_path}/{db_names[a]}.zip') as zf:
+                            with zf.open('_metadata.txt') as tf:
+                                while True:
+                                    entity = tf.readline()
+                                    if not entity:
+                                        break
+                                    entity = decodeZipTxtLine(entity).split('|')
+                                    if entity[1] == 'DOC':
+                                        if f'{current_db_name}|{entity[0]}' in checked:
+                                            checked.remove(f'{current_db_name}|{entity[0]}')
+                                            continue
+                                        # 0|0 means no valid data required for comparison.
+                                        if f'{entity[5]}|{entity[6]}' != '0|0':
+                                            entities.append(entity[0])
+                                            current_line_counters[entity[0]] = f'{entity[5]}|{entity[6]}'
+                        num_entities = len((current_entities := tuple(current_entities)))
+                        try: del entity
+                        except NameError: pass
+                        for b in range(num_entities-1):
+                            if f'{current_db_name}|{entities[b]}' in checked:
+                                checked.remove(f'{current_db_name}|{entities[b]}')
+                                continue
+                            checked.add(f'{current_db_name}|{entities[b]}')
+                            found_duplicates.append([f'{current_db_name}|{entities[b]}'])
+                            current_lines = []
+                            doc_nums = current_line_counters[entities[b]]
+                            if doc_nums[:doc_nums.find('|')] != '0':
+                                current_lines.append([])
+                                with zf.open(f'{entities[b]}/doc_extracted_text.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        current_lines[0].append(decodeZipTxtLine(line))
+                                current_lines[0] = tuple(current_lines[0])
+                            else:
+                                current_lines.append(None)
+                            if doc_nums[doc_nums.find('|')+1:] != '0':
+                                current_lines.append([])
+                                with zf.open(f'{entities[b]}/image_histogram_data.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        current_lines[1].append(decodeZipTxtLine(line))
+                                current_lines[1] = tuple(current_lines[1])
+                            else:
+                                current_lines.append(None)
+                            num_lines_str = current_line_counters[entities[b]]
+                            num_lines_ints = (num_lines_str[:num_lines_str.find('|')],num_lines_str[num_lines_str.find('|')+1:])
+                            for c in range(b+1,num_entities):
+                                if f'{current_db_name}|{entities[c]}' in checked:
+                                    continue
+                                if num_lines == current_line_counters[entities[c]]:
+                                    found_match = True
+                                    if num_lines_ints[0]:
+                                        other_lines = []
+                                        with zf.open(f'{entities[c]}/doc_extracted_text.txt') as tf:
+                                            while True:
+                                                line = tf.readline()
+                                                if not line:
+                                                    break
+                                                other_lines.append(decodeZipTxtLine(line))
+                                    if num_lines_ints[1]:
+                                        other_lines.append([])
+                                        with zf.open(f'{entities[c]}/image_histogram_data.txt') as tf:
+                                            while True:
+                                                line = tf.readline()
+                                                if not line:
+                                                    break
+                                                other_lines[1].append(decodeZipTxtLine(line))
+                                        other_lines[1] = tuple(other_lines[1])
+                                    if found_match:
+                                        checked.add(f'{current_db_name}|{entities[c]}')
+                                        found_duplicates[-1].append(f'{current_db_name}|{entities[c]}')
+                            for c in range(a+1,num_dbs):
+                                pass
+                            if len(found_duplicates[-1]) == 1:
+                                del found_duplicates[-1]
+                            else:
+                                found_duplicates[-1] = tuple(found_duplicates[-1])
                 case 'shp':
                     # This enables greater redundancy reduction.
                     db_names = []
@@ -3608,13 +3765,32 @@ class ChloeAI:
                                 if item.startswith(f"{current_db_name}|"):
                                     checked.remove(item)
                 case 'gdb':
+                    # This enables greater redundancy reduction.
+                    db_names = []
+                    for db_name in tuple(self.used_names):
+                        with ZipFile(f"{self.db_path}/{db_name}.zip") as zf:
+                            if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]):
+                                metadata_files.remove('_metadata.txt')
+                            if len(metadata_files):
+                                db_names.append(db_name)
+                    num_dbs = len((db_names := tuple(db_names)))
+                    # This enables even greater redundancy reduction.
+                    line_num_checker = {}
+                    for db_name in db_names:
+                        with ZipFile(f"{self.db_path}/{db_name}.zip") as zf:
+                            if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]):
+                                metadata_files.remove('_metadata.txt')
+                            for metadata_file in (metadata_files := tuple(metadata_files)):
+                                if (num_id := "|".join([gdb_item[gdb_item.rfind(" ")+1:] for gdb_item in tuple(decodeZipTxtLine(zf.open(metadata_file).readline()).split('|'))])) in line_num_checker.keys():
+                                    line_num_checker[num_id].add(db_name)
+                                else:
+                                    line_num_checker[num_id] = {db_name}
+                    try: del metadata_files
+                    except NameError: pass
                     for a in iterator:
-                        current_db_name = db_names[a]
+
                         for b in range(a+1,num_dbs):
                             pass
-                        for item in tuple(checked):
-                            if item.startswith(f"{current_db_name}|"):
-                                checked.remove(item)
                 case _:
                     if return_tuple:
                         return ()
