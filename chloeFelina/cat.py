@@ -107,6 +107,7 @@ class ChloeAI:
     def __init__(self, database_location : str | None = None, database_name : str = 'datenaro', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10):
 
         self.accepted_suffixes = {'gdb','docx','doc','pdf','txt','shp','png','jpg','jpeg','tif','tiff','webp','jpg','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm'}
+        self.valid_check_types = {'txt','pdf','doc','img','gdb','shp'}
 
         self.crintum_obfuscation = crintum_obfuscation
         self.database_name = database_name[:]
@@ -588,6 +589,22 @@ class ChloeAI:
                                         tf.write(lines[0])
                                         for n in range(1,len(lines)):
                                             tf.write(f'\n{lines[n]}')
+                                    if len((lines := [line.rstrip('\n') for line in tuple(open(f'{db_path_db_name}/_firstline_image_files.txt',encoding='utf-8').readlines())])) == 1:
+                                        remove(f'{db_path_db_name}/_firstline_image_files.txt')
+                                    else:
+                                        for line in tuple(lines):
+                                            if line[:line.rfind(' ')] == redacted_item:
+                                                lines.remove(line)
+                                                break
+                                        lines = tuple(lines)
+                                        with open(f'{db_path_db_name}/_firstline_image_files.txt','w',encoding='utf-8') as tf:
+                                            tf.write(lines[0])
+                                            try:
+                                                for z in range(1,len(lines)):
+                                                    tf.write(f'\n{lines[z]}')
+                                            except Exception:
+                                                pass
+
                     if len(changed_items):
                         for changed_item in changed_items:
                             match changed_item[changed_item.rfind('_')+1:].lower():
@@ -1782,6 +1799,12 @@ class ChloeAI:
                 mkdir(img_folder)
             with open(f'{img_folder}/{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}.txt','w',encoding='utf-8') as tf:
                 tf.write(histo_ratio[0])
+                if exists((firstline_images := f'{self.db_path}/{archive_db_name}/_firstline_image_files.txt')):
+                    with open(firstline_images,'a',encoding='utf-8') as f:
+                        f.write(f'\n{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]} {histo_ratio[0]}')
+                else:
+                    with open(firstline_images,'w',encoding='utf-8') as f:
+                        f.write(f'{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]} {histo_ratio[0]}')
                 counter = 1
                 for n in range(1,len(histo_ratio)):
                     tf.write(f'\n{histo_ratio[n]}')
@@ -2741,7 +2764,7 @@ class ChloeAI:
         if isinstance(check_type,str):
             match check_type.lower().replace(' ',''):
                 case 'all' | 'any' | 'every':
-                    num_dbs = len((db_names := tuple(sorted(self.used_names))))
+                    num_dbs = len((db_names := tuple(self.used_names)))
                     if tqdm_imported:
                         if terminal_progress_display_enabled:
                             sys_clear()
@@ -2799,6 +2822,7 @@ class ChloeAI:
                     for a in iterator:
                         current_db_name = db_names[a]
                         current_entities = {}
+                        img_firstlines = {}
                         with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
                             if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith("_metadata.txt")]):
                                 with zf.open("_metadata.txt") as tf:
@@ -2829,6 +2853,14 @@ class ChloeAI:
                                 current_entities['GDB'] = {}
                                 for metadata_file in metadata_files:
                                     current_entities['GDB'][metadata_file[:metadata_file.rfind('_')]] = {item[:item.rfind(" ")] : item[item.rfind(' ')+1:] for item in decodeZipTxtLine(zf.open(metadata_file).readline()).split('|')}
+                            if 'IMG' in current_entities.keys():
+                                with zf.open('_firstline_image_files.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line)
+                                        img_firstlines[line[:line.rfind(' ')]] = line[line.rfind(' ')+1:]
                             try: del metadata_files
                             except NameError: pass
                             for current_entity_type in tuple(current_entities.keys()):
@@ -2845,7 +2877,7 @@ class ChloeAI:
                                         for c in range(b+1,num_current_gdbs):
                                             if f'{current_db_name}|{current_gdbs[c]}' in checked or current_gdb_num_id != '|'.join([current_entities[current_entity_type][current_gdbs[c]][gdb_item] for gdb_item in tuple(current_entities[current_entity_type][current_gdbs[c]].keys())]) or current_gdb_name_id != '|'.join([gdb_item for gdb_item in tuple(current_entities[current_entity_type][current_gdbs[c]].keys())]):
                                                 continue
-                                            found_match = True
+                                            duplicate_match = True
                                             for gdb_item in tuple(current_gdb_name_id.split('|')):
                                                 current_lines = []
                                                 with zf.open(f"{current_gdbs[b]}/{gdb_item}.txt") as tf:
@@ -2867,9 +2899,9 @@ class ChloeAI:
                                                 other_lines = tuple(other_lines)
                                                 for d in range(num_lines):
                                                     if current_lines[d] != other_lines[d]:
-                                                        found_match = False
+                                                        duplicate_match = False
                                                         break
-                                            if found_match:
+                                            if duplicate_match:
                                                 found_duplicates[-1].append(f'{current_db_name}|{current_gdbs[c]}')
                                                 checked.add(f'{current_db_name}|{current_gdbs[c]}')
                                         for c in range(a+1,num_dbs):
@@ -2892,7 +2924,7 @@ class ChloeAI:
                                                 other_gdb_num_id = '|'.join([other_entities[other_entity][item] for item in other_entities[other_entity].keys()])
                                                 other_gdb_name_id = '|'.join([item for item in other_entities[other_entity].keys()])
                                                 if other_gdb_num_id == current_gdb_num_id and other_gdb_name_id == current_gdb_name_id:
-                                                    found_match = True
+                                                    duplicate_match = True
                                                     for gdb_item in tuple(other_gdb_name_id.split('|')):
                                                         current_lines = []
                                                         with zf.open(f'{current_gdbs[b]}/{gdb_item}.txt') as tf:
@@ -2913,11 +2945,11 @@ class ChloeAI:
                                                         other_lines = tuple(other_lines)
                                                         for d in range(num_lines):
                                                             if current_lines[d] != other_lines[d]:
-                                                                found_match = False
+                                                                duplicate_match = False
                                                                 break
-                                                        if not found_match:
+                                                        if not duplicate_match:
                                                             break
-                                                    if found_match:
+                                                    if duplicate_match:
                                                         found_duplicates[-1].append(f'{other_db_name}|{other_entity}')
                                                         checked.add(f'{other_db_name}|{other_entity}')
                                         if len(found_duplicates[-1]) == 1:
@@ -2987,9 +3019,9 @@ class ChloeAI:
                                             case 'IMG':
                                                 current_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_images/{items[c]}.txt').readlines())])
                                                 current_line_count = int(nums[b])
+                                                current_firstline = img_firstlines[items[c]]
                                                 for d in range(c+1,num_items):
-                                                    if f'{current_db_name}|{items[d]}' in checked:
-                                                        checked.remove(f'{current_db_name}|{items[d]}')
+                                                    if current_firstline != img_firstlines[items[d]]:
                                                         continue
                                                     other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_images/{items[d]}.txt').readlines())])
                                                     duplicate_match = True
@@ -3006,9 +3038,17 @@ class ChloeAI:
                                                         if not (other_db_name := db_names[e]) in type_checker['IMG'] or not other_db_name in line_num_checker[f'{current_line_count}|IMG']:
                                                             continue
                                                         line_num_checker[f'{current_line_count}|IMG'].remove(other_db_name)
+                                                        other_img_firstlines = {}
                                                         with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
                                                             if not '_metadata.txt' in set(zf2.namelist()):
                                                                 continue
+                                                            with zf2.open('_firstline_image_files.txt') as tf:
+                                                                while True:
+                                                                    line = tf.readline()
+                                                                    if not line:
+                                                                        break
+                                                                    line = decodeZipTxtLine(line)
+                                                                    other_img_firstlines[line[:line.rfind(' ')]] = line[line.rfind(' ')+1:]
                                                             with zf2.open('_metadata.txt') as tf:
                                                                 while True:
                                                                     line = tf.readline()
@@ -3016,9 +3056,12 @@ class ChloeAI:
                                                                         break
                                                                     line = tuple(decodeZipTxtLine(line).split('|'))
                                                                     if line[1] == 'IMG':
-                                                                        if int(line[5]) == current_line_count:
-                                                                            if not f"{other_db_name}|{line[0]}" in checked:
-                                                                                relevant_entities.append(line[0])
+                                                                        if other_img_firstlines[line[0]] == current_firstline:
+                                                                            if int(line[5]) == current_line_count:
+                                                                                if not f"{other_db_name}|{line[0]}" in checked:
+                                                                                    relevant_entities.append(line[0])
+                                                            try: del other_img_firstlines
+                                                            except NameError: pass
                                                             for relevant_entity in (relevant_entities := tuple(relevant_entities)):
                                                                 other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f'_images/{relevant_entity}.txt').readlines())])
                                                                 duplicate_match = True
@@ -3334,12 +3377,12 @@ class ChloeAI:
                                         continue
                                     if current_line_count == current_line_counters[current_entities[c]]:
                                         other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_txt_files/{current_entities[c]}.txt').readlines())])
-                                        found_match = True
+                                        duplicate_match = True
                                         for d in range(int(current_line_count)):
                                             if current_lines[d] != other_lines[d]:
-                                                found_match = False
+                                                duplicate_match = False
                                                 break
-                                        if found_match:
+                                        if duplicate_match:
                                             checked.add(f'{current_db_name}|{current_entities[c]}')
                                             found_duplicates[-1].append(f'{current_db_name}|{current_entities[c]}')
                                 for c in range(a+1,num_dbs):
@@ -3359,13 +3402,13 @@ class ChloeAI:
                                                         if not f'{other_db_name}|{other_db_name[0]}' in checked:
                                                             other_entities.append(other_entity[0])
                                     for other_entity in (other_entities := tuple(other_entities)):
-                                        found_match = True
+                                        duplicate_match = True
                                         other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f'_txt_files/{other_entity}').readlines())])
                                         for d in range(int(current_line_count)):
                                             if current_lines[d] != other_lines[d]:
-                                                found_match = False
+                                                duplicate_match = False
                                                 break
-                                        if found_match:
+                                        if duplicate_match:
                                             checked.add(f'{other_db_name}|{other_entity}')
                                             found_duplicates[-1].append(f'{other_db_name}|{other_entity}')
                                 if len(found_duplicates[-1]) == 1:
@@ -3393,12 +3436,6 @@ class ChloeAI:
                     try: del line
                     except NameError: pass
                     num_dbs = len((db_names := tuple(db_names)))
-                    if tqdm_imported:
-                        if terminal_progress_display_enabled:
-                            sys_clear()
-                        iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, desc = f"Checking for duplicates in {self.database_name}")
-                    else:
-                        iterator = range(num_dbs-1)
                     # This enables even greater redundancy reduction.
                     line_num_checker = {}
                     for db_name in db_names:
@@ -3418,9 +3455,152 @@ class ChloeAI:
                     try: del line
                     except NameError: pass
                     for a in iterator:
-
-                        for b in range(a+1,num_dbs):
-                            pass
+                        current_db_name = db_names[a]
+                        current_entities = []
+                        current_line_counters = {}
+                        with ZipFile(f'{self.db_path}/{db_names[a]}.zip') as zf:
+                            with zf.open('_metadata.txt') as tf:
+                                while True:
+                                    entity = tf.readline()
+                                    if not entity:
+                                        break
+                                    entity = decodeZipTxtLine(entity).split('|')
+                                    if entity[1] == 'PDF':
+                                        if f'{current_db_name}|{entity[0]}' in checked:
+                                            checked.remove(f'{current_db_name}|{entity[0]}')
+                                            continue
+                                        # 0|0 means no valid data required for comparison.
+                                        if f'{entity[5]}|{entity[6]}' != '0|0':
+                                            entities.append(entity[0])
+                                            current_line_counters[entity[0]] = f'{entity[5]}|{entity[6]}'
+                            num_entities = len((current_entities := tuple(current_entities)))
+                            try: del entity
+                            except NameError: pass
+                            for b in range(num_entities-1):
+                                if f'{current_db_name}|{entities[b]}' in checked:
+                                    checked.remove(f'{current_db_name}|{entities[b]}')
+                                    continue
+                                checked.add(f'{current_db_name}|{entities[b]}')
+                                found_duplicates.append([f'{current_db_name}|{entities[b]}'])
+                                current_lines = []
+                                doc_nums = current_line_counters[entities[b]]
+                                if doc_nums[:doc_nums.find('|')] != '0':
+                                    current_lines.append([])
+                                    with zf.open(f'{entities[b]}/pdf_extracted_text.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            current_lines[0].append(decodeZipTxtLine(line))
+                                    current_lines[0] = tuple(current_lines[0])
+                                else:
+                                    current_lines.append(None)
+                                if doc_nums[doc_nums.find('|')+1:] != '0':
+                                    current_lines.append([])
+                                    with zf.open(f'{entities[b]}/image_histogram_data.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            current_lines[1].append(decodeZipTxtLine(line))
+                                    current_lines[1] = tuple(current_lines[1])
+                                else:
+                                    current_lines.append(None)
+                                num_lines_str = current_line_counters[entities[b]]
+                                num_lines_ints = (num_lines_str[:num_lines_str.find('|')],num_lines_str[num_lines_str.find('|')+1:])
+                                for c in range(b+1,num_entities):
+                                    if f'{current_db_name}|{entities[c]}' in checked:
+                                        continue
+                                    if num_lines == current_line_counters[entities[c]]:
+                                        duplicate_match = True
+                                        if num_lines_ints[0]:
+                                            other_lines = []
+                                            with zf.open(f'{entities[c]}/pdf_extracted_text.txt') as tf:
+                                                while True:
+                                                    line = tf.readline()
+                                                    if not line:
+                                                        break
+                                                    other_lines.append(decodeZipTxtLine(line))
+                                            other_lines = tuple(other_lines)
+                                            for d in range(num_lines_ints[0]):
+                                                if current_lines[0][d] != other_lines[d]:
+                                                    duplicate_match = False
+                                                    break
+                                        if not duplicate_match:
+                                            continue
+                                        if num_lines_ints[1]:
+                                            other_lines = []
+                                            with zf.open(f'{entities[c]}/image_histogram_data.txt') as tf:
+                                                while True:
+                                                    line = tf.readline()
+                                                    if not line:
+                                                        break
+                                                    other_lines.append(decodeZipTxtLine(line))
+                                            other_lines = tuple(other_lines)
+                                            for d in range(num_lines_ints[1]):
+                                                if current_lines[1][d] != other_lines[d]:
+                                                    duplicate_match = False
+                                                    break
+                                        if duplicate_match:
+                                            checked.add(f'{current_db_name}|{entities[c]}')
+                                            found_duplicates[-1].append(f'{current_db_name}|{entities[c]}')
+                                for c in range(a+1,num_dbs):
+                                    if not (other_db_name := db_names[c]) in line_num_checker[num_lines_str].keys():
+                                        continue
+                                    other_entities = []
+                                    with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
+                                        with zf2.open('_metadata.txt') as tf:
+                                            while True:
+                                                other_entity = tf.readline()
+                                                if not other_entity:
+                                                    break
+                                                other_entity = decodeZipTxtLine(other_entity).split('|')
+                                                if other_entity[1] == 'PDF':
+                                                    if num_lines_str == f'{other_entity[5]}|{other_entity[6]}':
+                                                        if not f'{other_db_name}|{other_entity[0]}' in checked:
+                                                            other_entities.append(other_entity[0])
+                                        try: del other_entity
+                                        except NameError: pass
+                                        for other_entity in (other_entities := tuple(other_entities)):
+                                            duplicate_match = True
+                                            if num_lines_ints[0]:
+                                                other_lines = []
+                                                with zf2.open(f'{other_entity}/pdf_extracted_text.txt') as tf:
+                                                    while True:
+                                                        line = tf.readline()
+                                                        if not line:
+                                                            break
+                                                        other_lines.append(decodeZipTxtLine(line))
+                                                other_lines = tuple(other_lines)
+                                                for d in range(num_lines_ints[0]):
+                                                    if current_lines[0][d] != other_lines[d]:
+                                                        duplicate_match = False
+                                                        break
+                                            if not duplicate_match:
+                                                continue
+                                            if num_lines_ints[1]:
+                                                other_lines = []
+                                                with zf2.open(f'{other_entity}/image_histogram_data.txt') as tf:
+                                                    while True:
+                                                        line = tf.readline()
+                                                        if not line:
+                                                            break
+                                                        other_lines.append(decodeZipTxtLine(line))
+                                                other_lines = tuple(other_lines)
+                                                for d in range(num_lines_ints[1]):
+                                                    if current_lines[0][d] != other_lines[d]:
+                                                        duplicate_match = False
+                                                        break
+                                            if duplicate_match:
+                                                found_duplicates[-1].append(f'{other_db_name}|{other_entity}')
+                                                checked.add(f'{other_db_name}|{other_entity}')
+                                if len(found_duplicates[-1]) == 1:
+                                    del found_duplicates[-1]
+                                else:
+                                    found_duplicates[-1] = tuple(found_duplicates[-1])
+                                for item in tuple(checked):
+                                    if item.startswith(f"{current_db_name}|"):
+                                        checked.remove(item)
                 case 'img':
                     # This enables greater redundancy reduction.
                     db_names = []
@@ -3491,12 +3671,12 @@ class ChloeAI:
                                         continue
                                     if current_line_count == current_line_counters[current_entities[c]]:
                                         other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_images/{current_entities[c]}.txt').readlines())])
-                                        found_match = True
+                                        duplicate_match = True
                                         for d in range(int(current_line_count)):
                                             if current_lines[d] != other_lines[d]:
-                                                found_match = False
+                                                duplicate_match = False
                                                 break
-                                        if found_match:
+                                        if duplicate_match:
                                             checked.add(f'{current_db_name}|{current_entities[c]}')
                                             found_duplicates[-1].append(f'{current_db_name}|{current_entities[c]}')
                                 for c in range(a+1,num_dbs):
@@ -3516,13 +3696,13 @@ class ChloeAI:
                                                         if not f'{other_db_name}|{other_db_name[0]}' in checked:
                                                             other_entities.append(other_entity[0])
                                     for other_entity in (other_entities := tuple(other_entities)):
-                                        found_match = True
+                                        duplicate_match = True
                                         other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f'_images/{other_entity}').readlines())])
                                         for d in range(int(current_line_count)):
                                             if current_lines[d] != other_lines[d]:
-                                                found_match = False
+                                                duplicate_match = False
                                                 break
-                                        if found_match:
+                                        if duplicate_match:
                                             checked.add(f'{other_db_name}|{other_entity}')
                                             found_duplicates[-1].append(f'{other_db_name}|{other_entity}')
                             if len(found_duplicates[-1]) == 1:
@@ -3587,72 +3767,134 @@ class ChloeAI:
                                         if f'{entity[5]}|{entity[6]}' != '0|0':
                                             entities.append(entity[0])
                                             current_line_counters[entity[0]] = f'{entity[5]}|{entity[6]}'
-                        num_entities = len((current_entities := tuple(current_entities)))
-                        try: del entity
-                        except NameError: pass
-                        for b in range(num_entities-1):
-                            if f'{current_db_name}|{entities[b]}' in checked:
-                                checked.remove(f'{current_db_name}|{entities[b]}')
-                                continue
-                            checked.add(f'{current_db_name}|{entities[b]}')
-                            found_duplicates.append([f'{current_db_name}|{entities[b]}'])
-                            current_lines = []
-                            doc_nums = current_line_counters[entities[b]]
-                            if doc_nums[:doc_nums.find('|')] != '0':
-                                current_lines.append([])
-                                with zf.open(f'{entities[b]}/doc_extracted_text.txt') as tf:
-                                    while True:
-                                        line = tf.readline()
-                                        if not line:
-                                            break
-                                        current_lines[0].append(decodeZipTxtLine(line))
-                                current_lines[0] = tuple(current_lines[0])
-                            else:
-                                current_lines.append(None)
-                            if doc_nums[doc_nums.find('|')+1:] != '0':
-                                current_lines.append([])
-                                with zf.open(f'{entities[b]}/image_histogram_data.txt') as tf:
-                                    while True:
-                                        line = tf.readline()
-                                        if not line:
-                                            break
-                                        current_lines[1].append(decodeZipTxtLine(line))
-                                current_lines[1] = tuple(current_lines[1])
-                            else:
-                                current_lines.append(None)
-                            num_lines_str = current_line_counters[entities[b]]
-                            num_lines_ints = (num_lines_str[:num_lines_str.find('|')],num_lines_str[num_lines_str.find('|')+1:])
-                            for c in range(b+1,num_entities):
-                                if f'{current_db_name}|{entities[c]}' in checked:
+                            num_entities = len((current_entities := tuple(current_entities)))
+                            try: del entity
+                            except NameError: pass
+                            for b in range(num_entities-1):
+                                if f'{current_db_name}|{entities[b]}' in checked:
+                                    checked.remove(f'{current_db_name}|{entities[b]}')
                                     continue
-                                if num_lines == current_line_counters[entities[c]]:
-                                    found_match = True
-                                    if num_lines_ints[0]:
-                                        other_lines = []
-                                        with zf.open(f'{entities[c]}/doc_extracted_text.txt') as tf:
-                                            while True:
-                                                line = tf.readline()
-                                                if not line:
+                                checked.add(f'{current_db_name}|{entities[b]}')
+                                found_duplicates.append([f'{current_db_name}|{entities[b]}'])
+                                current_lines = []
+                                doc_nums = current_line_counters[entities[b]]
+                                if doc_nums[:doc_nums.find('|')] != '0':
+                                    current_lines.append([])
+                                    with zf.open(f'{entities[b]}/doc_extracted_text.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            current_lines[0].append(decodeZipTxtLine(line))
+                                    current_lines[0] = tuple(current_lines[0])
+                                else:
+                                    current_lines.append(None)
+                                if doc_nums[doc_nums.find('|')+1:] != '0':
+                                    current_lines.append([])
+                                    with zf.open(f'{entities[b]}/image_histogram_data.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            current_lines[1].append(decodeZipTxtLine(line))
+                                    current_lines[1] = tuple(current_lines[1])
+                                else:
+                                    current_lines.append(None)
+                                num_lines_str = current_line_counters[entities[b]]
+                                num_lines_ints = (num_lines_str[:num_lines_str.find('|')],num_lines_str[num_lines_str.find('|')+1:])
+                                for c in range(b+1,num_entities):
+                                    if f'{current_db_name}|{entities[c]}' in checked:
+                                        continue
+                                    if num_lines == current_line_counters[entities[c]]:
+                                        duplicate_match = True
+                                        if num_lines_ints[0]:
+                                            other_lines = []
+                                            with zf.open(f'{entities[c]}/doc_extracted_text.txt') as tf:
+                                                while True:
+                                                    line = tf.readline()
+                                                    if not line:
+                                                        break
+                                                    other_lines.append(decodeZipTxtLine(line))
+                                            other_lines = tuple(other_lines)
+                                            for d in range(num_lines_ints[0]):
+                                                if current_lines[0][d] != other_lines[d]:
+                                                    duplicate_match = False
                                                     break
-                                                other_lines.append(decodeZipTxtLine(line))
-                                    if num_lines_ints[1]:
-                                        other_lines.append([])
-                                        with zf.open(f'{entities[c]}/image_histogram_data.txt') as tf:
-                                            while True:
-                                                line = tf.readline()
-                                                if not line:
+                                        if not duplicate_match:
+                                            continue
+                                        if num_lines_ints[1]:
+                                            other_lines = []
+                                            with zf.open(f'{entities[c]}/image_histogram_data.txt') as tf:
+                                                while True:
+                                                    line = tf.readline()
+                                                    if not line:
+                                                        break
+                                                    other_lines.append(decodeZipTxtLine(line))
+                                            other_lines = tuple(other_lines)
+                                            for d in range(num_lines_ints[1]):
+                                                if current_lines[1][d] != other_lines[d]:
+                                                    duplicate_match = False
                                                     break
-                                                other_lines[1].append(decodeZipTxtLine(line))
-                                        other_lines[1] = tuple(other_lines[1])
-                                    if found_match:
-                                        checked.add(f'{current_db_name}|{entities[c]}')
-                                        found_duplicates[-1].append(f'{current_db_name}|{entities[c]}')
-                            for c in range(a+1,num_dbs):
-                                pass
-                            if len(found_duplicates[-1]) == 1:
-                                del found_duplicates[-1]
-                            else:
-                                found_duplicates[-1] = tuple(found_duplicates[-1])
+                                        if duplicate_match:
+                                            checked.add(f'{current_db_name}|{entities[c]}')
+                                            found_duplicates[-1].append(f'{current_db_name}|{entities[c]}')
+                                for c in range(a+1,num_dbs):
+                                    if not (other_db_name := db_names[c]) in line_num_checker[num_lines_str].keys():
+                                        continue
+                                    other_entities = []
+                                    with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
+                                        with zf2.open('_metadata.txt') as tf:
+                                            while True:
+                                                other_entity = tf.readline()
+                                                if not other_entity:
+                                                    break
+                                                other_entity = decodeZipTxtLine(other_entity).split('|')
+                                                if other_entity[1] == 'DOC':
+                                                    if num_lines_str == f'{other_entity[5]}|{other_entity[6]}':
+                                                        if not f'{other_db_name}|{other_entity[0]}' in checked:
+                                                            other_entities.append(other_entity[0])
+                                        try: del other_entity
+                                        except NameError: pass
+                                        for other_entity in (other_entities := tuple(other_entities)):
+                                            duplicate_match = True
+                                            if num_lines_ints[0]:
+                                                other_lines = []
+                                                with zf2.open(f'{other_entity}/doc_extracted_text.txt') as tf:
+                                                    while True:
+                                                        line = tf.readline()
+                                                        if not line:
+                                                            break
+                                                        other_lines.append(decodeZipTxtLine(line))
+                                                other_lines = tuple(other_lines)
+                                                for d in range(num_lines_ints[0]):
+                                                    if current_lines[0][d] != other_lines[d]:
+                                                        duplicate_match = False
+                                                        break
+                                            if not duplicate_match:
+                                                continue
+                                            if num_lines_ints[1]:
+                                                other_lines = []
+                                                with zf2.open(f'{other_entity}/image_histogram_data.txt') as tf:
+                                                    while True:
+                                                        line = tf.readline()
+                                                        if not line:
+                                                            break
+                                                        other_lines.append(decodeZipTxtLine(line))
+                                                other_lines = tuple(other_lines)
+                                                for d in range(num_lines_ints[1]):
+                                                    if current_lines[0][d] != other_lines[d]:
+                                                        duplicate_match = False
+                                                        break
+                                            if duplicate_match:
+                                                found_duplicates[-1].append(f'{other_db_name}|{other_entity}')
+                                                checked.add(f'{other_db_name}|{other_entity}')
+                                if len(found_duplicates[-1]) == 1:
+                                    del found_duplicates[-1]
+                                else:
+                                    found_duplicates[-1] = tuple(found_duplicates[-1])
+                                for item in tuple(checked):
+                                    if item.startswith(f"{current_db_name}|"):
+                                        checked.remove(item)
                 case 'shp':
                     # This enables greater redundancy reduction.
                     db_names = []
@@ -3723,12 +3965,12 @@ class ChloeAI:
                                         continue
                                     if current_line_count == current_line_counters[current_entities[c]]:
                                         other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_shp_files/{current_entities[c]}.txt').readlines())])
-                                        found_match = True
+                                        duplicate_match = True
                                         for d in range(int(current_line_count)):
                                             if current_lines[d] != other_lines[d]:
-                                                found_match = False
+                                                duplicate_match = False
                                                 break
-                                        if found_match:
+                                        if duplicate_match:
                                             checked.add(f'{current_db_name}|{current_entities[c]}')
                                             found_duplicates[-1].append(f'{current_db_name}|{current_entities[c]}')
                                 for c in range(a+1,num_dbs):
@@ -3748,13 +3990,13 @@ class ChloeAI:
                                                         if not f'{other_db_name}|{other_db_name[0]}' in checked:
                                                             other_entities.append(other_entity[0])
                                     for other_entity in (other_entities := tuple(other_entities)):
-                                        found_match = True
+                                        duplicate_match = True
                                         other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f'_shp_files/{other_entity}').readlines())])
                                         for d in range(int(current_line_count)):
                                             if current_lines[d] != other_lines[d]:
-                                                found_match = False
+                                                duplicate_match = False
                                                 break
-                                        if found_match:
+                                        if duplicate_match:
                                             checked.add(f'{other_db_name}|{other_entity}')
                                             found_duplicates[-1].append(f'{other_db_name}|{other_entity}')
                             if len(found_duplicates[-1]) == 1:
@@ -3796,7 +4038,578 @@ class ChloeAI:
                         return ()
                     return None
         elif isinstance(check_type,(tuple,list,set)):
-            pass
+            temp_check_type = tuple(check_type)
+            valid_check_types = {'IMG','TXT','PDF','DOC','SHP','GDB'}
+            check_type = []
+            for n in range(len(temp_check_type)):
+                if (temp_str := check_type[n].upper().strip()) in valid_check_types:
+                    check_type.append(temp_str)
+            try: del temp_str
+            except NameError: pass
+            del valid_check_types ; del temp_check_type
+            if not len((check_type := tuple(check_type))):
+                if return_tuple:
+                    return ()
+                return None
+            # This enables greater redundancy reduction.
+            type_checker = {"TXT":set(),"IMG":set(),"SHP":set(),"DOC":set(),"PDF":set(),"GDB":set()}
+            db_names = set()
+            for db_name in tuple(self.used_names):
+                with ZipFile(f"{self.db_path}/{db_name}.zip") as zf:
+                    if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]):
+                        with zf.open('_metadata.txt') as tf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = decodeZipTxtLine(line).split('|')
+                                if line[1] in check_type:
+                                    relevant_db_names.add(db_name)
+                                    type_checker[line[1]].add(db_name)
+                        try: del line
+                        except NameError: pass
+                        metadata_files.remove('_metadata.txt')
+                    if len(metadata_files):
+                        if 'GDB' in check_type:
+                            relevant_db_names.add(db_name)
+                            type_checker['GDB'].add(db_name)
+            try: del metadata_files
+            except NameError: pass
+            for entity_type in tuple(type_checker.keys()):
+                if not entity_type in check_type:
+                    del type_checker[entity_type]
+            if not len(tuple(type_checker.keys())):
+                if return_tuple:
+                    return ()
+                return None
+            num_dbs = len((db_names := tuple(db_names)))
+            if tqdm_imported:
+                if terminal_progress_display_enabled:
+                    sys_clear()
+                iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, desc = f"Checking for duplicates in {self.database_name}")
+            else:
+                iterator = range(num_dbs-1)
+            # This enables even greater redundancy reduction.
+            line_num_checker = {}
+            for db_name in db_names:
+                with ZipFile(f"{self.db_path}/{db_name}.zip") as zf:
+                    if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]):
+                        with zf.open('_metadata.txt') as tf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = decodeZipTxtLine(line).split('|')
+                                if line[1] in check_type:
+                                    if line[1] in ('PDF','DOC'):
+                                        if not f'{line[5]}|{line[6]}|{line[1]}' in line_num_checker.keys():
+                                            line_num_checker[f'{line[5]}|{line[6]}|{line[1]}'] = {db_name}
+                                        else:
+                                            line_num_checker[f'{line[5]}|{line[6]}|{line[1]}'].add(db_name)
+                                    else:
+                                        if not f"{line[5]}|{line[1]}" in line_num_checker.keys():
+                                            line_num_checker[f"{line[5]}|{line[1]}"] = {db_name}
+                                        else:
+                                            line_num_checker[f"{line[5]}|{line[1]}"].add(db_name)
+                        try: del line
+                        except NameError: pass
+                        metadata_files.remove('_metadata.txt')
+                    if 'GDB' in check_type:
+                        for metadata_file in (metadata_files := tuple(metadata_files)):
+                            if (num_id := "|".join([gdb_item[gdb_item.rfind(" ")+1:] for gdb_item in tuple(decodeZipTxtLine(zf.open(metadata_file).readline()).split('|'))])) in line_num_checker.keys():
+                                line_num_checker[num_id].add(db_name)
+                            else:
+                                line_num_checker[num_id] = {db_name}
+            for a in iterator:
+                current_db_name = db_names[a]
+                current_entities = {}
+                img_firstlines = {}
+                with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
+                    if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith("_metadata.txt")]):
+                        with zf.open("_metadata.txt") as tf:
+                            while True:
+                                entity = tf.readline()
+                                if not entity:
+                                    break
+                                entity = decodeZipTxtLine(entity).split('|')
+                                if f'{current_db_name}|{entity[0]}' in checked:
+                                    checked.remove(f'{current_db_name}|{entity[0]}')
+                                    continue
+                                if entity[1] in check_type:
+                                    if entity[1] in current_entities.keys():
+                                        if entity[1] in ('PDF','DOC'):
+                                            if f'{entity[5]}|{entity[6]}' in current_entities[entity[1]].keys():
+                                                current_entities[entity[1]][f'{entity[5]}|{entity[6]}'].append(entity[0])
+                                            else:
+                                                current_entities[entity[1]] = {f'{entity[5]}|{entity[6]}':[entity[0]]}
+                                        elif entity[5] in current_entities[entity[1]].keys():
+                                            current_entities[entity[1]][entity[5]].append(entity[0])
+                                        else:
+                                            current_entities[entity[1]] = {entity[5]:[entity[0]]}
+                                    elif entity[1] in ('PDF','DOC'):
+                                        current_entities[entity[1]] = {f'{entity[5]}|{entity[6]}':[entity[0]]}
+                                    else:
+                                        current_entities[entity[1]] = {entity[5]:[entity[0]]}
+                        metadata_files.remove('_metadata.txt')
+                    if 'GDB' in check_type:
+                        if len((metadata_files := tuple(metadata_files))):
+                            current_entities['GDB'] = {}
+                            for metadata_file in metadata_files:
+                                current_entities['GDB'][metadata_file[:metadata_file.rfind('_')]] = {item[:item.rfind(" ")] : item[item.rfind(' ')+1:] for item in decodeZipTxtLine(zf.open(metadata_file).readline()).split('|')}
+                    if 'IMG' in current_entities.keys():
+                        with zf.open('_firstline_image_files.txt') as tf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = decodeZipTxtLine(line)
+                                img_firstlines[line[:line.rfind(' ')]] = line[line.rfind(' ')+1:]
+                    try: del metadata_files
+                    except NameError: pass
+                    for current_entity_type in tuple(current_entities.keys()):
+                        if current_entity_type == 'GDB':
+                            num_current_gdbs = len((current_gdbs := tuple(current_entities[current_entity_type].keys())))
+                            for b in range(num_current_gdbs-1):
+                                if f"{current_db_name}|{current_gdbs[b]}" in checked:
+                                    checked.remove(f'{current_db_name}|{current_gdbs[b]}')
+                                    continue
+                                current_gdb_num_id = '|'.join([current_entities[current_entity_type][current_gdbs[b]][gdb_item] for gdb_item in tuple(current_entities[current_entity_type][current_gdbs[b]].keys())])
+                                current_gdb_name_id = '|'.join([gdb_item for gdb_item in tuple(current_entities[current_entity_type][current_gdbs[b]].keys())])
+                                found_duplicates.append([f'{current_db_name}|{current_gdbs[b]}'])
+                                checked.add(f'{current_db_name}|{current_gdbs[b]}')
+                                for c in range(b+1,num_current_gdbs):
+                                    if f'{current_db_name}|{current_gdbs[c]}' in checked or current_gdb_num_id != '|'.join([current_entities[current_entity_type][current_gdbs[c]][gdb_item] for gdb_item in tuple(current_entities[current_entity_type][current_gdbs[c]].keys())]) or current_gdb_name_id != '|'.join([gdb_item for gdb_item in tuple(current_entities[current_entity_type][current_gdbs[c]].keys())]):
+                                        continue
+                                    duplicate_match = True
+                                    for gdb_item in tuple(current_gdb_name_id.split('|')):
+                                        current_lines = []
+                                        with zf.open(f"{current_gdbs[b]}/{gdb_item}.txt") as tf:
+                                            while True:
+                                                line = tf.readline()
+                                                if not line:
+                                                    break
+                                                current_lines.append(decodeZipTxtLine(line))
+                                        num_lines = len((current_lines := tuple(current_lines)))
+                                        other_lines = []
+                                        with zf.open(f"{current_gdbs[c]}/{gdb_item}.txt") as tf:
+                                            while True:
+                                                line = tf.readline()
+                                                if not line:
+                                                    break
+                                                other_lines.append(decodeZipTxtLine(line))
+                                        try: del line
+                                        except NameError: pass
+                                        other_lines = tuple(other_lines)
+                                        for d in range(num_lines):
+                                            if current_lines[d] != other_lines[d]:
+                                                duplicate_match = False
+                                                break
+                                    if duplicate_match:
+                                        found_duplicates[-1].append(f'{current_db_name}|{current_gdbs[c]}')
+                                        checked.add(f'{current_db_name}|{current_gdbs[c]}')
+                                for c in range(a+1,num_dbs):
+                                    if not (other_db_name := db_names[c]) in type_checker['GDB'] or not other_db_name in line_num_checker[current_gdb_num_id]:
+                                        continue
+                                    other_entities = {}
+                                    with ZipFile(f"{self.db_path}/{other_db_name}.zip") as zf2:
+                                        if '_metadata.txt' in (metadata_files := [item for item in tuple(zf2.namelist()) if not '/' in item and item.endswith("_metadata.txt")]):
+                                            metadata_files.remove('_metadata.txt')
+                                        if len((metadata_files := tuple(metadata_files))):
+                                            for metadata_file in metadata_files:
+                                                current_gdb = metadata_file[:metadata_file.rfind('_')]
+                                                if not f'{other_db_name}|{current_gdb}' in checked:
+                                                    other_entities[current_gdb] = {item[:item.rfind(" ")] : item[item.rfind(" ")+1:] for item in decodeZipTxtLine(zf2.open(metadata_file).readline()).split('|')}
+                                    try: del metadata_files
+                                    except NameError: pass
+                                    try: del current_gdb
+                                    except NameError: pass
+                                    for other_entity in tuple(other_entities.keys()):
+                                        other_gdb_num_id = '|'.join([other_entities[other_entity][item] for item in other_entities[other_entity].keys()])
+                                        other_gdb_name_id = '|'.join([item for item in other_entities[other_entity].keys()])
+                                        if other_gdb_num_id == current_gdb_num_id and other_gdb_name_id == current_gdb_name_id:
+                                            duplicate_match = True
+                                            for gdb_item in tuple(other_gdb_name_id.split('|')):
+                                                current_lines = []
+                                                with zf.open(f'{current_gdbs[b]}/{gdb_item}.txt') as tf:
+                                                    while True:
+                                                        line = tf.readline()
+                                                        if not line:
+                                                            break
+                                                        current_lines.append(line)
+                                                num_lines = len((current_lines := tuple(current_lines)))
+                                                other_lines = []
+                                                with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
+                                                    with zf2.open(f'{other_entity}/{gdb_item}.txt') as tf:
+                                                        while True:
+                                                            line = tf.readline()
+                                                            if not line:
+                                                                break
+                                                            other_lines.append(line)
+                                                other_lines = tuple(other_lines)
+                                                for d in range(num_lines):
+                                                    if current_lines[d] != other_lines[d]:
+                                                        duplicate_match = False
+                                                        break
+                                                if not duplicate_match:
+                                                    break
+                                            if duplicate_match:
+                                                found_duplicates[-1].append(f'{other_db_name}|{other_entity}')
+                                                checked.add(f'{other_db_name}|{other_entity}')
+                                if len(found_duplicates[-1]) == 1:
+                                    del found_duplicates[-1]
+                                else:
+                                    found_duplicates[-1] = tuple(found_duplicates[-1])
+                                for type_shorthand in type_checker.keys():
+                                    if current_db_name in type_checker[type_shorthand]:
+                                        type_checker[type_shorthand].remove(current_db_name)
+                            continue
+                        nums = tuple(current_entities[current_entity_type].keys())
+                        for b in range(len(nums)):
+                            num_items = len((items := tuple(current_entities[current_entity_type][nums[b]])))
+                            for c in range(num_items-1):
+                                if f'{current_db_name}|{items[c]}' in checked:
+                                    checked.remove(f'{current_db_name}|{items[c]}')
+                                    continue
+                                found_duplicates.append([f'{current_db_name}|{items[c]}'])
+                                checked.add(f'{current_db_name}|{items[c]}')
+                                match current_entity_type:
+                                    case 'TXT':
+                                        current_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_txt_files/{items[c]}.txt').readlines())])
+                                        current_line_count = int(nums[b])
+                                        for d in range(c+1,num_items):
+                                            if f'{current_db_name}|{items[d]}' in checked:
+                                                checked.remove(f'{current_db_name}|{items[d]}')
+                                                continue
+                                            other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_txt_files/{items[d]}.txt').readlines())])
+                                            duplicate_match = True
+                                            for e in range(current_line_count):
+                                                if current_lines[e] != other_lines[e]:
+                                                    duplicate_match = False
+                                                    break
+                                            del other_lines
+                                            if duplicate_match:
+                                                found_duplicates[-1].append(f'{current_db_name}|{items[d]}')
+                                                checked.add(f'{current_db_name}|{items[d]}')
+                                            for e in range(a+1,num_dbs):
+                                                relevant_entities = []
+                                                if not (other_db_name := db_names[e]) in type_checker['TXT'] or not other_db_name in line_num_checker[f'{current_line_count}|TXT']:
+                                                    continue
+                                                line_num_checker[f'{current_line_count}|TXT'].remove(other_db_name)
+                                                with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
+                                                    if not '_metadata.txt' in set(zf2.namelist()):
+                                                        continue
+                                                    with zf2.open('_metadata.txt') as tf:
+                                                        while True:
+                                                            line = tf.readline()
+                                                            if not line:
+                                                                break
+                                                            line = tuple(decodeZipTxtLine(line).split('|'))
+                                                            if line[1] == 'TXT':
+                                                                if int(line[5]) == current_line_count:
+                                                                    if not f"{other_db_name}|{line[0]}" in checked:
+                                                                        relevant_entities.append(line[0])
+                                                    for relevant_entity in (relevant_entities := tuple(relevant_entities)):
+                                                        other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f'_txt_files/{relevant_entity}.txt').readlines())])
+                                                        duplicate_match = True
+                                                        for f in range(current_line_count):
+                                                            if current_lines[f] != other_lines[f]:
+                                                                duplicate_match = False
+                                                                break
+                                                        del other_lines
+                                                        if duplicate_match:
+                                                            found_duplicates[-1].append(f'{other_db_name}|{relevant_entity}')
+                                                            checked.add(f'{other_db_name}|{relevant_entity}')
+                                    case 'IMG':
+                                        current_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_images/{items[c]}.txt').readlines())])
+                                        current_line_count = int(nums[b])
+                                        current_firstline = img_firstlines[items[c]]
+                                        for d in range(c+1,num_items):
+                                            if current_firstline != img_firstlines[items[d]]:
+                                                continue
+                                            other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_images/{items[d]}.txt').readlines())])
+                                            duplicate_match = True
+                                            for e in range(current_line_count):
+                                                if current_lines[e] != other_lines[e]:
+                                                    duplicate_match = False
+                                                    break
+                                            del other_lines
+                                            if duplicate_match:
+                                                found_duplicates[-1].append(f'{current_db_name}|{items[d]}')
+                                                checked.add(f'{current_db_name}|{items[d]}')
+                                            for e in range(a+1,num_dbs):
+                                                relevant_entities = []
+                                                if not (other_db_name := db_names[e]) in type_checker['IMG'] or not other_db_name in line_num_checker[f'{current_line_count}|IMG']:
+                                                    continue
+                                                line_num_checker[f'{current_line_count}|IMG'].remove(other_db_name)
+                                                other_img_firstlines = {}
+                                                with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
+                                                    if not '_metadata.txt' in set(zf2.namelist()):
+                                                        continue
+                                                    with zf2.open('_firstline_image_files.txt') as tf:
+                                                        while True:
+                                                            line = tf.readline()
+                                                            if not line:
+                                                                break
+                                                            line = decodeZipTxtLine(line)
+                                                            other_img_firstlines[line[:line.rfind(' ')]] = line[line.rfind(' ')+1:]
+                                                    with zf2.open('_metadata.txt') as tf:
+                                                        while True:
+                                                            line = tf.readline()
+                                                            if not line:
+                                                                break
+                                                            line = tuple(decodeZipTxtLine(line).split('|'))
+                                                            if line[1] == 'IMG':
+                                                                if other_img_firstlines[line[0]] == current_firstline:
+                                                                    if int(line[5]) == current_line_count:
+                                                                        if not f"{other_db_name}|{line[0]}" in checked:
+                                                                            relevant_entities.append(line[0])
+                                                    try: del other_img_firstlines
+                                                    except NameError: pass
+                                                    for relevant_entity in (relevant_entities := tuple(relevant_entities)):
+                                                        other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f'_images/{relevant_entity}.txt').readlines())])
+                                                        duplicate_match = True
+                                                        for f in range(current_line_count):
+                                                            if current_lines[f] != other_lines[f]:
+                                                                duplicate_match = False
+                                                                break
+                                                        del other_lines
+                                                        if duplicate_match:
+                                                            found_duplicates[-1].append(f'{other_db_name}|{relevant_entity}')
+                                                            checked.add(f'{other_db_name}|{relevant_entity}')
+                                    case 'SHP':
+                                        current_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_shp_files/{items[c]}.txt').readlines())])
+                                        current_line_count = int(nums[b])
+                                        for d in range(c+1,num_items):
+                                            if f'{current_db_name}|{items[d]}' in checked:
+                                                checked.remove(f'{current_db_name}|{items[d]}')
+                                                continue
+                                            other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_shp_files/{items[d]}.txt').readlines())])
+                                            duplicate_match = True
+                                            for e in range(current_line_count):
+                                                if current_lines[e] != other_lines[e]:
+                                                    duplicate_match = False
+                                                    break
+                                            del other_lines
+                                            if duplicate_match:
+                                                found_duplicates[-1].append(f'{current_db_name}|{items[d]}')
+                                                checked.add(f'{current_db_name}|{items[d]}')
+                                            for e in range(a+1,num_dbs):
+                                                relevant_entities = []
+                                                if not (other_db_name := db_names[e]) in type_checker['SHP'] or not other_db_name in line_num_checker[f'{current_line_count}|SHP']:
+                                                    continue
+                                                line_num_checker[f'{current_line_count}|SHP'].remove(other_db_name)
+                                                with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
+                                                    if not '_metadata.txt' in set(zf2.namelist()):
+                                                        continue
+                                                    with zf2.open('_metadata.txt') as tf:
+                                                        while True:
+                                                            line = tf.readline()
+                                                            if not line:
+                                                                break
+                                                            line = tuple(decodeZipTxtLine(line).split('|'))
+                                                            if line[1] == 'SHP':
+                                                                if int(line[5]) == current_line_count:
+                                                                    if not f"{other_db_name}|{line[0]}" in checked:
+                                                                        relevant_entities.append(line[0])
+                                                    for relevant_entity in (relevant_entities := tuple(relevant_entities)):
+                                                        other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f'_shp_files/{relevant_entity}.txt').readlines())])
+                                                        duplicate_match = True
+                                                        for f in range(current_line_count):
+                                                            if current_lines[f] != other_lines[f]:
+                                                                duplicate_match = False
+                                                                break
+                                                        del other_lines
+                                                        if duplicate_match:
+                                                            found_duplicates[-1].append(f'{other_db_name}|{relevant_entity}')
+                                                            checked.add(f'{other_db_name}|{relevant_entity}')
+                                    case 'DOC':
+                                        current_lines = []
+                                        current_line_count = []
+                                        if nums[b][:nums[b].find('|')] == '0':
+                                            current_lines.append(None)
+                                            current_line_count.append(0)
+                                        else:
+                                            current_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{items[c]}/doc_extracted_text.txt').readlines())]))
+                                            current_line_count.append(len(current_lines[0]))
+                                        if nums[b][nums[b].find('|')+1:] == '0':
+                                            current_lines.append(None)
+                                            current_line_count.append(0)
+                                        else:
+                                            current_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{items[c]}/image_histogram_data.txt').readlines())]))
+                                            current_line_count.append(len(current_lines[1]))
+                                        if current_line_count[0] == 0 and current_line_count[1] == 0:
+                                            continue
+                                        current_lines = tuple(current_lines)
+                                        current_line_count = tuple(current_line_count)
+                                        for d in range(c+1,num_items):
+                                            if f'{current_db_name}|{items[d]}' in checked:
+                                                checked.remove(f'{current_db_name}|{items[d]}')
+                                                continue
+                                            other_lines = []
+                                            other_line_count = []
+                                            if nums[b][:nums[b].find('|')] == '0':
+                                                other_lines.append(None)
+                                                other_line_count.append(0)
+                                            else:
+                                                other_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{items[c]}/doc_extracted_text.txt').readlines())]))
+                                                other_line_count.append(len(other_lines[0]))
+                                            if nums[b][nums[b].find('|')+1:] == '0':
+                                                other_lines.append(None)
+                                                other_line_count.append(0)
+                                            else:
+                                                other_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{items[c]}/image_histogram_data.txt').readlines())]))
+                                                other_line_count.append(len(other_lines[1]))
+                                            duplicate_match = True
+                                            for e in range(current_line_count[0]):
+                                                if current_lines[0][e] != other_lines[0][e]:
+                                                    duplicate_match = False
+                                                    break
+                                            if duplicate_match:
+                                                for e in range(current_line_count[1]):
+                                                    if current_lines[1][e] != other_lines[1][e]:
+                                                        duplicate_match = False
+                                                        break
+                                                if duplicate_match:
+                                                    found_duplicates[-1].append(f'{current_db_name}|{items[d]}')
+                                                    checked.add(f'{current_db_name}|{items[d]}')
+                                            for e in range(a+1,num_dbs):
+                                                relevant_entities = []
+                                                if not (other_db_name := db_names[e]) in type_checker['DOC'] or not other_db_name in line_num_checker[f'{current_line_count[0]}|{current_line_count[1]}|DOC']:
+                                                    continue
+                                                line_num_checker[f'{current_line_count[0]}|{current_line_count[1]}|DOC'].remove(other_db_name)
+                                                with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
+                                                    if not '_metadata.txt' in set(zf2.namelist()):
+                                                        continue
+                                                    with zf2.open('_metadata.txt') as tf:
+                                                        while True:
+                                                            line = tf.readline()
+                                                            if not line:
+                                                                break
+                                                            line = tuple(decodeZipTxtLine(line).split('|'))
+                                                            if line[1] == 'DOC':
+                                                                if f"{line[5]}|{line[6]}" == f"{current_line_count[0]}|{current_line_count[1]}":
+                                                                    if not f"{other_db_name}|{line[0]}" in checked:
+                                                                        relevant_entities.append(line[0])
+                                                    for relevant_entity in (relevant_entities := tuple(relevant_entities)):
+                                                        duplicate_match = True
+                                                        if current_line_count[0]:
+                                                            other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f"{relevant_entity}/doc_extracted_text.txt").readlines())])
+                                                            for f in range(current_line_count[0]):
+                                                                if current_lines[0][f] != other_lines[f]:
+                                                                    duplicate_match = False
+                                                                    break
+                                                        if not duplicate_match:
+                                                            continue
+                                                        if current_line_count[1]:
+                                                            other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f"{relevant_entity}/image_histogram_data.txt").readlines())])
+                                                            for f in range(current_line_count[1]):
+                                                                if current_lines[1][f] != other_lines[f]:
+                                                                    duplicate_match = False
+                                                                    break
+                                                        if duplicate_match:
+                                                            found_duplicates[-1].append(f'{other_db_name}|{relevant_entity}')
+                                                            checked.add(f'{other_db_name}|{relevant_entity}')
+                                    case 'PDF':
+                                        current_lines = []
+                                        current_line_count = []
+                                        if nums[b][:nums[b].find('|')] == '0':
+                                            current_lines.append(None)
+                                            current_line_count.append(0)
+                                        else:
+                                            current_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{items[c]}/pdf_extracted_text.txt').readlines())]))
+                                            current_line_count.append(len(current_lines[0]))
+                                        if nums[b][nums[b].find('|')+1:] == '0':
+                                            current_lines.append(None)
+                                            current_line_count.append(0)
+                                        else:
+                                            current_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{items[c]}/image_histogram_data.txt').readlines())]))
+                                            current_line_count.append(len(current_lines[1]))
+                                        if current_line_count[0] == 0 and current_line_count[1] == 0:
+                                            continue
+                                        current_lines = tuple(current_lines)
+                                        current_line_count = tuple(current_line_count)
+                                        for d in range(c+1,num_items):
+                                            if f'{current_db_name}|{items[d]}' in checked:
+                                                checked.remove(f'{current_db_name}|{items[d]}')
+                                                continue
+                                            other_lines = []
+                                            other_line_count = []
+                                            if nums[b][:nums[b].find('|')] == '0':
+                                                other_lines.append(None)
+                                                other_line_count.append(0)
+                                            else:
+                                                other_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{items[c]}/pdf_extracted_text.txt').readlines())]))
+                                                other_line_count.append(len(other_lines[0]))
+                                            if nums[b][nums[b].find('|')+1:] == '0':
+                                                other_lines.append(None)
+                                                other_line_count.append(0)
+                                            else:
+                                                other_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{items[c]}/image_histogram_data.txt').readlines())]))
+                                                other_line_count.append(len(other_lines[1]))
+                                            duplicate_match = True
+                                            for e in range(current_line_count[0]):
+                                                if current_lines[0][e] != other_lines[0][e]:
+                                                    duplicate_match = False
+                                                    break
+                                            if duplicate_match:
+                                                for e in range(current_line_count[1]):
+                                                    if current_lines[1][e] != other_lines[1][e]:
+                                                        duplicate_match = False
+                                                        break
+                                                if duplicate_match:
+                                                    found_duplicates[-1].append(f'{current_db_name}|{items[d]}')
+                                                    checked.add(f'{current_db_name}|{items[d]}')
+                                            for e in range(a+1,num_dbs):
+                                                relevant_entities = []
+                                                if not (other_db_name := db_names[e]) in type_checker['PDF'] or not other_db_name in line_num_checker[f'{current_line_count[0]}|{current_line_count[1]}|PDF']:
+                                                    continue
+                                                line_num_checker[f'{current_line_count[0]}|{current_line_count[1]}|PDF'].remove(other_db_name)
+                                                with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
+                                                    if not '_metadata.txt' in set(zf2.namelist()):
+                                                        continue
+                                                    with zf2.open('_metadata.txt') as tf:
+                                                        while True:
+                                                            line = tf.readline()
+                                                            if not line:
+                                                                break
+                                                            line = tuple(decodeZipTxtLine(line).split('|'))
+                                                            if line[1] == 'PDF':
+                                                                if f"{line[5]}|{line[6]}" == f"{current_line_count[0]}|{current_line_count[1]}":
+                                                                    if not f"{other_db_name}|{line[0]}" in checked:
+                                                                        relevant_entities.append(line[0])
+                                                    for relevant_entity in (relevant_entities := tuple(relevant_entities)):
+                                                        duplicate_match = True
+                                                        if current_line_count[0]:
+                                                            other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f"{relevant_entity}/pdf_extracted_text.txt").readlines())])
+                                                            for f in range(current_line_count[0]):
+                                                                if current_lines[0][f] != other_lines[f]:
+                                                                    duplicate_match = False
+                                                                    break
+                                                        if not duplicate_match:
+                                                            continue
+                                                        if current_line_count[1]:
+                                                            other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f"{relevant_entity}/image_histogram_data.txt").readlines())])
+                                                            for f in range(current_line_count[1]):
+                                                                if current_lines[1][f] != other_lines[f]:
+                                                                    duplicate_match = False
+                                                                    break
+                                                        if duplicate_match:
+                                                            found_duplicates[-1].append(f'{other_db_name}|{relevant_entity}')
+                                                            checked.add(f'{other_db_name}|{relevant_entity}')
+                                    case _:
+                                        if return_tuple:
+                                            return ()
+                                        return None
+                                if len(found_duplicates[-1]) == 1:
+                                    del found_duplicates[-1]
+                                else:
+                                    found_duplicates[-1] = tuple(found_duplicates[-1])
+                                for type_shorthand in type_checker.keys():
+                                    if current_db_name in type_checker[type_shorthand]:
+                                        type_checker[type_shorthand].remove(current_db_name)
+                    for item in tuple(checked):
+                        if item.startswith(f"{current_db_name}|"):
+                            checked.remove(item)
         else:
             if return_tuple:
                 return ()
@@ -3811,7 +4624,10 @@ class ChloeAI:
                 for x in range(len(found_duplicates[n])):
                     found_duplicates[n][x] = "%s\\%s.%s" % (self.path_pointer[found_duplicates[n][x][:found_duplicates[n][x].find("|")]].replace('/','\\'),found_duplicates[n][x][found_duplicates[n][x].find("|")+1:found_duplicates[n][x].rfind("_")],found_duplicates[n][x][found_duplicates[n][x].rfind("_")+1:])
                 found_duplicates[n] = tuple(found_duplicates[n])
+            ##
             return tuple(found_duplicates)
+
+        ##
 
         return None
 
