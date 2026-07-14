@@ -23,7 +23,7 @@ from chloeFelina import cat
 felia = cat.CholeAI()
 ```
 
-Having ChloeAI without parameters will automatically create a database folder in the current user's Documents folder called "datenaro". If you want to specify where database will be and/or the name, you can input them in parameters.
+Having _ChloeAI_ without parameters will automatically create a database folder in the current user's Documents folder called "datenaro". If you want to specify where database will be and/or the name, you can input them in parameters.
 
 ```python
 from chloeFelina import cat
@@ -35,16 +35,28 @@ The main feature of Chloe Felina at the moment is: finding items with a specifie
 
 It is extremely recommended to install the following modules via pip to get the most out of Chloe Felina:
 
-- pillow (handles image files)
-- openpyxl (allows creating outputs as Excel files)
-- docx (handles Word files)
-- docx2python (mainly helps with reading .doc files)
-- pypdf (handles PDFs)
-- win32api (required to utilize the full functionality of chloeFelina.cat.ChloeAI.updateAndRefreshArchive)
-- tqdm (for optional display of progress)
+- _pillow_ (handles image files)
+- _openpyxl_ (allows creating outputs as Excel files)
+- _docx_ (handles Word files)
+- _docx2python_ (mainly helps with reading .doc files)
+- _pypdf_ (handles PDFs)
+- _win32api_ (required to utilize the full functionality of _chloeFelina.cat.ChloeAI.updateAndRefreshArchive_)
+- _tqdm_ (for optional display of progress)
 
 ```
 pip install pillow openpyxl docx docx2python pypdf pywin32 tqdm
 ```
+
+**Note**: The only version requirements for these modules and their dependencies are compatibility with CPython 3.11+.
+
+In order to apply and/or check for updates to the modules use the following template without quotations: "pip install <module_name> --upgrade". For example, in order to apply and/or check any updates for the _pillow_ module, use the following:
+
+```
+pip install pillow --upgrade
+```
+
+In order to better understand how to utilize Chloe Felina, please read and consult the Parameters_Guide.md file included with Chloe Felina.
+
+***
 
 Made in loving dedication and memory to my precious feline pet, friend, and family member: Chloe Link.
