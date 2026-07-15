@@ -49,10 +49,10 @@ pip install pillow openpyxl docx docx2python pypdf pywin32 tqdm
 
 **Note**: The only version requirements for these modules and their dependencies are compatibility with CPython 3.11+.
 
-In order to apply and/or check for updates to the modules use the following template without quotations: "pip install <module_name> --upgrade". For example, in order to apply and/or check any updates for the _pillow_ module, use the following:
+In order to apply and/or check for updates to the prior listed modules, use the following command for pip:
 
 ```
-pip install pillow --upgrade
+pip install pillow openpyxl docx docx2python pypdf pywin32 tqdm --upgrade
 ```
 
 In order to better understand how to utilize Chloe Felina, please read and consult the Parameters_Guide.md file included with Chloe Felina.
