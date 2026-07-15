@@ -78,7 +78,7 @@ from secrets import choice
 
 # Custom Python Modules
 from chloeFelina.purr import isQueryMatchKether,isQueryMatchBinah,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName,decodeZipTxtLine,getTxtFileLines
-from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,genSearchQueryResultFile,forbidden_dirs,backupGen
+from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,genSearchQueryResultFile,forbidden_dirs,backupGen,genDuplicateFinderResultFile
 from chloeFelina.paxium import encrypt as pax_encrypt
 from chloeFelina.paxium import decrypt as pax_decrypt
 from chloeFelina import _audio_file_pointer
@@ -4704,7 +4704,7 @@ class ChloeAI:
                 found_duplicates[n] = tuple(found_duplicates[n])
             found_duplicates = tuple(found_duplicates)
             if save_results_to_file:
-                genSearchQueryResultFile(found_duplicates,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
+                genDuplicateFinderResultFile(found_duplicates,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
             if return_tuple:
                 return found_duplicates
 
