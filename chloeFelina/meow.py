@@ -120,7 +120,7 @@ def determineEntityType(entity_path : str) -> str | None:
     else:
         return None
 
-def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, csv_quotechar : str, csv_quoting_minimal : int, csv_newline : str, overwriteOutput : bool) -> None:
+def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, csv_quotechar : str, csv_quoting_minimal : int, csv_newline : str, overwriteOutput : bool, return_results_path_str : bool) -> None | str:
 
     csv.field_size_limit(csv_field_size_limit)
 
@@ -137,11 +137,11 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
         output_location = output_location.replace('\\','/')
 
     if output_type in ('excel','xlsx'):
-        output_suffix = '.xlsx'
+        output_suffix = 'cf_duplicate_findings.xlsx'
     elif output_type == 'csv':
-        output_suffix = '.csv'
+        output_suffix = 'cf_duplicate_findings.csv'
     else:
-        output_suffix = '.txt'
+        output_suffix = 'cf_duplicate_findings.txt'
 
     if output_name in (None,'') or not isinstance(output_name,str):
         output_name = randstr()
