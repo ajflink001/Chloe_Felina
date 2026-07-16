@@ -46,7 +46,7 @@ gdb - Esri File Geodatabase (.gdb)
 
 
 
-img - Image files (So far, .tif, .tiff, .jpeg, .jpg, .png, and/or .webp)
+img - Image files (So far, .tif, .tiff, .jpeg, .jpg, .png, .dib, .jp2, .j2k, .jpx, .pcx, .tga, .xbm and/or .webp)
 
 
 
@@ -184,7 +184,7 @@ Parameters:
 
 
 
-Purpose: This is dynamic term searching system that scans the database for matches to an inputted term or phrase and can output the results as an organized Excel, text, or CSV file and/or return a tuple. Search results by default are saved for future searches for faster results as well as shortcutting the need to check the entirety of the database. For example, if "plagioclase" was already searched and the user inputs "plagioclase feldspar" into **ChloeAI.searchQuery**, only the saved results for "plagioclase" will be checked for any instance of "plagioclase feldspar" existing within said search results instead of the whole database. The only downside of this system is that there is no association between plural and singular versions of terms. So, "station" and "stations" are not considered to be the same thing by the system. This downside is only present due to allowing for any specified strings of characters being allowed to be searched for. So, having code in place to connect the search results of "station" with "stations" would be unnecessary.
+Purpose: This is dynamic term searching system that scans the database for matches to an inputted term or phrase and can output the results as an organized Excel, text, or CSV file and/or return a tuple. Search results by default are saved for future searches for faster results as well as shortcutting the need to check the entirety of the database. For example, if "plagioclase" was already searched and the user inputs "plagioclase feldspar" into **ChloeAI.searchQuery**, only the saved results for "plagioclase" will be checked for any instance of "plagioclase feldspar" existing within said search results instead of the whole database. The only downside of this system is that there is no association between plural and singular versions of terms. So, "station" and "stations" are not considered to be the same thing by the system. This downside is only present due to allowing for any specified strings of characters being allowed to be searched for. So, having code in place to connect the search results of "station" with "stations" would be unnecessary. In addition, using the **entity\_names\_only** parameter, it can check only file names instead if one is only looking for a file of a specific name instead of a checking the name and its contents.
 
 
 
@@ -192,11 +192,11 @@ Parameters:
 
 
 
-**entry\_string** (*String*) - Input text to be searched across the database for instances of existing within files whose information has been archived in the database. Trailing spaces will be removed and multiple consecutive spaces will be simplified to single spaces. Capitalization does not matter. "day" and "Day" will be treated as the same thing. An empty string will result in no search being conducted. This also happens if a string is only 1 character.
+**entry\_string** (*String*) - Input text to be searched across the database for instances of existing within files whose information has been archived in the database. Trailing spaces will be removed and multiple consecutive spaces will be simplified to single spaces. Capitalization does not matter. "day" and "Day" will be treated as the same thing. An empty string will result in no search being conducted. This also happens if a string is only 1 character. When comparing the string against the names of entities, any of the following are ignored within the quotations: "\[]+=@#!$%^\&;{}(),".
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc"/"docx", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, and WebP), or file geodatabase, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked for the presence of **entry\_string**. By default, the string is "any".
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc"/"docx", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), or file geodatabase, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked for the presence of **entry\_string**. By default, the string is "any".
 
 
 
@@ -204,15 +204,23 @@ Parameters:
 
 
 
+**entity\_names\_only** (*Boolean*) - This makes it so that only the name of files will be checked if it matches **entry\_string** and not both the file names and contents. Instead of the results by default being saved in the "\_terms\_searched" folder, results are saved to the "\_names\_searched" folder in the database. By default, this is False.
+
+
+
+**entity\_name\_extension** (*String* or *Tuple* or *List* or *Set*) - This parameter only comes into effect if **entity\_names\_only** is True. This is designates one or more file extensions that are relevant for the output. By default, it is "any". "any", "all", and "every" are not treated as file extension names if a string is given for this parameter; however, for tuples, lists, and sets, they will be treated as potential file extension names.
+
+
+
 **return\_tuple** (*Boolean*) - This determines if the function will return a tuple that lists all explicit paths of files in database containing the **entry\_string**. By default, this is False.
 
 
 
-**max\_line\_concat** (*Integer*) - This variable name is shorthand for "maximum number of lines allowed for concatenation". This pertains to Word Document files, text files, and PDFs only. Due to how text can be formatted for these particular files, new lines in text can prevent long entry\_string inputs and/or any input with more than one "word" from correctly determining that a file contains the **entry\_string**. So, by default, it is set so that 3 lines (or less) will be concatenated before trying to determine if entry\_string is present within a file. For example, say if you give the entry string as "fossiliferous limestone". Well, for Word Document files, text files, and/or PDFs, one line ends with "fossilif" and then following line starts with "erous limestone". By concatenating subsequent lines, this oversight will not transpire. Any value inputted that is less than 2 will just set this parameter to 2 upon execution of the **ChloeAI.searchQuery**.
+**max\_line\_concat** (*Integer*) - This parameter name is shorthand for "maximum number of lines allowed for concatenation". This pertains to Word Document files, text files, and PDFs only. Due to how text can be formatted for these particular files, new lines in text can prevent long entry\_string inputs and/or any input with more than one "word" from correctly determining that a file contains the **entry\_string**. So, by default, it is set so that 3 lines (or less) will be concatenated before trying to determine if entry\_string is present within a file. For example, say if you give the entry string as "fossiliferous limestone". Well, for Word Document files, text files, and/or PDFs, one line ends with "fossilif" and then following line starts with "erous limestone". By concatenating subsequent lines, this oversight will not transpire. Any value inputted that is less than 2 will just set this parameter to 2 upon execution of the **ChloeAI.searchQuery**.
 
 
 
-**save\_found\_matches** (*Boolean*) - This allows the storage of individual "words" having their search results being stored in the "\_terms\_searched" folder (with said folder being automatically created if not already existing) for faster look up in the database. For example, if "plagioclase" has already been searched, if "plagioclase" is **entry\_string**, the output will be identical to what is stored. However, continuing with this example, if "plagioclase feldspar" is **entry\_string**, only the results from "plagioclase" will be checked for any instance of "plagioclase feldspar". Although, "feldspar" will not have search results for it only be stored because it is redundant. In addition, if "plagioclase" and "feldspar" already have search results stored, it will only check files that appear in both "plagioclase" and "feldspar" for the presence of "plagioclase feldspar". This is True by default and highly recommended to be kept as True.
+**save\_found\_matches** (*Boolean*) - This allows the storage of individual "words" having their search results being stored in the "\_terms\_searched" folder (with said folder being automatically created if not already existing) for faster look up in the database. For example, if "plagioclase" has already been searched, if "plagioclase" is **entry\_string**, the output will be identical to what is stored. However, continuing with this example, if "plagioclase feldspar" is **entry\_string**, only the results from "plagioclase" will be checked for any instance of "plagioclase feldspar". Although, "feldspar" will not have search results for it only be stored because it is redundant. In addition, if "plagioclase" and "feldspar" already have search results stored, it will only check files that appear in both "plagioclase" and "feldspar" for the presence of "plagioclase feldspar". This is True by default and highly recommended to be kept as True. If **entity\_names\_only** is True, the names of entities containing **entry\_string** will be saved to the "\_names\_checked" folder.
 
 
 
@@ -310,7 +318,7 @@ Purpose: This outputs the total size of the files that are being referenced in t
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of entry\_string. If "doc"/"docx", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, and WebP), or file geodatabase, respectively, will be checked.
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of entry\_string. If "doc"/"docx", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), or file geodatabase, respectively, will be checked.
 
 
 
@@ -330,7 +338,7 @@ Purpose: This simply outputs an integer value of the number of items with refere
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of entry\_string. If "doc"/"docx", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, and WebP), or file geodatabase, respectively, will be checked.
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of entry\_string. If "doc"/"docx", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), or file geodatabase, respectively, will be checked.
 
 
 
