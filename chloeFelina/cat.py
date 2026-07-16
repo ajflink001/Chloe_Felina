@@ -4103,7 +4103,34 @@ class ChloeAI:
                                                     other_entities.append(f'{other_db_name}|{metadata_file[:metadata_file.rfind("_")]}')
                                         try: del metadata_files ; del line
                                         except NameError: pass
-                                        other_entities = tuple(other_entities)
+                                        for other_entity in (other_entities := tuple(other_entities)):
+                                            duplicate_match = True
+                                            for gdb_item in gdb_items:
+                                                current_lines = []
+                                                with zf.open(f'{current_entities[b]}/{gdb_item}.txt') as tf:
+                                                    while True:
+                                                        line = tf.readline()
+                                                        if not line:
+                                                            break
+                                                        current_lines.append(decodeZipTxtLine(line))
+                                                current_lines = tuple(current_lines)
+                                                other_lines = []
+                                                with zf2.open(f'{other_entity}/{gdb_item}.txt') as tf:
+                                                    while True:
+                                                        line = tf.readline()
+                                                        if not line:
+                                                            break
+                                                        other_lines.append(decodeZipTxtLine(line))
+                                                other_lines = tuple(other_lines)
+                                                for d in range(len(current_lines)):
+                                                    if current_lines[d] != other_lines[d]:
+                                                        duplicate_match = False
+                                                        break
+                                                if not duplicate_match:
+                                                    break
+                                            if duplicate_match:
+                                                found_duplicates[-1].append(f'{other_db_name}|{other_entity}')
+                                                checked.add(f'{other_db_name}|{other_entity}')
                                 if len(found_duplicates[-1]) == 1:
                                     del found_duplicates[-1]
                                 else:
