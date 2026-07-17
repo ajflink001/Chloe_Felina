@@ -60,3 +60,5 @@ In order to better understand how to utilize Chloe Felina, please read and consu
 ***
 
 Made in loving dedication and memory to my precious feline pet, friend, and family member: Chloe Link.
+
+![alt text](https://github.com/ajflink001/Chloe_Felina/blob/main/chloeFelina/C02A98C0-53E0-4B02-B376-D47EA41D2232_1_105_c.jpeg?raw=True)
