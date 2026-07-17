@@ -2752,7 +2752,7 @@ class ChloeAI:
         return None
 
 
-    def findAllDuplicates(self, return_tuple : bool = False, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False, return_results_path_str : bool = False) -> None | tuple:
+    def findAllDuplicates(self, return_tuple : bool = False, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False, return_results_path_str : bool = False) -> None:
         '''
         Check items of matching type against each other and can optionally be
         outputted and viewed.
