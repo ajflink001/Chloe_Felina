@@ -228,7 +228,7 @@ Parameters:
 
 
 
-**output\_file\_type** (*String*) - This parameter only comes into effect if **save\_results\_to\_file** is True. This specifies the file type that the results will be saved to. "xlsx"/"excel" will result in an Excel file; "txt"/"text" will result in a delineated text file; and "csv" will result in a CSV file. By default, it is set as "excel" for an Excel file.
+**output\_file\_type** (*String*) - This parameter only comes into effect if **save\_results\_to\_file** is True. This specifies the file type that the results will be saved to. "xlsx"/"excel" will result in an Excel file; "txt"/"text" will result in a delineated text file; and "csv" will result in a CSV file. If an invalid string is given, it will default to being "excel". By default, it is set as "excel" for an Excel file.
 
 
 
@@ -244,19 +244,11 @@ Parameters:
 
 
 
-**csv\_new\_line** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True.
+**csv\_field\_size\_limit** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This corresponds to **csv.field\_size\_limit** controlling the number of fields (or columns) may be present in a csv file. By default, this is 131\_072.
 
 
 
-**csv\_field\_size\_limit** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True.
-
-
-
-**csv\_quotechar** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True.
-
-
-
-**csv\_quoating\_minimal** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True.
+**csv\_delimiter** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This corresponds to the "delimiter" parameter for csv.writer, which dictates what character will be used to separate items in each row. By default, this is ",".
 
 
 
@@ -292,7 +284,51 @@ N/A
 
 
 
-NOT IMPLEMENTED YET
+Purpose: This checks the Chloe Felina database for any items that are duplicates (or potential duplicates) of each other with the option to output the findings as a returned tuple and/or an organized Excel, CSV, or text file. This helps the user see which files are potentially redundant.
+
+
+
+Parameters:
+
+
+
+**return\_tuple** (*Boolean*) - This allows the returning of a nested tuple of items in the Chloe Felina database found to be (potential) duplicates of each other where items within a given sub-tuple within the tuple are all considered to be duplicates of each other. By default, this is False.
+
+
+
+**save\_results\_to\_file** (*Boolean*) - This outputs the found (potential) duplicates into an organized Excel, CSV, or text file. If no duplicates were found, a file will not be generated. By default, this is False.
+
+
+
+**output\_file\_type** (*String*) - This parameter only comes into effect if **save\_results\_to\_file** is True. This specifies the file type that the results will be saved to. "xlsx"/"excel" will result in an Excel file; "txt"/"text" will result in a delineated text file; and "csv" will result in a CSV file. If an invalid string is given, it will default to being "excel". By default, it is set as "excel" for an Excel file.
+
+
+
+**output\_location** (*String* or *NoneType*) - This parameter only comes into effect if **save\_results\_to\_file** is True. This specifies the directory/folder where the outputted found duplicates of the file type specified by **output\_file\_type** will be generated. If the specified location does not exist, it will default to the current user's Documents folder. By default, this is None.
+
+
+
+**output\_name** (*String* or *NoneType*) - This parameter only comes into effect if **save\_results\_to\_file** is True. This designates what the name of the output file, minus the extension suffix, will be when generated. By default, this is None.
+
+
+
+**overwriting\_existing\_output** (*Boolean*) - This parameter only comes into effect if **save\_results\_to\_file** is True. This allows the overwriting of any pre-existing file of the same name and file extension at the designated **output\_location** (or the current user's Documents folder) to be overwritten. If False and a file of the same name and file extension is found in the **output\_location** (or the current user's Documents folder), a random string of characters will be appended to the output file's name. By default, this is False.
+
+
+
+**csv\_field\_size\_limit** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This corresponds to **csv.field\_size\_limit** controlling the number of fields (or columns) may be present in a csv file. By default, this is 131\_072.
+
+
+
+**csv\_delimiter** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This corresponds to the "delimiter" parameter for csv.writer, which dictates what character will be used to separate items in each row. By default, this is ",".
+
+
+
+**overwrite\_saved\_found\_matches** (*Boolean*) - This parameter only comes into effect if **save\_found\_matches** is True. Instead of the corresponding search result text file being used from "\_terms\_searched", said corresponding file will be overwritten if it exists. By default, this is False.
+
+
+
+**terminal\_progress\_display\_enabled** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
 
 
 
