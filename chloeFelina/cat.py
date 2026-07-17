@@ -2016,7 +2016,7 @@ class ChloeAI:
         return None
 
 
-    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, entity_names_only : bool = False, entity_name_extension : str | tuple[str] | list[str] | set[str] = 'any', return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
+    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, entity_names_only : bool = False, entity_name_extension : str | tuple[str] | list[str] | set[str] = 'any', return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
         '''
         This allows, by default, the searching for the presence of specific
         term(s) in entities with data in the database as well as the name of the
@@ -2110,7 +2110,7 @@ class ChloeAI:
                                 if len((relevant_files := tuple([item.rstrip('\n') for item in tuple(tf.readlines())]))):
                                     if entity_name_extension in ('any','all','every'):
                                         if save_results_to_file:
-                                            genSearchQueryResultFile(relevant_files,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
+                                            genSearchQueryResultFile(relevant_files,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
                                         if return_tuple:
                                             return relevant_files
                                         else:
@@ -2119,7 +2119,7 @@ class ChloeAI:
                                         entity_name_extension = f".{entity_name_extension}"
                                         if len((specified_relevant_files := tuple([relevant_file for relevant_file in relevant_files if relevant_file.lower().endswith(entity_name_extension)]))):
                                             if save_results_to_file:
-                                                genSearchQueryResultFile(specified_relevant_files,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
+                                                genSearchQueryResultFile(specified_relevant_files,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
                                             if self.chloe_vocalization:
                                                 playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
                                             if return_tuple:
@@ -2209,7 +2209,7 @@ class ChloeAI:
                 try: del entity_name_extension
                 except NameError: pass
                 if save_results_to_file:
-                    genSearchQueryResultFile(relevant_output_tuple,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
+                    genSearchQueryResultFile(relevant_output_tuple,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
                 if self.chloe_vocalization:
                     playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
                 if return_tuple:
@@ -2266,7 +2266,7 @@ class ChloeAI:
                         else:
                             return None
                         if save_results_to_file:
-                            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
+                            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
                         if return_tuple:
                             return found_matches
                         else:
@@ -2483,7 +2483,7 @@ class ChloeAI:
                             return ()
                         return None
                     if save_results_to_file:
-                        genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
+                        genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
                     if return_tuple:
                         if self.chloe_vocalization:
                             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
@@ -2749,7 +2749,7 @@ class ChloeAI:
 
         # Account for not selecting all on first run
         if save_results_to_file:
-            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
+            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
 
         if self.chloe_vocalization:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
@@ -2769,10 +2769,10 @@ class ChloeAI:
         return None
 
 
-    def findAllDuplicates(self, return_tuple : bool = False, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> None | tuple:
+    def findAllDuplicates(self, return_tuple : bool = False, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', terminal_progress_display_enabled : bool = False) -> None | tuple:
         '''
         Check items of matching type against each other and can optionally be
-        outputted and viewed.
+        outputted and viewed by the user.
         '''
 
         output_file_type = output_file_type.lower().strip()
@@ -3341,7 +3341,7 @@ class ChloeAI:
                     found_duplicates[n][x] = "%s\\%s.%s" % (self.path_pointer[found_duplicates[n][x][:found_duplicates[n][x].find("|")]].replace('/','\\'),found_duplicates[n][x][found_duplicates[n][x].find("|")+1:found_duplicates[n][x].rfind("_")],found_duplicates[n][x][found_duplicates[n][x].rfind("_")+1:])
                 found_duplicates[n] = tuple(found_duplicates[n])
             if len((found_duplicates := tuple(found_duplicates))) and save_results_to_file:
-                genDuplicateFinderResultFile(found_duplicates,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
+                genDuplicateFinderResultFile(found_duplicates,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
             if return_tuple:
                 return found_duplicates
 

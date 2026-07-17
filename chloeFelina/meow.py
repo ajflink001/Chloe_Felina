@@ -120,7 +120,7 @@ def determineEntityType(entity_path : str) -> str | None:
     else:
         return None
 
-def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, csv_quotechar : str, csv_quoting_minimal : int, csv_newline : str, overwriteOutput : bool) -> None:
+def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, overwriteOutput : bool) -> None:
 
     csv.field_size_limit(csv_field_size_limit)
 
@@ -296,56 +296,56 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
         wb.close()
     else:
         organized_files = {}
-        for grouping in found_duplicates:
-            match found_duplicates[grouping][0][found_duplicates[grouping][0].rfind(".")+1:].lower():
+        for n in range(len(found_duplicates)):
+            match found_duplicates[n][0][found_duplicates[n][0].rfind(".")+1:].lower():
                 case 'txt':
                     if not 'txt' in organized_files.keys():
-                        organized_files['txt'] = [tuple(sorted([item for item in found_duplicates[grouping]]))]
+                        organized_files['txt'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                     else:
-                        organized_files['txt'].append(tuple(sorted([item for item in found_duplicates[grouping]])))
+                        organized_files['txt'].append(tuple(sorted([item for item in found_duplicates[n]])))
                 case 'pdf':
                     if not 'pdf' in organized_files.keys():
-                        organized_files['pdf'] = [tuple(sorted([item for item in found_duplicates[grouping]]))]
+                        organized_files['pdf'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                     else:
-                        organized_files['pdf'].append(tuple(sorted([item for item in found_duplicates[grouping]])))
+                        organized_files['pdf'].append(tuple(sorted([item for item in found_duplicates[n]])))
                 case 'shp':
                     if not 'shp' in organized_files.keys():
-                        organized_files['shp'] = [tuple(sorted([item for item in found_duplicates[grouping]]))]
+                        organized_files['shp'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                     else:
-                        organized_files['shp'].append(tuple(sorted([item for item in found_duplicates[grouping]])))
+                        organized_files['shp'].append(tuple(sorted([item for item in found_duplicates[n]])))
                 case 'gdb':
                     if not 'gdb' in organized_files.keys():
-                        organized_files['gdb'] = [tuple(sorted([item for item in found_duplicates[grouping]]))]
+                        organized_files['gdb'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                     else:
-                        organized_files['gdb'].append(tuple(sorted([item for item in found_duplicates[grouping]])))
+                        organized_files['gdb'].append(tuple(sorted([item for item in found_duplicates[n]])))
                 case 'doc' | 'docx':
                     if not 'doc' in organized_files.keys():
-                        organized_files['doc'] = [tuple(sorted([item for item in found_duplicates[grouping]]))]
+                        organized_files['doc'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                     else:
-                        organized_files['doc'].append(tuple(sorted([item for item in found_duplicates[grouping]])))
+                        organized_files['doc'].append(tuple(sorted([item for item in found_duplicates[n]])))
                 case _:
                     if not 'img' in organized_files.keys():
-                        organized_files['img'] = [tuple(sorted([item for item in found_duplicates[grouping]]))]
+                        organized_files['img'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                     else:
-                        organized_files['img'].append(tuple(sorted([item for item in found_duplicates[grouping]])))
+                        organized_files['img'].append(tuple(sorted([item for item in found_duplicates[n]])))
         if output_path.endswith('.csv'):
-            with open(output_path,'w',newline=csv_newline) as cf:
-                csv_writer = csv.writer(cf,delimiter=csv_delimiter,quotechar=csv_quotechar,quoting=csv_quoting_minimal)
-                csv_writer.writerow(["Explicit Path to Valid Item"])
+            with open(output_path,'w') as cf:
+                csv_writer = csv.writer(cf,delimiter=csv_delimiter)
+                csv_writer.writerow(["Explicit Paths to Potenial Matching Duplicates"])
                 for entity_key in organized_files.keys():
                     for grouping in organized_files[entity_key]:
-                        csv_writer.write(grouping)
+                        csv_writer.writerow(grouping)
         else:
             output_path = f'{output_path[:output_path.rfind(".")]}.txt'
             with open(output_path,'w',encoding='utf-8') as tf:
-                tf.write("Explicit Path to Valid Item")
+                tf.write("Explicit Paths to Potenial Matching Duplicates")
                 for entity_key in organized_files.keys():
                     for grouping in organized_files[entity_key]:
                         tf.write("\n%s" % ("|".join(grouping)))
 
     return None
 
-def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, csv_quotechar : str, csv_quoting_minimal : int, csv_newline : str, overwriteOutput : bool) -> None:
+def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, overwriteOutput : bool) -> None:
 
     csv.field_size_limit(csv_field_size_limit)
 
@@ -440,8 +440,8 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
         wb.save(output_path)
         wb.close()
     elif output_path.endswith('.csv'):
-        with open(output_path,'w',newline=csv_newline) as cf:
-            csv_writer = csv.writer(cf,delimiter=csv_delimiter,quotechar=csv_quotechar,quoting=csv_quoting_minimal)
+        with open(output_path,'w') as cf:
+            csv_writer = csv.writer(cf,delimiter=csv_delimiter)
             csv_writer.writerow(["Explicit Path to Valid Item"])
             for entity_key in organized_files.keys():
                 for entity_path in organized_files[entity_key]:
