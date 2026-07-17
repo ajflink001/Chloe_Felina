@@ -2080,6 +2080,9 @@ class ChloeAI:
         output_file_type = output_file_type.lower().strip()
         output_file_type = output_file_type.replace(' ','')
 
+        if not output_file_type in {'excel','xlsx','csv','text','txt'}:
+            output_file_type = 'excel'
+
         if entity_names_only:
             if output_name == f"searched_term_query_{entry_string}":
                 output_name = f"searched_name_query_{entry_string}"
@@ -2239,10 +2242,14 @@ class ChloeAI:
                                     found_matches = tuple([line.rstrip('\n') for line in open(f'{search_results_folder}/{previous_search}.txt','r',encoding='utf-8').readlines() if line.rstrip('\n').lower().endswith('.doc') or line.rstrip('\n').lower().endswith('.docx')])
                                 case 'img':
                                     if not include_entity_name:
+                                        if return_tuple:
+                                            return ()
                                         return None
                                     check_type = set(self.image_types)
                                     found_matches = tuple([line.rstrip('\n') for line in open(f'{search_results_folder}/{previous_search}.txt','r',encoding='utf-8').readlines() if line.rstrip('\n').lower()[:line.rfind('.')] in check_type])
                                 case _:
+                                    if return_tuple:
+                                        return ()
                                     return None
                         elif isinstance(check_type,(tuple,list,set)):
                             try:
@@ -2401,6 +2408,8 @@ class ChloeAI:
                                                     if temp_entry_string in getTestName(item):
                                                         found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                                 else:
+                                    if return_tuple:
+                                        return ()
                                     return None
                     elif isinstance(check_type,(tuple,list,set)):
                         try:
@@ -2470,6 +2479,8 @@ class ChloeAI:
                                                             if temp_entry_string in getTestName(relevant_archived_file):
                                                                 found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
                     else:
+                        if return_tuple:
+                            return ()
                         return None
                     if save_results_to_file:
                         genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
@@ -2709,11 +2720,15 @@ class ChloeAI:
                     found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.doc') or found_match.lower().endswith('.docx')])
                 case 'img':
                     if not include_entity_name:
+                        if return_tuple:
+                            return ()
                         return None
                     check_type = set(self.image_types)
                     found_matches = tuple([found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.'):] in check_type])
                 case _:
                     # Invalid output type.
+                    if return_tuple:
+                        return ()
                     return None
         elif isinstance(check_type,(tuple,list,set)):
             check_type = {item.lower().replace(' ','') for item in tuple(check_type)}
@@ -2728,6 +2743,8 @@ class ChloeAI:
                     return ()
                 return None
         else:
+            if return_tuple:
+                return ()
             return None
 
         # Account for not selecting all on first run
@@ -2752,11 +2769,17 @@ class ChloeAI:
         return None
 
 
-    def findAllDuplicates(self, return_tuple : bool = False, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False, return_results_path_str : bool = False) -> None:
+    def findAllDuplicates(self, return_tuple : bool = False, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_newline : str = '', csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', csv_quotechar : str = '|', csv_quoting_minimal : int = 0, overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> None | tuple:
         '''
         Check items of matching type against each other and can optionally be
         outputted and viewed.
         '''
+
+        output_file_type = output_file_type.lower().strip()
+        output_file_type = output_file_type.replace(' ','')
+
+        if not output_file_type in {'excel','xlsx','csv','text','txt'}:
+            output_file_type = 'excel'
 
         checked = set()
         found_duplicates = []
@@ -3317,9 +3340,8 @@ class ChloeAI:
                 for x in range(len(found_duplicates[n])):
                     found_duplicates[n][x] = "%s\\%s.%s" % (self.path_pointer[found_duplicates[n][x][:found_duplicates[n][x].find("|")]].replace('/','\\'),found_duplicates[n][x][found_duplicates[n][x].find("|")+1:found_duplicates[n][x].rfind("_")],found_duplicates[n][x][found_duplicates[n][x].rfind("_")+1:])
                 found_duplicates[n] = tuple(found_duplicates[n])
-            found_duplicates = tuple(found_duplicates)
-            if save_results_to_file:
-                genDuplicateFinderResultFile(found_duplicates,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output,return_results_path_str)
+            if len((found_duplicates := tuple(found_duplicates))) and save_results_to_file:
+                genDuplicateFinderResultFile(found_duplicates,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,csv_quotechar,csv_quoting_minimal,csv_newline,overwrite_existing_output)
             if return_tuple:
                 return found_duplicates
 

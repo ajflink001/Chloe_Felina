@@ -120,7 +120,7 @@ def determineEntityType(entity_path : str) -> str | None:
     else:
         return None
 
-def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, csv_quotechar : str, csv_quoting_minimal : int, csv_newline : str, overwriteOutput : bool, return_results_path_str : bool) -> None | str:
+def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, csv_quotechar : str, csv_quoting_minimal : int, csv_newline : str, overwriteOutput : bool) -> None:
 
     csv.field_size_limit(csv_field_size_limit)
 
@@ -393,30 +393,30 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
                 else:
                     organized_files['txt'].append(item)
             case 'pdf':
-                if not 'txt' in organized_files.keys():
-                    organized_files['txt'] = [item]
+                if not 'pdf' in organized_files.keys():
+                    organized_files['pdf'] = [item]
                 else:
-                    organized_files['txt'].append(item)
+                    organized_files['pdf'].append(item)
             case 'shp':
-                if not 'txt' in organized_files.keys():
-                    organized_files['txt'] = [item]
+                if not 'shp' in organized_files.keys():
+                    organized_files['shp'] = [item]
                 else:
-                    organized_files['txt'].append(item)
+                    organized_files['shp'].append(item)
             case 'gdb':
-                if not 'txt' in organized_files.keys():
-                    organized_files['txt'] = [item]
+                if not 'shp' in organized_files.keys():
+                    organized_files['shp'] = [item]
                 else:
-                    organized_files['txt'].append(item)
+                    organized_files['shp'].append(item)
             case 'doc' | 'docx':
-                if not 'txt' in organized_files.keys():
-                    organized_files['txt'] = [item]
+                if not 'doc' in organized_files.keys():
+                    organized_files['doc'] = [item]
                 else:
-                    organized_files['txt'].append(item)
+                    organized_files['doc'].append(item)
             case _:
-                if not 'txt' in organized_files.keys():
-                    organized_files['txt'] = [item]
+                if not 'img' in organized_files.keys():
+                    organized_files['img'] = [item]
                 else:
-                    organized_files['txt'].append(item)
+                    organized_files['img'].append(item)
 
     for entity_key in tuple(organized_files.keys()):
         organized_files[entity_key] = tuple(sorted(organized_files[entity_key]))
