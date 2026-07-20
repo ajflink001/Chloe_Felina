@@ -461,21 +461,30 @@ def forbidden_dirs() -> set[str]:
     This is a baseline protection against malicious executions of Chloe Felina on Windows OS.
     '''
 
-    default_things = ("Downloads","Documents","AppData","Contacts","Favorites","Links","Music","Pictures","Saved Games","Searches","Videos","AppData/Local","AppData/LocalLow","AppData/Roaming")
+    default_things = ("Downloads","Documents","AppData","Contacts","Favorites","Links","Music","Pictures","Saved Games","Searches","Videos")
 
     bad_items = {"C:",}
-    bad_items += {item for item in tuple(listdir("C:")) if isidir(f"C:/{item}")}
-    bad_items += (registered_users := {item for item in tuple(listdir("C:/Users")) if isdir(f"C:/Users/{item}")})
-    for registered_user in tuple(registered_users):
-        bad_items += {item for item in tuple(listdir(f"C:/Users/{registered_user}")) if isdir(f"C:/Users/{registered_user}/{item}")}
-        for default_thing in default_things:
-            bad_items += {item for item in tuple(listdir(f"C:/Users/{registered_user}/{default_thing}")) if isdir(f"C:/Users/{registered_user}/{default_thing}/{item}")}
-    del registered_users
-    bad_items += {item for item in tuple(listdir("C:/Program Files")) if isdir(f"C:/Program Files/{item}")}
-    bad_items += {item for item in tuple(listdir("C:/Program Files (x86)")) if isdir(f"C:/Program Files (x86)/{item}")}
-    bad_items += {item for item in tuple(listdir("C:/ProgramData")) if isdir(f"C:/ProgramData/{item}")}
-    bad_items += {item for item in tuple(listdir("C:/Recovery")) if isdir(f"C:/Recovery/{item}")}
-    bad_items += {item for item in tuple(listdir("C:/System.Sav")) if isdir(f"C:/System.Sav/{item}")}
-    bad_items += {item for item in tuple(listdir("C:/temp_folder")) if isdir(f"C:/Temp/{item}")}
+    for item in tuple(listdir('C:')):
+        if isdir(f'C:/Users/{item}'):
+            bad_items.add(f'C:/{item}')
+    try:
+        for registered_user in tuple([item for item in tuple(listdir("C:/Users")) if isdir(f"C:/Users/{item}")]):
+            bad_items.add(f'C:/Users/{registered_user}')
+            for default_thing in default_things:
+                if exists(f'C:/Users/{registered_user}/{default_thing}'):
+                    bad_items.add(f'C:/Users/{registered_user}/{default_thing}')
+                    for item in tuple(listdir(f'C:/Users/{registered_user}/{default_thing}')):
+                        if isdir(f'C:/Users/{registered_user}/{default_thing}/{item}'):
+                            bad_items.add(f'C:/Users/{registered_user}/{default_thing}/{item}')
+    except Exception:
+        # In case there is somehow not a C:/Users directory.
+        pass
+    for main_dir in ("Program Files","Program Files (x86)","Recovery","System.sav","Temp"):
+        try:
+            for item in tuple(listdir(f'C:/{main_dir}')):
+                if isdir(f'C:/{main_dir}/{item}'):
+                    bad_items.add(f'C:/{main_dir}/{item}')
+        except Exception:
+            pass
 
     return bad_items

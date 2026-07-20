@@ -120,6 +120,13 @@ class ChloeAI:
         else:
             database_location = database_location.replace("\\","/")
             self.db_path = f'{database_location}/{database_name}'
+            try:
+                for registered_user in tuple(listdir('C:/Users')):
+                    if self.db_path.startswith(f"C:/Users/{registered_user}/AppData"):
+                        self.db_path = f"{user_path}/Documents/{database_name}"
+                        break
+            except Exception:
+                pass
             if self.db_path.startswith("C:/Windows") or self.db_path in forbidden_dirs():
                 self.db_path = f'{user_path}/Documents/{database_name}'
             elif not exists(self.db_path):
