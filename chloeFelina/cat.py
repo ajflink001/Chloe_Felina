@@ -120,11 +120,9 @@ class ChloeAI:
         else:
             database_location = database_location.replace("\\","/")
             self.db_path = f'{database_location}/{database_name}'
-            if not isdir(self.db_path):
-                raise TypeError
             if self.db_path.startswith("C:/Windows") or self.db_path in forbidden_dirs():
-                raise BlockingIOError
-            if not exists(self.db_path):
+                self.db_path = f'{user_path}/Documents/{database_name}'
+            elif not exists(self.db_path):
                 mkdir(self.db_path)
 
         if exists(self.db_path):
