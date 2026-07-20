@@ -403,10 +403,10 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
                 else:
                     organized_files['shp'].append(item)
             case 'gdb':
-                if not 'shp' in organized_files.keys():
-                    organized_files['shp'] = [item]
+                if not 'gdb' in organized_files.keys():
+                    organized_files['gdb'] = [item]
                 else:
-                    organized_files['shp'].append(item)
+                    organized_files['gdb'].append(item)
             case 'doc' | 'docx':
                 if not 'doc' in organized_files.keys():
                     organized_files['doc'] = [item]
