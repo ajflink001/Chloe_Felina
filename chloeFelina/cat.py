@@ -129,8 +129,6 @@ class ChloeAI:
                 pass
             if self.db_path.startswith("C:/Windows") or self.db_path in forbidden_dirs():
                 self.db_path = f'{user_path}/Documents/{database_name}'
-                with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
-                    pass
 
         if exists(self.db_path):
             if not 'crintum_pointer.txt' in (items := set(listdir(self.db_path))) and not '_backup_crintum_pointer.txt' in items:
