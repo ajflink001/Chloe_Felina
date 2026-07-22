@@ -61,7 +61,7 @@ except ImportError: win32api_imported = False
 except ModuleNotFoundError: win32api_imported = False
 
 # Built-In Python Modules
-import csv
+import csv,logging
 from os import walk as walker
 from os import listdir,mkdir,chdir,getcwd,remove,chmod,rename
 from os.path import exists,isfile,isdir
@@ -82,6 +82,22 @@ from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaseli
 from chloeFelina.paxium import encrypt as pax_encrypt
 from chloeFelina.paxium import decrypt as pax_decrypt
 from chloeFelina import _audio_file_pointer
+
+# This attempts to stop logging messages from installed modules from displaying.
+# However, depending on how said modules handle logging, logging messages may
+# still end up being displayed for users.
+if logging.root.manager.disable != 50:
+    root = logging.getLogger()
+    for h in tuple(root.handlers):
+        root.removeHandler(h)
+    root.propagate = False
+    try:
+        logging.disable(logging.CRITICAL)
+    except Exception:
+        try:
+            logging.disable(logging.FATAL)
+        except Exception:
+            pass
 
 temp_path = _audio_file_pointer.__file__.replace("\\","/")
 
