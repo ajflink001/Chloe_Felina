@@ -52,9 +52,11 @@ img - Image files (So far, .tif, .tiff, .jpeg, .jpg, .png, .dib, .jp2, .j2k, .jp
 
 
 
-Note: For example, ".txt" and ".TXT" are considered to be the same. So, the casing of a file extension is irrelevant.
+Note 1: For example, ".txt" and ".TXT" are considered to be the same. So, the casing of a file extension is irrelevant.
 
 
+
+Note 2: If certain image files are not being processed or you are unsure what image files your installation of PIL (i.e., pillow) is able to read. For example, Python installations included with certain iterations of ArcGIS Pro may not have support for WebP files.
 
 
 
@@ -64,7 +66,7 @@ Note: For example, ".txt" and ".TXT" are considered to be the same. So, the casi
 
 
 
-Purpose: Initialization of Chloe Felina
+Purpose: Initialization of Chloe Felina's "brain".
 
 
 
@@ -92,7 +94,7 @@ Parameters:
 
 
 
-**crintum\_obfuscation** (*Boolean*) - If a database for Chloe Felina already exists, it will expect that obfuscation has already been applied to the crintum\_pointer.txt and decode it during the session that Chloe Felina is being used. Otherwise, any added entry to crintum\_pointer.txt will be obfuscated via a custom obfuscation algorithm. This is False by default. Set to True if you want a minor amount of security; however, this may result in some minor slower initialization of Chloe Felina depending upon how many entries are in crintum\_pointer.txt.
+**crintum\_obfuscation** (*Boolean*) - If a database for Chloe Felina already exists, it will expect that obfuscation has already been applied to the crintum\_pointer.txt and decode it during the session that Chloe Felina is being used. Otherwise, any added entry to crintum\_pointer.txt will be obfuscated via a custom obfuscation algorithm. This is False by default. Set to True if you want a minor amount of security; however, this may result in a slower initialization of **ChloeAI** depending upon how many entries are in crintum\_pointer.txt.
 
 
 
@@ -105,6 +107,14 @@ Parameters:
 
 
 **audio\_wakeup\_buffer** (*Integer*) - This parameter only comes into effect if both **chloe\_vocalization** and **use\_audio\_wakeup\_buffer** are True. The value represents milliseconds of playing a silent dummy audio file that is used to "wake up" the audio device from "sleep mode". By default, the value is 10 (i.e., 10 milliseconds.). If the audio is still "muted" or it seems like only part of the audio is being played, try using a higher value.
+
+
+
+**allow\_autoclear\_terms** (*Boolean*) - **ChloeAI.clearSearchQueryMemory** will be called to remove the contents of "\_terms\_searched" in the Chloe Felina database if it exists. By default, this is False.
+
+
+
+**corrupted\_zip\_check** (*Boolean*) - A check for each zip file in the Chloe Felina database will be conducted to see if any are corrupted and remove them from reference and the database if so. By default, this is True. It is wise to set this as False if you want to save the time it takes for **ChloeAI** to initialize.
 
 
 
@@ -152,6 +162,10 @@ Parameters:
 
 
 
+**clear\_terms\_searched** (*Boolean*) - See the parameter of the same name for **ChloeAI.getDirectoryData**. This is True by default.
+
+
+
 **terminal\_progress\_display\_enabled** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
 
 
@@ -171,6 +185,10 @@ Parameters:
 
 
 **reference\_directory** (*String*) - This is the specified full path to the directory the user wants Chloe Felina to get data from. An invalid explicit path will result in nothing happening.
+
+
+
+**clear\_terms\_searched** (*Boolean*) - This allows the automatic removal of items in the "\_terms\_searched" folder in the Chloe Felina database if said folder exists if a new zip file is successfully added to the active Chloe Felina database by calling **ChloeAI.clearSearchMemory**. By default, this is True.
 
 
 
