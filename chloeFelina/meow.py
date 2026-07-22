@@ -1,4 +1,4 @@
-import csv
+import csv,logging
 from string import ascii_letters,digits,ascii_uppercase
 from shutil import copy2,copy,copyfile
 from pathlib import Path
@@ -34,6 +34,22 @@ except ModuleNotFoundError:
 unc_path = lambda given_path : str(Path(given_path).resolve()).replace('\\','/')
 getCreatedDate = lambda item_path : ctime(getctime(item_path))
 getModifiedDate = lambda item_path : ctime(getmtime(item_path))
+
+# This attempts to stop logging messages from installed modules from displaying.
+# However, depending on how said modules handle logging, logging messages may
+# still end up being displayed for users.
+if logging.root.manager.disable != 50:
+    root = logging.getLogger()
+    for h in tuple(root.handlers):
+        root.removeHandler(h)
+    root.propagate = False
+    try:
+        logging.disable(logging.CRITICAL)
+    except Exception:
+        try:
+            logging.disable(logging.FATAL)
+        except Exception:
+            pass
 
 alnums = f'{ascii_letters}{digits}'
 
