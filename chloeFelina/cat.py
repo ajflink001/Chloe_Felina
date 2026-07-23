@@ -291,11 +291,12 @@ class ChloeAI:
         self.short_ref = {'000': 'a', '00': 'b', '111111': 'c', '11111': 'd', '1111': 'f', '111': 'g', '11': 'h', '222222': 'i', '22222': 'j', '2222': 'k', '222': 'l', '22': 'm', '333333': 'n', '33333': 'o', '3333': 'p', '333': 'q', '33': 'r', '444444': 's', '44444': 't', '4444': 'u', '444': 'v', '44': 'w', '555555': 'x', '55555': 'y', '5555': 'z', '555': 'A', '55': 'B', '666666': 'C', '66666': 'D', '6666': 'E', '666': 'F', '66': 'G', '777777': 'H', '77777': 'I', '7777': 'J', '777': 'K', '77': 'L', '888888': 'M', '88888': 'N', '8888': 'O', '888': 'P', '88': 'Q', '999999': 'R', '99999': 'S', '9999': 'T', '999': 'U', '99': 'V', 'e-': 'W', '1.': 'X', '2.': 'Y', '3.': 'Z', '4.': '!', '5.': '@', '6.': '$', '7.': '?', '8.': '~', '9.': '&', '.0': '+', '.1': '=', '.2': '<', '.3': '>', '.4': '#', '.5': '`', '.6': '(', '.7': ')', '.8': '[', '.9': ']'}
         self.alphanum = tuple(f'{ascii_letters}{digits}')
 
-        for db_name in tuple(self.used_names):
-            with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                if zf.testzip() != None:
-                    self.removeCrintumEntry(self.path_pointer[db_name])
-                    item_removed = True
+        if corrupted_zip_check:
+            for db_name in tuple(self.used_names):
+                with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
+                    if zf.testzip() != None:
+                        self.removeCrintumEntry(self.path_pointer[db_name])
+                        item_removed = True
 
         if allow_autoclear_terms:
             self.clearSearchQueryMemory()
