@@ -812,7 +812,7 @@ class ChloeAI:
                                             revertChange(f'{db_path_db_name}',f'_images/{changed_item}')
                     if len(additional_items):
                         for additional_item in additional_items:
-                            match additional_item[additional_item.rfind('_')+1:].lower():
+                            match additional_item[additional_item.rfind('.')+1:].lower():
                                 case 'txt':
                                     try:
                                         self.archive_txt_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
