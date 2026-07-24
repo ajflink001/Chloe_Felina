@@ -41,7 +41,7 @@ except ModuleNotFoundError:
     pypdf_imported = False
 # Python Image Library (PIL)
 pil_imported = True
-try: from PIL import Image
+try: from PIL import Image,ImageFile
 except ImportError: pil_imported = False
 except ModuleNotFoundError: pil_imported = False
 # docx
@@ -120,7 +120,7 @@ setlocale(LC_ALL,'')
 
 class ChloeAI:
 
-    def __init__(self, database_location : str | None = None, database_name : str = 'datenaro', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, corrupted_zip_check : bool = True):
+    def __init__(self, database_location : str | None = None, database_name : str = 'datenaro', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, allow_truncating_images : bool = False, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, corrupted_zip_check : bool = True):
 
         self.accepted_suffixes = {'gdb','docx','doc','pdf','txt','shp','png','jpg','jpeg','tif','tiff','webp','jpg','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm'}
         self.valid_check_types = {'txt','pdf','doc','img','gdb','shp'}
@@ -188,9 +188,8 @@ class ChloeAI:
             with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
                 pass
 
-        self.crintum_pointer = {}
-        self.path_pointer = {}
-        empty_line_found = False
+        self.crintum_pointer = {} ; self.path_pointer = {} ; empty_line_found = False
+
         if crintum_obfuscation:
             with open(f'{self.db_path}/crintum_pointer.txt',encoding='utf-8') as tf:
                 while True:
@@ -272,6 +271,7 @@ class ChloeAI:
             # Maximum number of pixels that an image can have until the PIL module
             # throws an error.
             Image.MAX_IMAGE_PIXELS = maximum_pixels
+            ImageFile.LOAD_TRUNCATED_IMAGES = allow_truncating_images
 
         if arcpy_imported:
             arcpy.SetLogHistory(False)
@@ -435,10 +435,7 @@ class ChloeAI:
             for db_name in iterator:
                 found_changes = {"removed":{}, "added":{}, "modified":{}}
                 db_path_db_name = f'{self.db_path}/{db_name}'
-                redacted_items = []
-                additional_items = []
-                changed_items = []
-                valid_found_items = {}
+                redacted_items = [] ; additional_items = [] ; changed_items = [] ; valid_found_items = {}
                 try:
                     for found_item in tuple(listdir(self.path_pointer[db_name])):
                         if '.' in found_item:
@@ -447,6 +444,7 @@ class ChloeAI:
                                     case 'gdb':
                                         valid_found_items[found_item] = {}
                                         for gdb_item in tuple(listdir(f'{self.path_pointer[db_name]}/{found_item}')):
+                                            # assumes File Geodatabase is not in use.
                                             if not gdb_item.lower().endswith('.lock'):
                                                 if (item_size := getSizeOfItem(f'{self.path_pointer[db_name]}/{found_item}')) is None:
                                                     break
@@ -500,6 +498,7 @@ class ChloeAI:
                 for entity in tuple(valid_found_items.keys()):
                     if not f"{entity[:entity.rfind('.')]}_{entity[entity.rfind('.')+1:]}" in checking_set:
                         additional_items.append(entity)
+                additional_items = tuple(additional_items)
                 checking_set = set(valid_found_items.keys())
                 for entity in tuple(baseline_entity_info.keys()):
                     if not (other_entity := f"{entity[:entity.rfind('_')]}.{entity[entity.rfind('_')+1:]}") in checking_set:
@@ -528,7 +527,7 @@ class ChloeAI:
                 del checking_set ; del valid_found_items ; del baseline_entity_info
                 try: del other_entity
                 except NameError: pass
-                if len((redacted_items := tuple(redacted_items))) or len((changed_items := tuple(changed_items))) or len((additional_items := tuple(additional_items))):
+                if len((redacted_items := tuple(redacted_items))) or len((changed_items := tuple(changed_items))) or len(additional_items):
                     self.uncompressZIP(db_name)
                     if len(redacted_items):
                         for redacted_item in redacted_items:
@@ -633,7 +632,6 @@ class ChloeAI:
                                                     tf.write(f'\n{lines[z]}')
                                             except Exception:
                                                 pass
-
                     if len(changed_items):
                         for changed_item in changed_items:
                             match changed_item[changed_item.rfind('_')+1:].lower():
@@ -1547,8 +1545,7 @@ class ChloeAI:
 
         shapefile_name = shp_path[shp_path.rfind("/")+1:]
 
-        item_info = {}
-        oid_name = None
+        item_info = {} ; oid_name = None
         try:
             for field in arcpy.ListFields(shapefile_name,field_type='OID'):
                 oid_name = field.name[:]
@@ -1687,8 +1684,7 @@ class ChloeAI:
                 # datasets in ArcGIS Pro.
                 dataset_name = f'{dataset_name}$'
 
-            item_info = {}
-            oid_name = None
+            item_info = {} ; oid_name = None
             try:
                 for field in arcpy.ListFields(entity_name,field_type='OID'):
                     oid_name = field.name[:]
@@ -2193,8 +2189,9 @@ class ChloeAI:
                                 items.append(f"{line[:line.rfind('_')]}.{line[line.rfind('_')+1:]}")
                         metadata_files.remove('_metadata.txt')
                     for metadata_file in (metadata_files := tuple(metadata_files)):
-                        gdb_file_name = metadata_file[:metadata_file.rfind('_')]
-                        items.append(f"{gdb_file_name[:gdb_file_name.rfind('_')]}.{gdb_file_name[gdb_file_name.rfind('_')+1:]}")
+                        if metadata_file.lower().endswith('_gdb_metadata.txt'):
+                            gdb_file_name = metadata_file[:metadata_file.rfind('_')]
+                            items.append(f"{gdb_file_name[:gdb_file_name.rfind('_')]}.{gdb_file_name[gdb_file_name.rfind('_')+1:]}")
                 for item in (items := tuple(items)):
                     if temp_entry_string in getTestName(item[:item.rfind(".")]):
                         if not (extension_str := item[item.rfind(".")+1:]) in found_matches.keys():
@@ -2812,8 +2809,7 @@ class ChloeAI:
         if not output_file_type in {'excel','xlsx','csv','text','txt'}:
             output_file_type = 'excel'
 
-        checked = set()
-        found_duplicates = []
+        checked = set() ; found_duplicates = []
         num_dbs = len((db_names := tuple(self.used_names)))
         if tqdm_imported:
             if terminal_progress_display_enabled:
@@ -2836,8 +2832,11 @@ class ChloeAI:
                     try: del line
                     except NameError: pass
                     metadata_files.remove('_metadata.txt')
-                if len(metadata_files):
-                    type_checker['GDB'].add(db_name)
+                if len((metadata_files := tuple(metadata_files))):
+                    for metadata_file in metadata_files:
+                        if metadata_file.lower().endswith('_gdb_metadata.txt'):
+                            type_checker['GDB'].add(db_name)
+                            break
         try: del metadata_files
         except NameError: pass
         # This enables even greater redundancy reduction.
@@ -2865,14 +2864,14 @@ class ChloeAI:
                     except NameError: pass
                     metadata_files.remove('_metadata.txt')
                 for metadata_file in (metadata_files := tuple(metadata_files)):
-                    if (num_id := "|".join([gdb_item[gdb_item.rfind(" ")+1:] for gdb_item in tuple(decodeZipTxtLine(zf.open(metadata_file).readline()).split('|'))])) in line_num_checker.keys():
-                        line_num_checker[num_id].add(db_name)
-                    else:
-                        line_num_checker[num_id] = {db_name}
+                    if metadata_file.lower().endswith('_gdb_metadata.txt'):
+                        if (num_id := "|".join([gdb_item[gdb_item.rfind(" ")+1:] for gdb_item in tuple(decodeZipTxtLine(zf.open(metadata_file).readline()).split('|'))])) in line_num_checker.keys():
+                            line_num_checker[num_id].add(db_name)
+                        else:
+                            line_num_checker[num_id] = {db_name}
         for a in iterator:
             current_db_name = db_names[a]
-            current_entities = {}
-            img_firstlines = {}
+            current_entities = {} ; img_firstlines = {}
             with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
                 if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith("_metadata.txt")]):
                     with zf.open("_metadata.txt") as tf:
@@ -2902,7 +2901,10 @@ class ChloeAI:
                 if len((metadata_files := tuple(metadata_files))):
                     current_entities['GDB'] = {}
                     for metadata_file in metadata_files:
-                        current_entities['GDB'][metadata_file[:metadata_file.rfind('_')]] = {item[:item.rfind(" ")] : item[item.rfind(' ')+1:] for item in decodeZipTxtLine(zf.open(metadata_file).readline()).split('|')}
+                        if metadata_file.lower().endswith('_gdb_metadata.txt'):
+                            current_entities['GDB'][metadata_file[:metadata_file.rfind('_')]] = {item[:item.rfind(" ")] : item[item.rfind(' ')+1:] for item in decodeZipTxtLine(zf.open(metadata_file).readline()).split('|')}
+                    if len(current_entities['GDB'].keys()):
+                        del current_entities['GDB']
                 if 'IMG' in current_entities.keys():
                     with zf.open('_firstline_image_files.txt') as tf:
                         while True:
@@ -2963,6 +2965,8 @@ class ChloeAI:
                                         metadata_files.remove('_metadata.txt')
                                     if len((metadata_files := tuple(metadata_files))):
                                         for metadata_file in metadata_files:
+                                            if not metadata_file.lower().endswith('_gdb_metadata.txt'):
+                                                continue
                                             current_gdb = metadata_file[:metadata_file.rfind('_')]
                                             if not f'{other_db_name}|{current_gdb}' in checked:
                                                 other_entities[current_gdb] = {item[:item.rfind(" ")] : item[item.rfind(" ")+1:] for item in decodeZipTxtLine(zf2.open(metadata_file).readline()).split('|')}
@@ -3170,8 +3174,7 @@ class ChloeAI:
                                                         found_duplicates[-1].append(f'{other_db_name}|{relevant_entity}')
                                                         checked.add(f'{other_db_name}|{relevant_entity}')
                                 case 'DOC':
-                                    current_lines = []
-                                    current_line_count = []
+                                    current_lines = [] ; current_line_count = []
                                     if nums[b][:nums[b].find('|')] == '0':
                                         current_lines.append(None)
                                         current_line_count.append(0)
@@ -3187,14 +3190,12 @@ class ChloeAI:
                                     if current_line_count[0] == 0 and current_line_count[1] == 0:
                                         del found_duplicates[-1]
                                         continue
-                                    current_lines = tuple(current_lines)
-                                    current_line_count = tuple(current_line_count)
+                                    current_lines = tuple(current_lines) ; current_line_count = tuple(current_line_count)
                                     for d in range(c+1,num_items):
                                         if f'{current_db_name}|{items[d]}' in checked:
                                             checked.remove(f'{current_db_name}|{items[d]}')
                                             continue
-                                        other_lines = []
-                                        other_line_count = []
+                                        other_lines = [] ; other_line_count = []
                                         if nums[b][:nums[b].find('|')] == '0':
                                             other_lines.append(None)
                                             other_line_count.append(0)
@@ -3258,8 +3259,7 @@ class ChloeAI:
                                                     found_duplicates[-1].append(f'{other_db_name}|{relevant_entity}')
                                                     checked.add(f'{other_db_name}|{relevant_entity}')
                                 case 'PDF':
-                                    current_lines = []
-                                    current_line_count = []
+                                    current_lines = [] ; current_line_count = []
                                     if nums[b][:nums[b].find('|')] == '0':
                                         current_lines.append(None)
                                         current_line_count.append(0)
@@ -3275,14 +3275,12 @@ class ChloeAI:
                                     if current_line_count[0] == 0 and current_line_count[1] == 0:
                                         del found_duplicates[-1]
                                         continue
-                                    current_lines = tuple(current_lines)
-                                    current_line_count = tuple(current_line_count)
+                                    current_lines = tuple(current_lines) ; current_line_count = tuple(current_line_count)
                                     for d in range(c+1,num_items):
                                         if f'{current_db_name}|{items[d]}' in checked:
                                             checked.remove(f'{current_db_name}|{items[d]}')
                                             continue
-                                        other_lines = []
-                                        other_line_count = []
+                                        other_lines = [] ; other_line_count = []
                                         if nums[b][:nums[b].find('|')] == '0':
                                             other_lines.append(None)
                                             other_line_count.append(0)
@@ -3451,15 +3449,20 @@ class ChloeAI:
                     return None
                 if not exists(f'{self.db_path}/_temp_entity'):
                     mkdir(f'{self.db_path}/_temp_entity')
-                self.archive_shp_data(item_path,'_temp_entity')
                 try:
-                    txt_data_item = listdir(f'{self.db_path}/_temp_entity')[0]
+                    self.archive_shp_data(item_path,'_temp_entity')
+                except Exception:
+                    if return_tuple:
+                        return ()
+                    return None
+                try:
+                    txt_metadata_item = listdir(f'{self.db_path}/_temp_entity')[0]
                 except Exception:
                     if return_tuple:
                         return ()
                     return None
                 lines = []
-                with open(f'{self.db_path}/_temp_entity/{txt_data_item}',encoding='utf-8') as tf:
+                with open(f'{self.db_path}/_temp_entity/{txt_metadata_item}',encoding='utf-8') as tf:
                     while True:
                         line = tf.readline()
                         if not line:
@@ -3513,45 +3516,97 @@ class ChloeAI:
                     return None
                 if not exists(f'{self.db_path}/_temp_entity'):
                     mkdir(f'{self.db_path}/_temp_entity')
-                self.archive_pdf_data(item_path,'_temp_entity')
+                try:
+                    self.archive_pdf_data(item_path,'_temp_entity')
+                except Exception:
+                    if return_tuple:
+                        return ()
+                    return None
                 lines = []
-                num_lines_str = []
-                num_lines_range = []
-                if exists(f'{self.db_path}/_temp_entity/pdf_extracted_text.txt'):
+                num_lines = []
+                item_name = item_path[item_path.rfind('/')+1:]
+                item_name = "%s_%s" % (item_name[:item_name.rfind(".")],item_name[item_name.rfind(".")+1:])
+                if exists(f'{self.db_path}/_temp_entity/{item_name}/pdf_extracted_text.txt'):
                     lines.append([])
-                    with open(f'{self.db_path}/_temp_entity/pdf_extracted_text.txt',encoding='utf-8') as tf:
+                    with open(f'{self.db_path}/_temp_entity/{item_name}/pdf_extracted_text.txt',encoding='utf-8') as tf:
                         while True:
                             line = tf.readline()
                             if not line:
                                 break
                             lines[0].append(line.rstrip('\n'))
                     lines[0] = tuple(lines[0])
-                    numstr((num_lines := len(lines[0])))
+                    num_lines.append((num := len(lines[0])))
+                    num_lines_str = '%i|' % (num)
                 else:
                     lines.append(None)
-                    num_lines_str.append('')
-                    num_lines_range.append(range(0))
-                if exists(f'{self.db_path}/_temp_entity/image_histogram_data.txt'):
+                    num_lines.append(0)
+                    num_lines_str = "0|"
+                if exists(f'{self.db_path}/_temp_entity/{item_name}/image_histogram_data.txt'):
                     lines.append([])
-                    with open(f'{self.db_path}/_temp_entity/image_histogram_data.txt',encoding='utf-8') as tf:
+                    with open(f'{self.db_path}/_temp_entity/{item_name}/image_histogram_data.txt',encoding='utf-8') as tf:
                         while True:
                             line = tf.readline()
                             if not line:
                                 break
                             lines[1].append(line.strip('\n'))
                     lines[1] = tuple(lines[1])
+                    num_lines.append((num := len(lines[1])))
+                    num_lines_str = "%s%i" % (num_lines_str,num)
                 else:
                     lines.append(None)
-                    num_lines_str.append('')
-                    num_lines_range.append(range(0))
-                if (lines := tuple(lines)) == (None,None):
+                    num_lines.append(0)
+                    num_lines_str = f"{num_lines_str}0"
+                lines = tuple(lines)
+                num_lines = tuple(num_lines)
+                if num_lines_str == "0|0":
                     # No data accessible for comparisons to be made.
                     if return_tuple:
                         return ()
                     return None
+                range_1 = range(num_lines[0])
+                range_2 = range(num_lines[1])
                 for db_name in iterator:
                     with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                        pass
+                        if '_metadata.txt' in zf.namelist():
+                            with zf.open('_metadata.txt') as zf:
+                                while True:
+                                    entity = tf.readline()
+                                    if not entity:
+                                        break
+                                    entity = decodeZipTxtLine(entity).split('|')
+                                    if 'PDF' == entity[1]:
+                                        if num_lines_str == f'{entity[5]}|{entity[6]}':
+                                            duplicate_match = True
+                                            if num_lines[0]:
+                                                temp_lines = []
+                                                with zf.open(f'{entity[0]}/pdf_extracted_text.txt') as tf2:
+                                                    while True:
+                                                        line = tf2.readline()
+                                                        if not line:
+                                                            break
+                                                        temp_lines.append(decodeZipTxtLine(line))
+                                                temp_lines = tuple(temp_lines)
+                                                for a in range_1:
+                                                    if lines[a] != temp_lines[a]:
+                                                        duplicate_match = False
+                                                        break
+                                            if not duplicate_match:
+                                                continue
+                                            if num_lines[1]:
+                                                temp_lines = []
+                                                with zf.open(f'{entity[0]}/image_histogram_data.txt') as tf2:
+                                                    while True:
+                                                        line = tf2.readline()
+                                                        if not line:
+                                                            break
+                                                        temp_lines.append(decodeZipTxtLine(line))
+                                                temp_lines = tuple(temp_lines)
+                                                for a in range_2:
+                                                    if lines[b] != temp_lines[b]:
+                                                        duplicate_match = False
+                                                        break
+                                            if duplicate_match:
+                                                found_duplicates.append(f'{db_name}|{entity[0]}')
                 rmtree(f'{self.db_path}/_temp_entity',ignore_errors=True)
             case 'doc' | 'docx':
                 if not docx2_imported or not docx_imported or not pil_imported:
@@ -3564,11 +3619,98 @@ class ChloeAI:
                     return None
                 if not exists(f'{self.db_path}/_temp_entity'):
                     mkdir(f'{self.db_path}/_temp_entity')
-                self.archive_doc_data(item_path,'_temp_entity')
+                try:
+                    self.archive_doc_data(item_path,'_temp_entity')
+                except Exception:
+                    if return_tuple:
+                        return ()
+                    return None
+                lines = []
+                num_lines = []
+                item_name = item_path[item_path.rfind('/')+1:]
+                item_name = "%s_%s" % (item_name[:item_name.rfind(".")],item_name[item_name.rfind(".")+1:])
+                if exists(f'{self.db_path}/_temp_entity/{item_name}/doc_extracted_text.txt'):
+                    lines.append([])
+                    with open(f'{self.db_path}/_temp_entity/{item_name}/doc_extracted_text.txt',encoding='utf-8') as tf:
+                        while True:
+                            line = tf.readline()
+                            if not line:
+                                break
+                            lines[0].append(line.rstrip('\n'))
+                    lines[0] = tuple(lines[0])
+                    num_lines.append((num := len(lines[0])))
+                    num_lines_str = '%i|' % (num)
+                else:
+                    lines.append(None)
+                    num_lines.append(0)
+                    num_lines_str = "0|"
+                if exists(f'{self.db_path}/_temp_entity/{item_name}/image_histogram_data.txt'):
+                    lines.append([])
+                    with open(f'{self.db_path}/_temp_entity/{item_name}/image_histogram_data.txt',encoding='utf-8') as tf:
+                        while True:
+                            line = tf.readline()
+                            if not line:
+                                break
+                            lines[1].append(line.strip('\n'))
+                    lines[1] = tuple(lines[1])
+                    num_lines.append((num := len(lines[1])))
+                    num_lines_str = "%s%i" % (num_lines_str,num)
+                else:
+                    lines.append(None)
+                    num_lines.append(0)
+                    num_lines_str = f"{num_lines_str}0"
+                lines = tuple(lines)
+                num_lines = tuple(num_lines)
+                if num_lines_str == "0|0":
+                    # No data accessible for comparisons to be made.
+                    if return_tuple:
+                        return ()
+                    return None
+                range_1 = range(num_lines[0])
+                range_2 = range(num_lines[1])
                 for db_name in iterator:
                     with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                        pass
-                rmtree(f'{self.db_path}/{db_name}',ignore_errors=True)
+                        if '_metadata.txt' in zf.namelist():
+                            with zf.open('_metadata.txt') as zf:
+                                while True:
+                                    entity = tf.readline()
+                                    if not entity:
+                                        break
+                                    entity = decodeZipTxtLine(entity).split('|')
+                                    if 'DOC' == entity[1]:
+                                        if num_lines_str == f'{entity[5]}|{entity[6]}':
+                                            duplicate_match = True
+                                            if num_lines[0]:
+                                                temp_lines = []
+                                                with zf.open(f'{entity[0]}/doc_extracted_text.txt') as tf2:
+                                                    while True:
+                                                        line = tf2.readline()
+                                                        if not line:
+                                                            break
+                                                        temp_lines.append(decodeZipTxtLine(line))
+                                                temp_lines = tuple(temp_lines)
+                                                for a in range_1:
+                                                    if lines[a] != temp_lines[a]:
+                                                        duplicate_match = False
+                                                        break
+                                            if not duplicate_match:
+                                                continue
+                                            if num_lines[1]:
+                                                temp_lines = []
+                                                with zf.open(f'{entity[0]}/image_histogram_data.txt') as tf2:
+                                                    while True:
+                                                        line = tf2.readline()
+                                                        if not line:
+                                                            break
+                                                        temp_lines.append(decodeZipTxtLine(line))
+                                                temp_lines = tuple(temp_lines)
+                                                for a in range_2:
+                                                    if lines[b] != temp_lines[b]:
+                                                        duplicate_match = False
+                                                        break
+                                            if duplicate_match:
+                                                found_duplicates.append(f'{db_name}|{entity[0]}')
+                rmtree(f'{self.db_path}/_temp_entity',ignore_errors=True)
             case 'gdb':
                 if not arcpy_imported or not isdir(item_path):
                     if return_tuple:
@@ -3576,10 +3718,37 @@ class ChloeAI:
                     return None
                 if not exists(f'{self.db_path}/_temp_entity'):
                     mkdir(f'{self.db_path}/_temp_entity')
-                self.archive_gdb_data(item_path,'_temp_entity')
+                try:
+                    self.archive_gdb_data(item_path,'_temp_entity')
+                except Exception:
+                    if return_tuple:
+                        return ()
+                    return None
+                item_name = item_path[item_path.rfind('/')+1:]
+                item_name = "%s_%s" % (item_name[:item_name.rfind(".")],item_name[item_name.rfind(".")+1:])
+                gdb_item_names = []
+                gdb_item_line_counts_str = ''
+                with open(f'{item_name}_metadata.txt',encoding='utf-8') as tf:
+                    line = tf.readline()
+                    if not line:
+                        if return_tuple:
+                            return ()
+                        return None
+                    gdb_item_line_counts_str = line.rstrip('\n')
+                    gdb_item_names = tuple([item[:item.rfind(' ')] for item in tuple(gdb_item_line_counts_str.split('|'))])
+                try: del line
+                except NameError: pass
+                if not len(gdb_item_names):
+                    if return_tuple:
+                        return ()
+                    return None
                 for db_name in iterator:
                     with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                        pass
+                        if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]):
+                            metadata_files.remove('_metadata.txt')
+                        for metadata_file in (metadata_files := tuple(metadata_files)):
+                            if metadata_file.lower().endswith('_gdb_metadata.txt'):
+                                pass
                 rmtree(f'{self.db_path}/{db_name}',ignore_errors=True)
             case _:
                 if not pil_imported:
