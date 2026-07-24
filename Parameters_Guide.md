@@ -86,6 +86,10 @@ Parameters:
 
 
 
+**allow\_truncating\_images** (*Boolean*) - This parameter only comes into effect if pillow/PIL module is installed/available. This determines if loading of an image file will be truncated if **maximum\_pixels** is exceeded or the file itself is too big. By default, this is False.
+
+
+
 **histogram\_ratio\_precision** (*Integer*) - This parameter only comes into effect if pillow/PIL (i.e., Python Image Library) module is installed/available. When acquiring identifying data from image files, this value determines the number of decimal points that are kept for histogram ratio values. In short, higher values result in more "exact" values for histogram ratios while lower ones result in the inverse. By default, the value is 6 and is considered optimal.
 
 
