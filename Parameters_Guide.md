@@ -26,11 +26,7 @@ txt - Text files (.txt)
 
 
 
-doc - Word Documents (.doc and/or .docx)
-
-
-
-docx - This is the same as "doc".
+doc - Word Documents (.docx only)
 
 
 
@@ -218,7 +214,7 @@ Parameters:
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc"/"docx", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), or file geodatabase, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked for the presence of **entry\_string**. By default, the string is "any".
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), or file geodatabase, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked for the presence of **entry\_string**. By default, the string is "any".
 
 
 
@@ -376,7 +372,7 @@ Purpose: This outputs the total size of the files that are being referenced in t
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of entry\_string. If "doc"/"docx", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), or file geodatabase, respectively, will be checked.
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of entry\_string. If "doc", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), or file geodatabase, respectively, will be checked.
 
 
 
@@ -396,7 +392,7 @@ Purpose: This simply outputs an integer value of the number of items with refere
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of entry\_string. If "doc"/"docx", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), or file geodatabase, respectively, will be checked.
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of entry\_string. If "doc", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), or file geodatabase, respectively, will be checked.
 
 
 
