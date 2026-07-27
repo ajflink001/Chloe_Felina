@@ -43,10 +43,10 @@ It is extremely recommended to install the following modules via pip to get the 
 
 - _pillow_ (handles image files)
 - _openpyxl_ (allows creating outputs as Excel files)
-- _docx_ (handles Word files, specifically .docx)
+- _python-docx_ (handles Word files, specifically .docx)
 - _docx2python_ (mainly helps with better reading .docx files)
 - _pypdf_ (handles PDFs)
-- _win32api_ (required to utilize the full functionality of _chloeFelina.cat.ChloeAI.updateAndRefreshArchive_)
+- _pywin32_ (required to utilize the full functionality of _chloeFelina.cat.ChloeAI.updateAndRefreshArchive_)
 - _tqdm_ (for optional display of progress)
 
 ```
