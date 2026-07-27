@@ -202,7 +202,7 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                     else:
                         organized_files['shp'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                         counter['shp'] = len(organized_files['shp'][0])
-                case 'doc' | 'docx':
+                case 'docx':
                     if 'doc' in organized_files.keys():
                         organized_files['doc'].append(tuple(sorted([item for item in found_duplicates[n]])))
                         counter['doc'] += len(organized_files['doc'][-1])
@@ -223,7 +223,6 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                     else:
                         organized_files['img'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                         counter['img'] = len(organized_files['img'][0])
-        #16_384
         prefix_association = {'gdb' : 'File Geodatabases', 'img' : 'Images', 'pdf' : 'PDFs', 'shp' : 'ShapeFiles', 'txt' : 'Text Files', 'doc' : 'Word Documents'}
         upper_letters = tuple(ascii_uppercase)
         for entity_type in tuple(counter.keys()):
@@ -334,7 +333,7 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                         organized_files['gdb'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                     else:
                         organized_files['gdb'].append(tuple(sorted([item for item in found_duplicates[n]])))
-                case 'doc' | 'docx':
+                case 'docx':
                     if not 'doc' in organized_files.keys():
                         organized_files['doc'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                     else:
@@ -423,7 +422,7 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
                     organized_files['gdb'] = [item]
                 else:
                     organized_files['gdb'].append(item)
-            case 'doc' | 'docx':
+            case 'docx':
                 if not 'doc' in organized_files.keys():
                     organized_files['doc'] = [item]
                 else:
