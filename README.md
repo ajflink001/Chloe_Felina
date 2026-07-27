@@ -43,14 +43,14 @@ It is extremely recommended to install the following modules via pip to get the 
 
 - _pillow_ (handles image files)
 - _openpyxl_ (allows creating outputs as Excel files)
-- _docx_ (handles Word files)
-- _docx2python_ (mainly helps with reading .doc files)
+- _docx_ (handles Word files, specifically .docx)
+- _docx2python_ (mainly helps with better reading .docx files)
 - _pypdf_ (handles PDFs)
 - _win32api_ (required to utilize the full functionality of _chloeFelina.cat.ChloeAI.updateAndRefreshArchive_)
 - _tqdm_ (for optional display of progress)
 
 ```
-pip install pillow openpyxl docx docx2python pypdf pywin32 tqdm
+pip install pillow openpyxl python-docx docx2python pypdf pywin32 tqdm
 ```
 
 **Note**: The only version requirements for these modules and their dependencies are compatibility with CPython 3.11+.
@@ -58,7 +58,7 @@ pip install pillow openpyxl docx docx2python pypdf pywin32 tqdm
 In order to apply and/or check for updates to the prior listed modules, use the following command for pip:
 
 ```
-pip install pillow openpyxl docx docx2python pypdf pywin32 tqdm --upgrade
+pip install pillow openpyxl python-docx docx2python pypdf pywin32 tqdm --upgrade
 ```
 
 In order to better understand how to utilize Chloe Felina, please read and consult the Parameters_Guide.md file included with Chloe Felina.
