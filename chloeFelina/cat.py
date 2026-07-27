@@ -61,7 +61,7 @@ except ImportError: win32api_imported = False
 except ModuleNotFoundError: win32api_imported = False
 
 # Built-In Python Modules
-import csv,logging
+import csv,logging,warnings
 from os import walk as walker
 from os import listdir,mkdir,chdir,getcwd,remove,chmod,rename
 from os.path import exists,isfile,isdir
@@ -99,6 +99,8 @@ if logging.root.manager.disable != 50:
         except Exception:
             pass
 
+warnings.simplefilter("ignore")
+
 temp_path = _audio_file_pointer.__file__.replace("\\","/")
 
 _chloe_voice_path = "%s/Chloe_True_Voice" % temp_path[:temp_path.rfind('/')]
@@ -120,7 +122,7 @@ setlocale(LC_ALL,'')
 
 class ChloeAI:
 
-    def __init__(self, database_location : str | None = None, database_name : str = 'datenaro', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, allow_truncating_images : bool = False, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, corrupted_zip_check : bool = True):
+    def __init__(self, database_location : str | None = None, database_name : str = 'datumbazo', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, allow_truncating_images : bool = False, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, corrupted_zip_check : bool = True):
 
         self.accepted_suffixes = {'gdb','docx','doc','pdf','txt','shp','png','jpg','jpeg','tif','tiff','webp','jpg','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm'}
         self.valid_check_types = {'txt','pdf','doc','img','gdb','shp'}
@@ -401,6 +403,7 @@ class ChloeAI:
             nonlocal_drives.remove('C:\\')
             nonlocal_drives = tuple([unc_path(drive) for drive in nonlocal_drives])
             redact_dbs = []
+            #determined_changes = {"directories removed":[],"modified items":[],"removed items":[],"added items":[]}
             if terminal_progress_display_enabled and tqdm_imported:
                 iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display_enabled, desc = "Checking and Applying Changes to Database")
             else:
@@ -422,6 +425,7 @@ class ChloeAI:
                     if not exists(self.path_pointer[db_name]):
                         redact_dbs.append(db_name)
             for redact_db in (redact_dbs := tuple(redact_dbs)):
+                #determined_changes["directories removed"].append(self.path_pointer[redact_db].replace('/','\\'))
                 self.removeCrintumEntry(self.path_pointer[redact_db])
                 remove(f'{self.db_path}/{redact_db}')
             del redact_dbs
@@ -433,7 +437,6 @@ class ChloeAI:
                 iterator = tuple(self.used_names)
 
             for db_name in iterator:
-                found_changes = {"removed":{}, "added":{}, "modified":{}}
                 db_path_db_name = f'{self.db_path}/{db_name}'
                 redacted_items = [] ; additional_items = [] ; changed_items = [] ; valid_found_items = {}
                 try:
@@ -498,32 +501,37 @@ class ChloeAI:
                 for entity in tuple(valid_found_items.keys()):
                     if not f"{entity[:entity.rfind('.')]}_{entity[entity.rfind('.')+1:]}" in checking_set:
                         additional_items.append(entity)
+                        #determined_changes["added items"].append("%s\\%s" % (self.path_pointer[db_name].replace("/","\\"),entity))
                 additional_items = tuple(additional_items)
                 checking_set = set(valid_found_items.keys())
                 for entity in tuple(baseline_entity_info.keys()):
                     if not (other_entity := f"{entity[:entity.rfind('_')]}.{entity[entity.rfind('_')+1:]}") in checking_set:
                         redacted_items.append(entity)
-                        found_changes["removed"].add(f"{db_name}|")
+                        #determined_changes["removed items"].append("%s\\%s" % (self.path_pointer[db_name].replace('/','\\'),other_entity))
                     else:
                         match entity[entity.rfind('_')+1:].lower():
                             case 'gdb':
                                 if len(baseline_entity_info[entity].keys()) != len(valid_found_items[other_entity].keys()):
                                     changed_items.append(entity)
+                                    #determined_changes["modified items"].append("%s\\%s" % (self.path_pointer[db_name].replace('/','\\'),other_entity))
                                 else:
                                     checking_set = set(valid_found_items[other_entity].keys())
                                     for gdb_file in baseline_entity_info[entity].keys():
                                         if not gdb_file in checking_set:
                                             changed_items.append(entity)
+                                            #determined_changes["modified items"].append("%s\\%s" % (self.path_pointer[db_name].replace('/','\\'),other_entity))
                                             break
                                         else:
                                             if baseline_entity_info[entity][gdb_file][0] != valid_found_items[other_entity][gdb_file][0] or baseline_entity_info[entity][gdb_file][1] != valid_found_items[other_entity][gdb_file][1] or baseline_entity_info[entity][gdb_file][2] != valid_found_items[other_entity][gdb_file][2]:
                                                 changed_items.append(entity)
+                                                #determined_changes["modified items"].append("%s\\%s" % (self.path_pointer[db_name].replace('/','\\'),other_entity))
                                                 break
                                     del checking_set
                             case _:
                                 # anything else.
                                 if baseline_entity_info[entity][0] != valid_found_items[other_entity][0] or baseline_entity_info[entity][1] != valid_found_items[other_entity][1] or baseline_entity_info[entity][2] != valid_found_items[other_entity][2]:
                                     changed_items.append(entity)
+                                    #determined_changes["modified items"].append("%s\\%s" % (self.path_pointer[db_name].replace('/','\\'),other_entity))
                 del checking_set ; del valid_found_items ; del baseline_entity_info
                 try: del other_entity
                 except NameError: pass
@@ -1028,6 +1036,8 @@ class ChloeAI:
                     items[name] = 'DOC'
                 elif name[name.rfind("."):] in self.accepted_image_extensions:
                     items[name] = 'IMG'
+                # else:
+                #     items[name] = 'MIS'
             if len(items):
                 archive_db_name = randstr(12)
                 while archive_db_name in self.used_names:
@@ -1324,14 +1334,10 @@ class ChloeAI:
 
         baseline_metadata = '|'.join(baseline_metadata)
 
-        try:
-            word_doc = Document(doc_path)
-        except Exception:
-            return None
-
         metadata_info = []
 
         try:
+            word_doc = Document(doc_path)
             props = word_doc.core_properties
             if not (temp_str := props.title) in nulls:
                 if temp_str == "<NULL>":
@@ -1426,7 +1432,60 @@ class ChloeAI:
 
             metadata_info = tuple(metadata_info)
         except Exception:
-            metadata_info = None
+            try:
+                word_doc = docx2(doc_path)
+                props = word_doc.core_properties
+                if not (temp_str := props['title']) in nulls:
+                    if temp_str == "<NULL>":
+                        temp_str = '"<NULL>"'
+                    temp_str = str(temp_str).rstrip('\n')
+                    while '  ' in temp_str:
+                        temp_str = temp_str.replace('  ',' ')
+                    metadata_info.append(temp_str)
+                else:
+                    metadata_info.append("<NULL>")
+                if not (temp_str := props["creator"]) in nulls:
+                    if temp_str == "<NULL>":
+                        temp_str = '"<NULL>"'
+                    temp_str = str(temp_str).rstrip('\n')
+                    while '  ' in temp_str:
+                        temp_str = temp_str.replace('  ',' ')
+                    metadata_info.append(temp_str)
+                else:
+                    metadata_info.append("<NULL>")
+                if not (temp_str := props["subject"]) in nulls:
+                    if temp_str == "<NULL>":
+                        temp_str = '"<NULL>"'
+                    temp_str = str(temp_str).rstrip('\n')
+                    while '  ' in temp_str:
+                        temp_str = temp_str.replace('  ',' ')
+                    metadata_info.append(temp_str)
+                else:
+                    metadata_info.append("<NULL>")
+                metadata_info.append("<NULL>") # unable to determine indentifier
+                metadata_info.append("<NULL>") # unable to determine language
+                metadata_info.append("<NULL>") # unable to determine category
+                if not (temp_str := props["keywords"]) in nulls:
+                    if temp_str == "<NULL>":
+                        temp_str = '"<NULL>"'
+                    temp_str = str(temp_str).rstrip('\n')
+                    while '  ' in temp_str:
+                        temp_str = temp_str.replace('  ',' ')
+                    metadata_info.append(temp_str)
+                else:
+                    metadata_info.append("<NULL>")
+                if not (temp_str := props["revision"]) in nulls:
+                    if temp_str == "<NULL>":
+                        temp_str = '"<NULL>"'
+                    temp_str = str(temp_str).rstrip('\n')
+                    while '  ' in temp_str:
+                        temp_str = temp_str.replace('  ',' ')
+                    metadata_info.append(temp_str)
+                else:
+                    metadata_info.append("<NULL>")
+                metadata_info.append("<NULL>") # unable to determine version
+            except Exception:
+                pass
 
         del props
         try: del temp_str
@@ -1435,7 +1494,7 @@ class ChloeAI:
         mkdir((doc_folder := f'{self.db_path}/{archive_db_name}/{doc_path[doc_path.rfind("/")+1:doc_path.rfind(".")]}_{doc_path[doc_path.rfind(".")+1:]}'))
         mkdir((temp_folder := f'{doc_folder}/_temp_images'))
 
-        if metadata_info is None:
+        if not len(metadata_info):
             with open(f'{doc_folder}/doc_metadata.txt','w',encoding='utf-8') as tf:
                 tf.write("UNABLE TO EXTRACT METADATA")
         else:
@@ -2041,6 +2100,11 @@ class ChloeAI:
                     tf.write(f'\n{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
 
         return None
+
+
+    # def archive_mis_data(self, alia_path : str, archive_db_name : str) -> None:
+    #
+    #     return None
 
 
     def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, entity_names_only : bool = False, entity_name_extension : str | tuple[str] | list[str] | set[str] = 'any', return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
