@@ -78,7 +78,7 @@ Parameters:
 
 
 
-**database\_name** (*String*) - This will be the name of the database used by Chloe Felina. Anything name is acceptable. If a database has already been generated for Chloe Felina (and both **database\_location** and **database\_name** together point to it), it will get the necessary data from the pre-existing database instead of initializing a new one. By default "datenaro" is used as the name of the database. Datenaro is supposedly "database" in Esperanto.
+**database\_name** (*String*) - This will be the name of the database used by Chloe Felina. Anything name is acceptable. If a database has already been generated for Chloe Felina (and both **database\_location** and **database\_name** together point to it), it will get the necessary data from the pre-existing database instead of initializing a new one. By default "datumbazo" is used as the name of the database. Datumbazo is supposedly "database" in Esperanto.
 
 
 
