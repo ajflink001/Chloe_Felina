@@ -124,6 +124,9 @@ class ChloeAI:
 
     def __init__(self, database_location : str | None = None, database_name : str = 'datumbazo', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, allow_truncating_images : bool = False, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, corrupted_zip_check : bool = True):
 
+        # All other file types will have only the name and baseline metadata
+        # stored in a file called "_alia_dosieroj.txt", which in Esperanto
+        # roughly translates as "other files".
         self.accepted_suffixes = {'gdb','docx','pdf','txt','shp','png','jpg','jpeg','tif','tiff','webp','jpg','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm'}
         self.valid_check_types = {'txt','pdf','doc','img','gdb','shp'}
 
@@ -1037,7 +1040,7 @@ class ChloeAI:
                 elif name[name.rfind("."):] in self.accepted_image_extensions:
                     items[name] = 'IMG'
                 # else:
-                #     items[name] = 'MIS'
+                #     items[name] = 'ALIA'
             if len(items):
                 archive_db_name = randstr(12)
                 while archive_db_name in self.used_names:
@@ -2102,9 +2105,29 @@ class ChloeAI:
         return None
 
 
-    # def archive_mis_data(self, alia_path : str, archive_db_name : str) -> None:
-    #
-    #     return None
+    def archive_alia_data(self, alia_path : str, archive_db_name : str) -> None:
+
+        try:
+            baseline_metadata = getModifiedDate(alia_path)[4:]
+        except Exception:
+            baseline_metadata = "<NULL>|"
+        try:
+            baseline_metadata = f"{baseline_metadata}{getCreatedDate(alia_path)[4:]}|"
+        except Exception:
+            baseline_metadata = f"{baseline_metadata}<NULL>|"
+        try:
+            baseline_metadata = f"{baseline_metadata}{getSizeOfItem(alia_path)}"
+        except Exception:
+            baseline_metadata = f"{baseline_metadata}<NULL>"
+
+        if not exists(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt'):
+            with open(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt','w',encoding='utf-8') as tf:
+                tf.write(f'{alia_path[alia_path.rfind(".")+1:]}|{baseline_metadata}')
+        else:
+            with open(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt','a',encoding='utf-8') as tf:
+                tf.write(f'\n{alia_path[alia_path.rfind(".")+1:]}|{baseline_metadata}')
+
+        return None
 
 
     def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, entity_names_only : bool = False, entity_name_extension : str | tuple[str] | list[str] | set[str] = 'any', return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
@@ -2241,7 +2264,7 @@ class ChloeAI:
             for db_name in iterator:
                 items = []
                 with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                    metadata_files = [item for item in tuple(zf.namelist()) if not '/' in item]
+                    metadata_files = [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]
                     if '_metadata.txt' in metadata_files:
                         with zf.open('_metadata.txt') as tf:
                             while True:
