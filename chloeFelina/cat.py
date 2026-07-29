@@ -1057,20 +1057,29 @@ class ChloeAI:
                                 try:
                                     self.archive_gdb_data(f'{reference_directory}/{name}',archive_db_name)
                                 except Exception:
-                                    # accounts for unreadable/corrupted file geodatabases
                                     if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
                                         rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
+                            else:
+                                pass
                         case 'SHP':
                             if arcpy_imported:
                                 try:
                                     self.archive_shp_data(f'{reference_directory}/{name}',archive_db_name)
                                 except Exception:
-                                    # accounts for unreadable/corrupted shapefiles
-                                    if exists(f'{self.db_path}/{archive_db_name}/_shp_files'):
+                                    if exists(f'{self.db_path}/{archive_db_name}/_shp_files/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}.txt'):
+                                        remove(f'{self.db_path}/{archive_db_name}/_shp_files/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}.txt')
                                         if not len(listdir(f'{self.db_path}/{archive_db_name}/_shp_files')):
                                             rmtree(f'{self.db_path}/{archive_db_name}/_shp_files')
+                            else:
+                                pass
                         case 'TXT':
-                            self.archive_txt_data(f'{reference_directory}/{name}',archive_db_name)
+                            try:
+                                self.archive_txt_data(f'{reference_directory}/{name}',archive_db_name)
+                            except Exception:
+                                if exists(f'{self.db_path}/{archive_db_name}/_txt_files/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}.txt'):
+                                    remove(f'{self.db_path}/{archive_db_name}/_txt_files/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}.txt')
+                                    if not len(f'{self.db_path}/{archive_db_name}/_txt_files'):
+                                        rmtree(f'{self.db_path}/{archive_db_name}/_txt_files')
                         case 'PDF':
                             if pypdf_imported and pil_imported:
                                 try:
@@ -1079,6 +1088,8 @@ class ChloeAI:
                                     # accounts for something going wrong when attempting to access information from PDFs
                                     if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
                                         rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
+                            else:
+                                pass
                         case 'DOC':
                             if docx_imported and docx2_imported and pil_imported:
                                 try:
@@ -1087,9 +1098,13 @@ class ChloeAI:
                                     # accounts for something going wrong when attempting to access information from Word documents
                                     if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
                                         rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
+                            else:
+                                pass
                         case 'IMG':
                             if pil_imported:
                                 self.archive_img_data(f'{reference_directory}/{name}',archive_db_name)
+                            else:
+                                pass
                         case _:
                             pass
                 if exists(f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10.gdb'):
@@ -2079,6 +2094,11 @@ class ChloeAI:
                     if not line:
                         break
                     counters[0] += 1
+            if counters[0] == 1:
+                # This prevents PDFs that are forms from being processed.
+                if line.startswith('Please wait... If this message is not eventually replaced by the proper contents of the document, your PDF viewer may not be able to display this type of document.'):
+                    rmtree(pdf_folder)
+                    return None
         if exists(f'{pdf_folder}/image_histogram_data.txt'):
             with open(f'{pdf_folder}/image_histogram_data.txt','r',encoding='utf-8') as tf:
                 while True:
