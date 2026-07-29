@@ -1,4 +1,4 @@
-# Chloe_Felina
+# Chloe Felina
 Chloe Felina can be roughly classified as a hybrid of a rule-based expert system and data-driven inference engine.
 
 Chloe Felina has been designed with the philosophy of being able to function fully offline and work on any computer with Windows OS installed on it as well as acting as a virtual helper/assistant. It is not as feature-rich as I desire it to be. Currently, the Dynamic Term Search Query System and the In-Depth Streamlined Duplicate Finding System are the only things fully implemented.
