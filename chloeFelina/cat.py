@@ -164,6 +164,7 @@ class ChloeAI:
                     database_name = f"{database_name}_{randstr()}"
                 self.db_name = database_name[:]
                 self.db_path = f'{self.db_path[:self.db_path.rfind("/")]}/{database_name}'
+                mkdir(self.db_path)
                 with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
                     pass
             else:
