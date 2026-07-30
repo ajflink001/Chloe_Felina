@@ -124,7 +124,7 @@ class ChloeAI:
 
     def __init__(self, database_location : str | None = None, database_name : str = 'datumbazo', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, allow_truncating_images : bool = False, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, corrupted_zip_check : bool = True):
 
-        # All other file types will have only the name and baseline metadata
+       # All other file types will have only the name and baseline metadata
         # stored in a file called "_alia_dosieroj.txt", which in Esperanto
         # roughly translates as "other files".
         self.accepted_suffixes = {'gdb','docx','pdf','txt','shp','png','jpg','jpeg','tif','tiff','webp','jpg','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm'}
@@ -133,11 +133,17 @@ class ChloeAI:
         self.crintum_obfuscation = crintum_obfuscation
         self.database_name = database_name[:]
 
+        user_path = str(Path.home()).replace('\\','/')
+
         if database_location is None or not exists(database_location):
-            user_path = str(Path.home()).replace('\\','/')
             self.db_path = f'{user_path}/Documents/{database_name}'
             if not exists(self.db_path):
-                mkdir(self.db_path)
+                try:
+                    mkdir(self.db_path)
+                except Exception:
+                    database_name = 'datumbazo'
+                    self.db_path = f'{user_path}/Documents/{database_name}'
+                    mkdir(self.db_path)
         else:
             database_location = database_location.replace("\\","/")
             self.db_path = f'{database_location}/{database_name}'
@@ -189,7 +195,10 @@ class ChloeAI:
             del items
         else:
             ignore_empty_line = True
-            mkdir(self.db_path)
+            try:
+                mkdir(self.db_path)
+            except Exception:
+                mkdir(f'{user_path}/Documents/datumbazo')
             with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
                 pass
 
@@ -311,7 +320,6 @@ class ChloeAI:
 
         if self.chloe_vocalization:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
-
 
     def updateAndRefreshDatabase(self, keep_db_if_no_connection : bool = True, clear_terms_searched : bool = True, terminal_progress_display_enabled : bool = False) -> None:
         '''
