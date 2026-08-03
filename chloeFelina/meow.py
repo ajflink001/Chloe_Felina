@@ -136,7 +136,7 @@ def determineEntityType(entity_path : str) -> str | None:
     else:
         return None
 
-def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, overwriteOutput : bool) -> None:
+def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, overwriteOutput : bool, valid_image_types : set) -> None:
 
     csv.field_size_limit(csv_field_size_limit)
 
@@ -180,50 +180,65 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
         organized_files = {}
         counter = {}
         for n in range(len(found_duplicates)):
-            match found_duplicates[n][0][found_duplicates[n][0].rfind(".")+1:].lower():
-                case 'txt':
-                    if 'txt' in organized_files.keys():
-                        organized_files['txt'].append(tuple(sorted([item for item in found_duplicates[n]])))
-                        counter['txt'] += len(organized_files['txt'][-1])
-                    else:
-                        organized_files['txt'] = [tuple(sorted([item for item in found_duplicates[n]]))]
-                        counter['txt'] = len(organized_files['txt'][0])
-                case 'pdf':
-                    if 'pdf' in organized_files.keys():
-                        organized_files['pdf'].append(tuple(sorted([item for item in found_duplicates[n]])))
-                        counter['pdf'] += len(organized_files['pdf'][-1])
-                    else:
-                        organized_files['pdf'] = [tuple(sorted([item for item in found_duplicates[n]]))]
-                        counter['pdf'] = len(organized_files['pdf'][0])
-                case 'shp':
-                    if 'shp' in organized_files.keys():
-                        organized_files['shp'].append(tuple(sorted([item for item in found_duplicates[n]])))
-                        counter['shp'] += len(organized_files['shp'][-1])
-                    else:
-                        organized_files['shp'] = [tuple(sorted([item for item in found_duplicates[n]]))]
-                        counter['shp'] = len(organized_files['shp'][0])
-                case 'docx':
-                    if 'doc' in organized_files.keys():
-                        organized_files['doc'].append(tuple(sorted([item for item in found_duplicates[n]])))
-                        counter['doc'] += len(organized_files['doc'][-1])
-                    else:
-                        organized_files['doc'] = [tuple(sorted([item for item in found_duplicates[n]]))]
-                        counter['doc'] = len(organized_files['doc'][0])
-                case 'gdb':
-                    if 'gdb' in organized_files.keys():
-                        organized_files['gdb'].append(tuple(sorted([item for item in found_duplicates[n]])))
-                        counter['gdb'] += len(organized_files['gdb'][-1])
-                    else:
-                        organized_files['gdb'] = [tuple(sorted([item for item in found_duplicates[n]]))]
-                        counter['gdb'] = len(organized_files['gdb'][0])
-                case _:
-                    if 'img' in organized_files.keys():
-                        organized_files['img'].append(tuple(sorted([item for item in found_duplicates[n]])))
-                        counter['img'] += len(organized_files['img'][-1])
-                    else:
-                        organized_files['img'] = [tuple(sorted([item for item in found_duplicates[n]]))]
-                        counter['img'] = len(organized_files['img'][0])
-        prefix_association = {'gdb' : 'File Geodatabases', 'img' : 'Images', 'pdf' : 'PDFs', 'shp' : 'ShapeFiles', 'txt' : 'Text Files', 'doc' : 'Word Documents'}
+            if not '.' in found_duplicates[n][0]:
+                if 'alia' in organized_files.keys():
+                    organized_files['alia'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                    counter['alia'] += len(organized_files['alia'][-1])
+                else:
+                    organized_files['alia'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                    counter['alia'] = len(organized_files['alia'][0])
+            else:
+                match (extension := found_duplicates[n][0][found_duplicates[n][0].rfind(".")+1:].lower()):
+                    case 'txt':
+                        if 'txt' in organized_files.keys():
+                            organized_files['txt'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                            counter['txt'] += len(organized_files['txt'][-1])
+                        else:
+                            organized_files['txt'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            counter['txt'] = len(organized_files['txt'][0])
+                    case 'pdf':
+                        if 'pdf' in organized_files.keys():
+                            organized_files['pdf'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                            counter['pdf'] += len(organized_files['pdf'][-1])
+                        else:
+                            organized_files['pdf'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            counter['pdf'] = len(organized_files['pdf'][0])
+                    case 'shp':
+                        if 'shp' in organized_files.keys():
+                            organized_files['shp'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                            counter['shp'] += len(organized_files['shp'][-1])
+                        else:
+                            organized_files['shp'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            counter['shp'] = len(organized_files['shp'][0])
+                    case 'docx':
+                        if 'doc' in organized_files.keys():
+                            organized_files['doc'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                            counter['doc'] += len(organized_files['doc'][-1])
+                        else:
+                            organized_files['doc'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            counter['doc'] = len(organized_files['doc'][0])
+                    case 'gdb':
+                        if 'gdb' in organized_files.keys():
+                            organized_files['gdb'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                            counter['gdb'] += len(organized_files['gdb'][-1])
+                        else:
+                            organized_files['gdb'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            counter['gdb'] = len(organized_files['gdb'][0])
+                    case _:
+                        if extension in valid_image_types:
+                            if 'img' in organized_files.keys():
+                                organized_files['img'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                                counter['img'] += len(organized_files['img'][-1])
+                            else:
+                                organized_files['img'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                                counter['img'] = len(organized_files['img'][0])
+                        elif 'alia' in organized_files.keys():
+                            organized_files['alia'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                            counter['alia'] += len(organized_files['alia'][-1])
+                        else:
+                            organized_files['alia'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            counter['alia'] = len(organized_files['alia'][0])
+        prefix_association = {'gdb' : 'File Geodatabases', 'img' : 'Images', 'pdf' : 'PDFs', 'shp' : 'ShapeFiles', 'txt' : 'Text Files', 'doc' : 'Word Documents', 'alia' : 'Miscellaneous'}
         upper_letters = tuple(ascii_uppercase)
         for entity_type in tuple(counter.keys()):
             if counter[entity_type] <= 26:
@@ -311,39 +326,50 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
         wb.close()
     else:
         organized_files = {}
-        for n in range(len(found_duplicates)):
-            match found_duplicates[n][0][found_duplicates[n][0].rfind(".")+1:].lower():
-                case 'txt':
-                    if not 'txt' in organized_files.keys():
-                        organized_files['txt'] = [tuple(sorted([item for item in found_duplicates[n]]))]
-                    else:
-                        organized_files['txt'].append(tuple(sorted([item for item in found_duplicates[n]])))
-                case 'pdf':
-                    if not 'pdf' in organized_files.keys():
-                        organized_files['pdf'] = [tuple(sorted([item for item in found_duplicates[n]]))]
-                    else:
-                        organized_files['pdf'].append(tuple(sorted([item for item in found_duplicates[n]])))
-                case 'shp':
-                    if not 'shp' in organized_files.keys():
-                        organized_files['shp'] = [tuple(sorted([item for item in found_duplicates[n]]))]
-                    else:
-                        organized_files['shp'].append(tuple(sorted([item for item in found_duplicates[n]])))
-                case 'gdb':
-                    if not 'gdb' in organized_files.keys():
-                        organized_files['gdb'] = [tuple(sorted([item for item in found_duplicates[n]]))]
-                    else:
-                        organized_files['gdb'].append(tuple(sorted([item for item in found_duplicates[n]])))
-                case 'docx':
-                    if not 'doc' in organized_files.keys():
-                        organized_files['doc'] = [tuple(sorted([item for item in found_duplicates[n]]))]
-                    else:
-                        organized_files['doc'].append(tuple(sorted([item for item in found_duplicates[n]])))
-                case _:
-                    if not 'img' in organized_files.keys():
-                        organized_files['img'] = [tuple(sorted([item for item in found_duplicates[n]]))]
-                    else:
-                        organized_files['img'].append(tuple(sorted([item for item in found_duplicates[n]])))
         if output_path.endswith('.csv'):
+            for n in range(len(found_duplicates)):
+                if not '.' in found_duplicates[n][0]:
+                    if not 'alia' in organized_files.keys():
+                        organized_files['alia'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                    else:
+                        organized_files['alia'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                else:
+                    match (extension := found_duplicates[n][0][found_duplicates[n][0].rfind(".")+1:].lower()):
+                        case 'txt':
+                            if not 'txt' in organized_files.keys():
+                                organized_files['txt'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['txt'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                        case 'pdf':
+                            if not 'pdf' in organized_files.keys():
+                                organized_files['pdf'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['pdf'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                        case 'shp':
+                            if not 'shp' in organized_files.keys():
+                                organized_files['shp'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['shp'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                        case 'gdb':
+                            if not 'gdb' in organized_files.keys():
+                                organized_files['gdb'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['gdb'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                        case 'docx':
+                            if not 'doc' in organized_files.keys():
+                                organized_files['doc'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['doc'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                        case _:
+                            if extension in valid_image_types:
+                                if not 'img' in organized_files.keys():
+                                    organized_files['img'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                                else:
+                                    organized_files['img'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                            elif not 'alia' in organized_files.keys():
+                                organized_files['alia'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['alia'].append(tuple(sorted([item for item in found_duplicates[n]])))
             with open(output_path,'w') as cf:
                 csv_writer = csv.writer(cf,delimiter=csv_delimiter)
                 csv_writer.writerow(["Explicit Paths to Potenial Matching Duplicates"])
@@ -351,6 +377,49 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                     for grouping in organized_files[entity_key]:
                         csv_writer.writerow(grouping)
         else:
+            for n in range(len(found_duplicates)):
+                if not '.' in found_duplicates[n][0]:
+                    if not 'alia' in organized_files.keys():
+                        organized_files['alia'] = tuple(sorted([item for item in found_duplicates[n]]))
+                    else:
+                        organized_files['alia'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                else:
+                    match (extension := found_duplicates[n][0][found_duplicates[n][0].rfind(".")+1:].lower()):
+                        case 'txt':
+                            if not 'txt' in organized_files.keys():
+                                organized_files['txt'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['txt'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                        case 'pdf':
+                            if not 'pdf' in organized_files.keys():
+                                organized_files['pdf'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['pdf'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                        case 'shp':
+                            if not 'shp' in organized_files.keys():
+                                organized_files['shp'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['shp'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                        case 'gdb':
+                            if not 'gdb' in organized_files.keys():
+                                organized_files['gdb'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['gdb'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                        case 'docx':
+                            if not 'doc' in organized_files.keys():
+                                organized_files['doc'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['doc'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                        case _:
+                            if extension in valid_image_types:
+                                if not 'img' in organized_files.keys():
+                                    organized_files['img'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                                else:
+                                    organized_files['img'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                            elif not 'alia' in organized_files.keys():
+                                organized_files['alia'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['alia'].append(tuple(sorted([item for item in found_duplicates[n]])))
             output_path = f'{output_path[:output_path.rfind(".")]}.txt'
             with open(output_path,'w',encoding='utf-8') as tf:
                 tf.write("Explicit Paths to Potenial Matching Duplicates")
@@ -360,7 +429,7 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
 
     return None
 
-def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, overwriteOutput : bool) -> None:
+def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, overwriteOutput : bool, valid_image_types : set) -> None:
 
     csv.field_size_limit(csv_field_size_limit)
 
@@ -401,7 +470,7 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
 
     organized_files = {}
     for item in found_matches:
-        match item[item.rfind('.')+1:].lower():
+        match (extension := item[item.rfind('.')+1:].lower()):
             case 'txt':
                 if not 'txt' in organized_files.keys():
                     organized_files['txt'] = [item]
@@ -428,17 +497,23 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
                 else:
                     organized_files['doc'].append(item)
             case _:
-                if not 'img' in organized_files.keys():
-                    organized_files['img'] = [item]
+                if extension in valid_image_types:
+                    if not 'img' in organized_files.keys():
+                        organized_files['img'] = [item]
+                    else:
+                        organized_files['img'].append(item)
                 else:
-                    organized_files['img'].append(item)
+                    if not 'alia' in organized_files.keys():
+                        organized_files['alia'] = [item]
+                    else:
+                        organized_files['alia'].append(item)
 
     for entity_key in tuple(organized_files.keys()):
         organized_files[entity_key] = tuple(sorted(organized_files[entity_key]))
     if output_path.endswith('.xlsx') and openpyxl_imported:
-        key_association = {"File Geodatabases":"gdb","Images":"img","PDFs":"pdf","ShapeFiles":"shp","Text Files":"txt","Word Documents":"doc"}
+        key_association = {"File Geodatabases":"gdb","Images":"img","PDFs":"pdf","ShapeFiles":"shp","Text Files":"txt","Word Documents":"doc","Miscellaneous":"alia"}
         wb = Workbook()
-        for worksheet_name in ("File Geodatabases","Images","PDFs","ShapeFiles","Text Files","Word Documents"):
+        for worksheet_name in ("File Geodatabases","Images","PDFs","ShapeFiles","Text Files","Word Documents","Miscellaneous"):
             if key_association[worksheet_name] in organized_files.keys():
                 wb.create_sheet(worksheet_name)
                 ws = wb[worksheet_name]

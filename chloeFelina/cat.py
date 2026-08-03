@@ -124,11 +124,7 @@ class ChloeAI:
 
     def __init__(self, database_location : str | None = None, database_name : str = 'datumbazo', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, allow_truncating_images : bool = False, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, corrupted_zip_check : bool = True):
 
-       # All other file types will have only the name and baseline metadata
-        # stored in a file called "_alia_dosieroj.txt", which in Esperanto
-        # roughly translates as "other files".
-        self.accepted_suffixes = {'gdb','docx','pdf','txt','shp','png','jpg','jpeg','tif','tiff','webp','jpg','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm'}
-        self.valid_check_types = {'txt','pdf','doc','img','gdb','shp'}
+        self.valid_check_types = {'txt','pdf','doc','img','gdb','shp','alia'}
 
         self.crintum_obfuscation = crintum_obfuscation
         self.database_name = database_name[:]
@@ -158,14 +154,17 @@ class ChloeAI:
                 self.db_path = f'{user_path}/Documents/{database_name}'
 
         if exists(self.db_path):
-            if not 'crintum_pointer.txt' in (items := set(listdir(self.db_path))) and not '_backup_crintum_pointer.txt' in items:
+            if not 'crintum_pointer.txt' in (items := set(listdir(self.db_path))) and not '_backup_crintum_pointer.txt' in items and not len(items):
+                ignore_empty_line = True
+                with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
+                    pass
+            elif not 'crintum_pointer.txt' in items and len(items):
                 ignore_empty_line = True
                 while database_name in listdir(database_location):
                     database_name = f"{database_name}_{randstr()}"
-                self.db_name = database_name[:]
-                self.db_path = f'{self.db_path[:self.db_path.rfind("/")]}/{database_name}'
-                mkdir(self.db_path)
-                with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
+                self.db_path = f'{database_location}/{database_name}'
+                mkdir(f'{database_location}/{database_name}')
+                with open(f'{database_location}/{database_name}/crintum_pointer.txt','w',encoding='utf-8') as tf:
                     pass
             else:
                 ignore_empty_line = False
@@ -322,57 +321,8 @@ class ChloeAI:
         if self.chloe_vocalization:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
 
-    def updateAndRefreshDatabase(self, keep_db_if_no_connection : bool = True, clear_terms_searched : bool = True, terminal_progress_display_enabled : bool = False) -> None:
-        '''
-        Checks data in database against referenced files for any new additions,
-        removals, and/or modifications and updates the database appropriately.
-        '''
 
-        def adjustGenMetadata(metadata_file_path : str, adjusted_entity : str) -> None:
-
-            lines = []
-
-            with open(metadata_file_path,encoding='utf-8') as tf:
-                while True:
-                    line = tf.readline()
-                    if not line:
-                        break
-                    lines.append(line.rstrip('\n'))
-
-            for n in range(len(lines)):
-                if lines[n].startswith(adjusted_entity):
-                    # remove old entry for entity.
-                    lines.pop(n)
-                    break
-
-            lines = tuple(lines)
-
-            with open(metadata_file_path,'w',encoding='utf-8') as tf:
-                tf.write(lines[0])
-                for n in range(1,len(lines)):
-                    tf.write(f'\n{lines[n]}')
-
-            return None
-
-        def revertChange(folder_location : str, original_entry : str) -> None:
-
-            lines = []
-
-            with ZipFile(f'{folder_location}.zip').open(f'{original_entry}.txt') as tf:
-                while True:
-                    line = tf.readline()
-                    if not line:
-                        break
-                    lines.append(decodeZipTxtLine(line))
-
-            lines = tuple(lines)
-
-            with open(f'{folder_location}/{original_entry}.txt','w',encoding='utf-8') as tf:
-                tf.write(lines[0])
-                for n in range(1,len(lines)):
-                    tf.write(f'\n{lines[n]}')
-
-            return None
+    def autoUpdateDatabase(self, keep_db_if_no_connection : bool = True, clear_terms_searched : bool = True, terminal_progress_display_enabled : bool = False) -> None:
 
         if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
@@ -415,9 +365,8 @@ class ChloeAI:
             nonlocal_drives.remove('C:\\')
             nonlocal_drives = tuple([unc_path(drive) for drive in nonlocal_drives])
             redact_dbs = []
-            #determined_changes = {"directories removed":[],"modified items":[],"removed items":[],"added items":[]}
-            if terminal_progress_display_enabled and tqdm_imported:
-                iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display_enabled, desc = "Checking and Applying Changes to Database")
+            if tqdm_imported:
+                iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display_enabled, desc = "Finding and Removing Redundant References")
             else:
                 iterator = tuple(self.used_names)
             if keep_db_if_no_connection:
@@ -437,455 +386,17 @@ class ChloeAI:
                     if not exists(self.path_pointer[db_name]):
                         redact_dbs.append(db_name)
             for redact_db in (redact_dbs := tuple(redact_dbs)):
-                #determined_changes["directories removed"].append(self.path_pointer[redact_db].replace('/','\\'))
                 self.removeCrintumEntry(self.path_pointer[redact_db])
                 remove(f'{self.db_path}/{redact_db}')
             del redact_dbs
+            try: del reference_directory
+            except NameError: pass
             if tqdm_imported:
-                if terminal_progress_display_enabled:
-                    sys_clear()
-                iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display_enabled, desc = "Checking and Applying Changes to Database")
+                iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display_enabled, desc = "Checking for Additions, Removals, and Modifications")
             else:
                 iterator = tuple(self.used_names)
-
-            for db_name in iterator:
-                db_path_db_name = f'{self.db_path}/{db_name}'
-                redacted_items = [] ; additional_items = [] ; changed_items = [] ; valid_found_items = {}
-                try:
-                    for found_item in tuple(listdir(self.path_pointer[db_name])):
-                        if '.' in found_item:
-                            if (item_type := found_item[found_item.rfind('.')+1:].lower()) in self.accepted_suffixes:
-                                match item_type:
-                                    case 'gdb':
-                                        valid_found_items[found_item] = {}
-                                        for gdb_item in tuple(listdir(f'{self.path_pointer[db_name]}/{found_item}')):
-                                            # assumes File Geodatabase is not in use.
-                                            if not gdb_item.lower().endswith('.lock'):
-                                                if (item_size := getSizeOfItem(f'{self.path_pointer[db_name]}/{found_item}')) is None:
-                                                    break
-                                                valid_found_items[found_item][gdb_item] = (getModifiedDate(f'{gdb_path}/{gdb_item}')[4:],getCreatedDate(f'{gdb_path}/{gdb_item}')[4:],item_size)
-                                        del item_size
-                                    case _:
-                                        # anything else
-                                        valid_found_items[found_item] = getBaselineMetadata(f'{self.path_pointer[db_name]}/{found_item}')
-                except Exception:
-                    if not keep_db_if_no_connection:
-                        remove(f'{db_path_db_name}.zip')
-                        self.removeCrintumEntry(self.crintum_pointer[self.path_pointer[db_name]])
-                    continue
-                try: del item_type ; del item_size
-                except NameError: pass
-                baseline_entity_info = {}
-                with ZipFile(f'{db_path_db_name}.zip') as zf:
-                    for metadata_file in tuple([item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]):
-                        if metadata_file == '_metadata.txt':
-                            with zf.open(metadata_file) as tf:
-                                while True:
-                                    line = tf.readline()
-                                    if not line:
-                                        break
-                                    line = decodeZipTxtLine(line)
-                                    baseline_entity_info[(current_entity := line[:line.find('|')])] = []
-                                    line = line[line.find('|')+1:]
-                                    line = line[line.find('|')+1:]
-                                    for _ in range(3):
-                                        baseline_entity_info[current_entity].append(line[:line.find('|')])
-                                        line = line[line.find('|')+1:]
-                                    baseline_entity_info[current_entity] = tuple(baseline_entity_info[current_entity])
-                        else:
-                            baseline_entity_info[(current_entity := metadata_file[:metadata_file.rfind('_')])] = []
-                            with zf.open(metadata_file) as tf:
-                                entry = tf.readline() # deliberately skip first line.
-                                baseline_entity_info[current_entity] = {}
-                                while True:
-                                    entry = tf.readline()
-                                    if not entry:
-                                        break
-                                    entry = decodeZipTxtLine(entry).split('|')
-                                    baseline_entity_info[current_entity][entry[0]] = tuple(entry[1:])
-                try: del line
-                except NameError: pass
-                try: del current_entity
-                except NameError: pass
-                try: del entry
-                except NameError: pass
-                checking_set = set(baseline_entity_info.keys())
-                for entity in tuple(valid_found_items.keys()):
-                    if not f"{entity[:entity.rfind('.')]}_{entity[entity.rfind('.')+1:]}" in checking_set:
-                        additional_items.append(entity)
-                        #determined_changes["added items"].append("%s\\%s" % (self.path_pointer[db_name].replace("/","\\"),entity))
-                additional_items = tuple(additional_items)
-                checking_set = set(valid_found_items.keys())
-                for entity in tuple(baseline_entity_info.keys()):
-                    if not (other_entity := f"{entity[:entity.rfind('_')]}.{entity[entity.rfind('_')+1:]}") in checking_set:
-                        redacted_items.append(entity)
-                        #determined_changes["removed items"].append("%s\\%s" % (self.path_pointer[db_name].replace('/','\\'),other_entity))
-                    else:
-                        match entity[entity.rfind('_')+1:].lower():
-                            case 'gdb':
-                                if len(baseline_entity_info[entity].keys()) != len(valid_found_items[other_entity].keys()):
-                                    changed_items.append(entity)
-                                    #determined_changes["modified items"].append("%s\\%s" % (self.path_pointer[db_name].replace('/','\\'),other_entity))
-                                else:
-                                    checking_set = set(valid_found_items[other_entity].keys())
-                                    for gdb_file in baseline_entity_info[entity].keys():
-                                        if not gdb_file in checking_set:
-                                            changed_items.append(entity)
-                                            #determined_changes["modified items"].append("%s\\%s" % (self.path_pointer[db_name].replace('/','\\'),other_entity))
-                                            break
-                                        else:
-                                            if baseline_entity_info[entity][gdb_file][0] != valid_found_items[other_entity][gdb_file][0] or baseline_entity_info[entity][gdb_file][1] != valid_found_items[other_entity][gdb_file][1] or baseline_entity_info[entity][gdb_file][2] != valid_found_items[other_entity][gdb_file][2]:
-                                                changed_items.append(entity)
-                                                #determined_changes["modified items"].append("%s\\%s" % (self.path_pointer[db_name].replace('/','\\'),other_entity))
-                                                break
-                                    del checking_set
-                            case _:
-                                # anything else.
-                                if baseline_entity_info[entity][0] != valid_found_items[other_entity][0] or baseline_entity_info[entity][1] != valid_found_items[other_entity][1] or baseline_entity_info[entity][2] != valid_found_items[other_entity][2]:
-                                    changed_items.append(entity)
-                                    #determined_changes["modified items"].append("%s\\%s" % (self.path_pointer[db_name].replace('/','\\'),other_entity))
-                del checking_set ; del valid_found_items ; del baseline_entity_info
-                try: del other_entity
-                except NameError: pass
-                if len((redacted_items := tuple(redacted_items))) or len((changed_items := tuple(changed_items))) or len(additional_items):
-                    self.uncompressZIP(db_name)
-                    if len(redacted_items):
-                        for redacted_item in redacted_items:
-                            match redacted_item[redacted_item.rfind('_')+1:].lower():
-                                case 'txt':
-                                    remove(f'{db_path_db_name}/_txt_files/{redacted_item}.txt')
-                                    lines = []
-                                    with open(f'{db_path_db_name}/_metadata.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            line = tf.readline()
-                                            if not line:
-                                                break
-                                            line = line.rstrip('\n')
-                                            if not line.startswith(redacted_item):
-                                                lines.append(line)
-                                    if not len((lines := tuple(lines))):
-                                        rmtree(f'{db_path_db_name}/_txt_files')
-                                        remove(f'{db_path_db_name}/_metadata.txt')
-                                        continue
-                                    elif not len(listdir(f'{db_path_db_name}/_txt_files')):
-                                        rmtree(f'{db_path_db_name}/_txt_files')
-                                    with open(f'{db_path_db_name}/_metadata.txt','w',encoding='utf-8') as tf:
-                                        tf.write(lines[0])
-                                        for n in range(1,len(lines)):
-                                            tf.write(f'\n{lines[n]}')
-                                case 'shp':
-                                    remove(f'{db_path_db_name}/_shp_files/{redacted_item}.txt')
-                                    lines = []
-                                    with open(f'{db_path_db_name}/_metadata.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            line = tf.readline()
-                                            if not line:
-                                                break
-                                            line = line.rstrip('\n')
-                                            if not line.startswith(redacted_item):
-                                                lines.append(line)
-                                    if not len((lines := tuple(lines))):
-                                        rmtree(f'{db_path_db_name}/_shp_files')
-                                        remove(f'{db_path_db_name}/_metadata.txt')
-                                        continue
-                                    elif not len(listdir(f'{db_path_db_name}/_shp_files')):
-                                        rmtree(f'{db_path_db_name}/_shp_files')
-                                    with open(f'{db_path_db_name}/_metadata.txt','w',encoding='utf-8') as tf:
-                                        tf.write(lines[0])
-                                        for n in range(1,len(lines)):
-                                            tf.write(f'\n{lines[n]}')
-                                case 'pdf' | 'docx':
-                                    rmtree(f'{db_path_db_name}/{redacted_item}')
-                                    lines = []
-                                    with open(f'{db_path_db_name}/_metadata.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            line = tf.readline()
-                                            if not line:
-                                                break
-                                            line = line.rstrip('\n')
-                                            if not line.startswith(redacted_item):
-                                                lines.append(line)
-                                    if not len((lines := tuple(lines))):
-                                        remove(f'{db_path_db_name}/_metadata.txt')
-                                        continue
-                                    with open(f'{db_path_db_name}/_metadata.txt','w',encoding='utf-8') as tf:
-                                        tf.write(lines[0])
-                                        for n in range(1,len(lines)):
-                                            tf.write(f'\n{lines[n]}')
-                                case 'gdb':
-                                    rmtree(f'{db_path_db_name}/{redacted_item}')
-                                    remove(f'{db_path_db_name}/{redacted_item}_metadata.txt')
-                                case _:
-                                    # assumed to be an image file
-                                    remove(f'{db_path_db_name}/_images/{redacted_item}.txt')
-                                    lines = []
-                                    with open(f'{db_path_db_name}/_metadata.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            line = tf.readline()
-                                            if not line:
-                                                break
-                                            line = line.rstrip('\n')
-                                            if not line.startswith(redacted_item):
-                                                lines.append(line)
-                                    if not len((lines := tuple(lines))):
-                                        rmtree(f'{db_path_db_name}/_images')
-                                        remove(f'{db_path_db_name}/_metadata.txt')
-                                        continue
-                                    elif not len(listdir(f'{db_path_db_name}/_images')):
-                                        rmtree(f'{db_path_db_name}/_images')
-                                    with open(f'{db_path_db_name}/_metadata.txt','w',encoding='utf-8') as tf:
-                                        tf.write(lines[0])
-                                        for n in range(1,len(lines)):
-                                            tf.write(f'\n{lines[n]}')
-                                    if len((lines := [line.rstrip('\n') for line in tuple(open(f'{db_path_db_name}/_firstline_image_files.txt',encoding='utf-8').readlines())])) == 1:
-                                        remove(f'{db_path_db_name}/_firstline_image_files.txt')
-                                    else:
-                                        for line in tuple(lines):
-                                            if line[:line.rfind(' ')] == redacted_item:
-                                                lines.remove(line)
-                                                break
-                                        lines = tuple(lines)
-                                        with open(f'{db_path_db_name}/_firstline_image_files.txt','w',encoding='utf-8') as tf:
-                                            tf.write(lines[0])
-                                            try:
-                                                for z in range(1,len(lines)):
-                                                    tf.write(f'\n{lines[z]}')
-                                            except Exception:
-                                                pass
-                    if len(changed_items):
-                        for changed_item in changed_items:
-                            match changed_item[changed_item.rfind('_')+1:].lower():
-                                case 'txt':
-                                    remove(f'{db_path_db_name}/_txt_files/{changed_item}.txt')
-                                    try:
-                                        self.archive_txt_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
-                                        adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
-                                    except Exception:
-                                        revertChange(f'{db_path_db_name}',f'_txt_files/{changed_item}')
-                                case 'shp':
-                                    if arcpy_imported:
-                                        remove(f'{db_path_db_name}/_shp_files/{changed_item}.txt')
-                                        try:
-                                            self.archive_shp_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
-                                            adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
-                                        except Exception:
-                                            revertChange(f'{db_path_db_name}',f'_shp_files/{changed_item}')
-                                case 'docx':
-                                    if docx_imported and docx2_imported and pil_imported:
-                                        rmtree(f'{db_path_db_name}/{changed_item}')
-                                        try:
-                                            self.archive_doc_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
-                                            adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
-                                        except Exception:
-                                            mkdir(f'{db_path_db_name}/{changed_item}')
-                                            with ZipFile(f'{db_path_db_name}.zip') as zf:
-                                                for relevant_txt_file in tuple([item for item in tuple(zf.namelist()) if item.startswith(f'{changed_item}/')]):
-                                                    match relevant_txt_file[relevant_txt_file.rfind('/')+1:]:
-                                                        case 'doc_extracted_text.txt':
-                                                            with zf.open(f'{changed_item}/doc_extracted_text.txt') as tf:
-                                                                lines = []
-                                                                while True:
-                                                                    line = tf.readline()
-                                                                    if not line:
-                                                                        break
-                                                                    lines.append(decodeZipTxtLine(line))
-                                                            lines = tuple(lines)
-                                                            with open(f'{db_path_db_name}/{changed_item}/doc_extracted_text.txt','w',encoding='utf-8') as tf:
-                                                                tf.write(lines[0])
-                                                                for n in range(1,len(lines)):
-                                                                    tf.write(f'\n{lines[n]}')
-                                                        case 'doc_metadata.txt':
-                                                            with zf.open(f'{changed_item}/doc_metadata.txt') as tf:
-                                                                lines = []
-                                                                while True:
-                                                                    line = tf.readline()
-                                                                    if not line:
-                                                                        break
-                                                                    lines.append(decodeZipTxtLine(line))
-                                                            lines = tuple(lines)
-                                                            with open(f'{db_path_db_name}/{changed_item}/doc_metadata.txt','w',encoding='utf-8') as tf:
-                                                                tf.write(lines[0])
-                                                                for n in range(1,len(lines)):
-                                                                    tf.write(f'\n{lines[n]}')
-                                                        case 'image_histogram_data.txt':
-                                                            with zf.open(f'{changed_item}/image_histogram_data.txt') as tf:
-                                                                lines = []
-                                                                while True:
-                                                                    line = tf.readline()
-                                                                    if not line:
-                                                                        break
-                                                                    lines.append(decodeZipTxtLine(line))
-                                                            lines = tuple(lines)
-                                                            with open(f'{db_path_db_name}/{changed_item}/image_histogram_data.txt','w',encoding='utf-8') as tf:
-                                                                tf.write(lines[0])
-                                                                for n in range(1,len(lines)):
-                                                                    tf.write(f'\n{lines[n]}')
-                                                        case _:
-                                                            #placeholder
-                                                            pass
-                                            try: del lines
-                                            except NameError: pass
-                                case 'pdf':
-                                    if pil_imported and pypdf_imported:
-                                        rmtree(f'{self.db_path}/{db_name}/{changed_item}')
-                                        try:
-                                            self.archive_pdf_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
-                                            adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
-                                        except Exception:
-                                            mkdir(f'{db_path_db_name}/{changed_item}')
-                                            with ZipFile(f'{db_path_db_name}.zip') as zf:
-                                                for relevant_txt_file in tuple([item for item in tuple(zf.namelist()) if item.startswith(f'{changed_item}/')]):
-                                                    match relevant_txt_file[relevant_txt_file.rfind('/')+1:]:
-                                                        case 'pdf_extracted_text.txt':
-                                                            with zf.open(f'{changed_item}/pdf_extracted_text.txt') as tf:
-                                                                lines = []
-                                                                while True:
-                                                                    line = tf.readline()
-                                                                    if not line:
-                                                                        break
-                                                                    lines.append(decodeZipTxtLine(line))
-                                                            lines = tuple(lines)
-                                                            with open(f'{db_path_db_name}/{changed_item}/pdf_extracted_text.txt','w',encoding='utf-8') as tf:
-                                                                tf.write(lines[0])
-                                                                for n in range(1,len(lines)):
-                                                                    tf.write(f'\n{lines[n]}')
-                                                        case 'pdf_metadata.txt':
-                                                            with zf.open(f'{changed_item}/pdf_metadata.txt') as tf:
-                                                                lines = []
-                                                                while True:
-                                                                    line = tf.readline()
-                                                                    if not line:
-                                                                        break
-                                                                    lines.append(decodeZipTxtLine(line))
-                                                            lines = tuple(lines)
-                                                            with open(f'{db_path_db_name}/{changed_item}/pdf_metadata.txt','w',encoding='utf-8') as tf:
-                                                                tf.write(lines[0])
-                                                                for n in range(1,len(lines)):
-                                                                    tf.write(f'\n{lines[n]}')
-                                                        case 'image_histogram_data.txt':
-                                                            with zf.open(f'{changed_item}/image_histogram_data.txt') as tf:
-                                                                lines = []
-                                                                while True:
-                                                                    line = tf.readline()
-                                                                    if not line:
-                                                                        break
-                                                                    lines.append(decodeZipTxtLine(line))
-                                                            lines = tuple(lines)
-                                                            with open(f'{db_path_db_name}/{changed_item}/image_histogram_data.txt','w',encoding='utf-8') as tf:
-                                                                tf.write(lines[0])
-                                                                for n in range(1,len(lines)):
-                                                                    tf.write(f'\n{lines[n]}')
-                                                        case _:
-                                                            #placeholder
-                                                            pass
-                                            try: del lines
-                                            except NameError: pass
-                                case 'gdb':
-                                    if arcpy_imported:
-                                        rmtree(f'{db_path_db_name}/{changed_item}')
-                                        remove(f'{db_path_db_name}/{changed_item}_metadata.txt')
-                                        try:
-                                            self.archive_gdb_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
-                                        except Exception:
-                                            if exists(f'{db_path_db_name}/{changed_item}'):
-                                                rmtree(f'{db_path_db_name}/{changed_item}')
-                                            mkdir(f'{db_path_db_name}/{changed_item}')
-                                            with ZipFile(f'{db_path_db_name}.zip') as zf:
-                                                lines = []
-                                                with zf.open(f'{changed_item}_metadata.txt') as tf:
-                                                    while True:
-                                                        line = tf.readline()
-                                                        if not line:
-                                                            break
-                                                        lines.append(decodeZipTxtLine(line))
-                                                lines = tuple(lines)
-                                                with open(f'{db_path_db_name}/{changed_item}_metadata.txt','w',encoding='utf-8') as tf:
-                                                    tf.write(lines[0])
-                                                    for n in range(1,len(lines)):
-                                                        tf.write(f'\n{lines[n]}')
-                                                for relevant_txt_file in tuple([item for item in tuple(zf.namelist()) if item.startswith(f'{changed_item}/')]):
-                                                    line = []
-                                                    with zf.open(relevant_txt_file) as tf:
-                                                        while True:
-                                                            line = tf.readline()
-                                                            if not line:
-                                                                break
-                                                            line.append(decodeZipTxtLine(line))
-                                                    lines = tuple(lines)
-                                                    with open(f'{db_path_db_name}/{relevant_txt_file}','w',encoding='utf-8') as tf:
-                                                        tf.write(lines[0])
-                                                        for n in range(1,len(lines)):
-                                                            tf.write(f'\n{lines[n]}')
-                                            try: del lines
-                                            except NameError: pass
-
-                                case _:
-                                    # assumed to be an image file
-                                    if pil_imported:
-                                        remove(f'{db_path_db_name}/_images/{changed_item}.txt')
-                                        try:
-                                            self.archive_img_data(f'{self.path_pointer[db_name]}/{changed_item[:changed_item.rfind("_")]}.{changed_item[changed_item.rfind("_")+1:changed_item.rfind(".")]}',db_name)
-                                            adjustGenMetadata(f'{db_path_db_name}/_metadata.txt',changed_item)
-                                        except Exception:
-                                            revertChange(f'{db_path_db_name}',f'_images/{changed_item}')
-                    if len(additional_items):
-                        for additional_item in additional_items:
-                            match additional_item[additional_item.rfind('.')+1:].lower():
-                                case 'txt':
-                                    try:
-                                        self.archive_txt_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
-                                    except Exception:
-                                        if exists(f'{db_path_db_name}/_txt_files'):
-                                            if not len(f'{db_path_db_name}/_txt_files'):
-                                                rmtree(f'{db_path_db_name}/_txt_files')
-                                case 'shp':
-                                    if arcpy_imported:
-                                        try:
-                                            self.archive_shp_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
-                                        except Exception:
-                                            if exists(f'{db_path_db_name}/_shp_files'):
-                                                if not len(f'{db_path_db_name}/_shp_files'):
-                                                    rmtree(f'{db_path_db_name}/_shp_files')
-                                case 'pdf':
-                                    if pypdf_imported and pil_imported:
-                                        try:
-                                            self.archive_pdf_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
-                                        except Exception:
-                                            if exists(f'{db_path_db_name}/{additional_item}'):
-                                                rmtree(f'{db_path_db_name}/{additional_item}')
-                                case 'docx':
-                                    if pil_imported and docx_imported and docx2_imported:
-                                        try:
-                                            self.archive_doc_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
-                                        except Exception:
-                                            if exists(f'{db_path_db_name}/{additional_item}'):
-                                                rmtree(f'{db_path_db_name}/{additional_item}')
-                                case 'gdb':
-                                    if arcpy_imported:
-                                        try:
-                                            self.archive_gdb_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
-                                        except Exception:
-                                            if exists(f'{db_path_db_name}/{additional_item}'):
-                                                rmtree(f'{db_path_db_name}/{additional_item}')
-                                case _:
-                                    # assumed to be an image file.
-                                    if pil_imported:
-                                        try:
-                                            self.archive_img_data(f'{self.path_pointer[db_name]}/{additional_item[:additional_item.rfind("_")]}.{additional_item[additional_item.rfind("_")+1:additional_item.rfind(".")]}',db_name)
-                                        except Exception:
-                                            if exists(f'{db_path_db_name}/_images'):
-                                                if not len(f'{db_path_db_name}/_images'):
-                                                    rmtree(f'{db_path_db_name}/_images')
-                    if not len(listdir(db_path_db_name)):
-                        rmtree(db_path_db_name)
-                        self.removeCrintumEntry(self.crintum_pointer[self.path_pointer[db_name]])
-                        remove(f'{db_path_db_name}.zip')
-                    else:
-                        remove(f'{db_path_db_name}.zip')
-                        self.compressToZIP(db_name)
-
-        if self.chloe_vocalization:
-            playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
+            for used_name in iterator:
+                pass
 
         return None
 
@@ -967,9 +478,16 @@ class ChloeAI:
 
         chdir(f'{self.db_path}/{archive_db_name}')
 
-        if len((items := tuple(listdir()))) <= 1:
-            chdir(current_dir)
-            return False
+        match len((items := tuple(listdir()))):
+            case 0:
+                chdir(current_dir)
+                return False
+            case 1:
+                if items[0] != '_alia_dosieroj.txt':
+                    chdir(current_dir)
+                    return False
+            case _:
+                pass
 
         for item in tuple(listdir()):
             if isdir((test_path := f'{getcwd()}/{item}')):
@@ -1035,21 +553,22 @@ class ChloeAI:
             return None
         else:
             items = {}
-            for name in listdir(reference_directory):
-                if name.lower().endswith('.gdb'):
+            for name in tuple(listdir(reference_directory)):
+                if isfile(f'{reference_directory}/{name}'):
+                    if name.lower().endswith('.shp'):
+                        items[name] = 'SHP'
+                    elif name.lower().endswith('.txt'):
+                        items[name] = 'TXT'
+                    elif name.lower().endswith('.pdf'):
+                        items[name] = 'PDF'
+                    elif name.lower().endswith('.docx'):
+                        items[name] = 'DOC'
+                    elif name[name.rfind("."):] in self.accepted_image_extensions and '.' in name:
+                        items[name] = 'IMG'
+                    else:
+                        items[name] = 'ALIA'
+                elif name.lower().endswith('.gdb'):
                     items[name] = 'GDB'
-                elif name.lower().endswith('.shp'):
-                    items[name] = 'SHP'
-                elif name.lower().endswith('.txt'):
-                    items[name] = 'TXT'
-                elif name.lower().endswith('.pdf'):
-                    items[name] = 'PDF'
-                elif name.lower().endswith('.docx'):
-                    items[name] = 'DOC'
-                elif name[name.rfind("."):] in self.accepted_image_extensions:
-                    items[name] = 'IMG'
-                # else:
-                #     items[name] = 'ALIA'
             if len(items):
                 archive_db_name = randstr(12)
                 while archive_db_name in self.used_names:
@@ -1069,7 +588,7 @@ class ChloeAI:
                                     if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
                                         rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
                             else:
-                                pass
+                                self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'SHP':
                             if arcpy_imported:
                                 try:
@@ -1080,7 +599,7 @@ class ChloeAI:
                                         if not len(listdir(f'{self.db_path}/{archive_db_name}/_shp_files')):
                                             rmtree(f'{self.db_path}/{archive_db_name}/_shp_files')
                             else:
-                                pass
+                                self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'TXT':
                             try:
                                 self.archive_txt_data(f'{reference_directory}/{name}',archive_db_name)
@@ -1089,6 +608,7 @@ class ChloeAI:
                                     remove(f'{self.db_path}/{archive_db_name}/_txt_files/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}.txt')
                                     if not len(f'{self.db_path}/{archive_db_name}/_txt_files'):
                                         rmtree(f'{self.db_path}/{archive_db_name}/_txt_files')
+                                self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'PDF':
                             if pypdf_imported and pil_imported:
                                 try:
@@ -1098,7 +618,7 @@ class ChloeAI:
                                     if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
                                         rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
                             else:
-                                pass
+                                self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'DOC':
                             if docx_imported and docx2_imported and pil_imported:
                                 try:
@@ -1108,14 +628,14 @@ class ChloeAI:
                                     if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
                                         rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
                             else:
-                                pass
+                                self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'IMG':
                             if pil_imported:
                                 self.archive_img_data(f'{reference_directory}/{name}',archive_db_name)
                             else:
-                                pass
+                                self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case _:
-                            pass
+                            self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                 if exists(f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10.gdb'):
                     try:
                         arcpy.management.Delete(f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10.gdb')
@@ -1127,6 +647,204 @@ class ChloeAI:
                         self.clearSearchQueryMemory()
                 if exists(f'{self.db_path}/{archive_db_name}'):
                     rmtree(f'{self.db_path}/{archive_db_name}')
+
+        return None
+
+
+    def compWinSysInfo(self, include_windows : bool = True, include_program_files : bool = False, include_program_files_x86 : bool = False, include_programdata : bool = False, include_user_appdata : bool = False, replace_existing_info : bool = False, terminal_progress_display_enabled : bool = True) -> None:
+
+        if not replace_existing_info and exists(f'{self.db_path}/Windows_MetaInfo.zip'):
+            return None
+
+        import hashlib
+
+        def md5_checksum(fname : str):
+            hash_md5 = hashlib.md5()
+            with open(fname, 'rb') as f:
+                for chunk in iter(lambda : f.read(4096),b""):
+                    hash_md5.update(chunk)
+            return hash_md5.hexdigest()
+
+        if not exists(f'{self.db_path}/Windows_MetaInfo'):
+            mkdir(f'{self.db_path}/Windows_MetaInfo')
+
+        path_index = {}
+
+        if include_windows:
+            for root,dirs,files in walker('C:/Windows'):
+                if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
+                    file_info = {}
+                    for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
+                        file_info[file] = []
+                        file_path = f'{root}/{item}'
+                        try:
+                            file_info[file].append(getModifiedDate(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                        try:
+                            file_info[file].append(getCreatedDate(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                        try:
+                            file_info[file].append(getSizeOfItem(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                        try:
+                            file_info[file].append(md5_checksum(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                    if len((files := tuple(file_info.keys()))):
+                        directory_name = randstr(12)
+                        while directory_name in path_index.keys():
+                            directory_name = randstr(12)
+                        path_index[root] = directory_name
+                        with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                            tf.write("%s|%s" % (file[0],'|'.join(file_info[file[0]])))
+                            for n in range(1,len(files)):
+                                tf.write(f"\n%s|%s" % (file[n],'|'.join(file_info[file[n]])))
+
+        if include_program_files:
+            for root,dirs,files in walker('C:/Program Files'):
+                if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
+                    file_info = {}
+                    for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
+                        file_info[file] = []
+                        file_path = f'{root}/{item}'
+                        try:
+                            file_info[file].append(getModifiedDate(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                        try:
+                            file_info[file].append(getCreatedDate(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                        try:
+                            file_info[file].append(getSizeOfItem(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                        try:
+                            file_info[file].append(md5_checksum(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                    if len((files := tuple(file_info.keys()))):
+                        directory_name = randstr(12)
+                        while directory_name in path_index.keys():
+                            directory_name = randstr(12)
+                        path_index[root] = directory_name
+                        with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                            tf.write("%s|%s" % (file[0],'|'.join(file_info[file[0]])))
+                            for n in range(1,len(files)):
+                                tf.write(f"\n%s|%s" % (file[n],'|'.join(file_info[file[n]])))
+
+        if include_program_files_x86:
+            for root,dirs,files in walker('C:/Program Files (x86)'):
+                if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
+                    file_info = {}
+                    for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
+                        file_info[file] = []
+                        file_path = f'{root}/{item}'
+                        try:
+                            file_info[file].append(getModifiedDate(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                        try:
+                            file_info[file].append(getCreatedDate(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                        try:
+                            file_info[file].append(getSizeOfItem(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                        try:
+                            file_info[file].append(md5_checksum(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                    if len((files := tuple(file_info.keys()))):
+                        directory_name = randstr(12)
+                        while directory_name in path_index.keys():
+                            directory_name = randstr(12)
+                        path_index[root] = directory_name
+                        with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                            tf.write("%s|%s" % (file[0],'|'.join(file_info[file[0]])))
+                            for n in range(1,len(files)):
+                                tf.write(f"\n%s|%s" % (file[n],'|'.join(file_info[file[n]])))
+
+        if include_programdata:
+            for root,dirs,files in walker('C:/ProgramData'):
+                if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
+                    file_info = {}
+                    for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
+                        file_info[file] = []
+                        file_path = f'{root}/{item}'
+                        try:
+                            file_info[file].append(getModifiedDate(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                        try:
+                            file_info[file].append(getCreatedDate(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                        try:
+                            file_info[file].append(getSizeOfItem(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                        try:
+                            file_info[file].append(md5_checksum(file_path))
+                        except Exception:
+                            file_info[file].append('UNKNOWN')
+                    if len((files := tuple(file_info.keys()))):
+                        directory_name = randstr(12)
+                        while directory_name in path_index.keys():
+                            directory_name = randstr(12)
+                        path_index[root] = directory_name
+                        with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                            tf.write("%s|%s" % (file[0],'|'.join(file_info[file[0]])))
+                            for n in range(1,len(files)):
+                                tf.write(f"\n%s|%s" % (file[n],'|'.join(file_info[file[n]])))
+
+        if include_user_appdata:
+            for user in tuple(listdir("C:/Users")):
+                for root,dirs,files in walker(f'C:/Users/{user}/AppData'):
+                    if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
+                        file_info = {}
+                        for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
+                            file_info[file] = []
+                            file_path = f'{root}/{item}'
+                            try:
+                                file_info[file].append(getModifiedDate(file_path))
+                            except Exception:
+                                file_info[file].append('UNKNOWN')
+                            try:
+                                file_info[file].append(getCreatedDate(file_path))
+                            except Exception:
+                                file_info[file].append('UNKNOWN')
+                            try:
+                                file_info[file].append(getSizeOfItem(file_path))
+                            except Exception:
+                                file_info[file].append('UNKNOWN')
+                            try:
+                                file_info[file].append(md5_checksum(file_path))
+                            except Exception:
+                                file_info[file].append('UNKNOWN')
+                        if len((files := tuple(file_info.keys()))):
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                tf.write("%s|%s" % (file[0],'|'.join(file_info[file[0]])))
+                                for n in range(1,len(files)):
+                                    tf.write(f"\n%s|%s" % (file[n],'|'.join(file_info[file[n]])))
+
+        path_index_paths = tuple(path_index.keys())
+
+        with open(f'{self.db_path}/Windows_MetaInfo/_directory_reference.txt','w',encoding='utf-8') as tf:
+            tf.write(f"{path_index_paths[0]}|{path_index[path_index_paths[0]]}")
+            for n in range(1,len(path_index_paths)):
+                tf.write(f'\n{path_index_paths[n]}|{path_index[path_index_paths[n]]}')
+
+        if exists(f'{self.db_path}/Windows_MetaInfo.zip'):
+            remove(f'{self.db_path}/Windows_MetaInfo.zip')
 
         return None
 
@@ -2136,25 +1854,17 @@ class ChloeAI:
 
     def archive_alia_data(self, alia_path : str, archive_db_name : str) -> None:
 
-        try:
-            baseline_metadata = getModifiedDate(alia_path)[4:]
-        except Exception:
-            baseline_metadata = "<NULL>|"
-        try:
-            baseline_metadata = f"{baseline_metadata}{getCreatedDate(alia_path)[4:]}|"
-        except Exception:
-            baseline_metadata = f"{baseline_metadata}<NULL>|"
-        try:
-            baseline_metadata = f"{baseline_metadata}{getSizeOfItem(alia_path)}"
-        except Exception:
-            baseline_metadata = f"{baseline_metadata}<NULL>"
+        if (baseline_metadata := getBaselineMetadata(alia_path)) is None:
+            return None
+
+        baseline_metadata = '|'.join(baseline_metadata)
 
         if not exists(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt'):
             with open(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt','w',encoding='utf-8') as tf:
-                tf.write(f'{alia_path[alia_path.rfind(".")+1:]}|{baseline_metadata}')
+                tf.write(f'{alia_path[alia_path.rfind("/")+1:]}|{baseline_metadata}')
         else:
             with open(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt','a',encoding='utf-8') as tf:
-                tf.write(f'\n{alia_path[alia_path.rfind(".")+1:]}|{baseline_metadata}')
+                tf.write(f'\n{alia_path[alia_path.rfind("/")+1:]}|{baseline_metadata}')
 
         return None
 
@@ -2195,7 +1905,10 @@ class ChloeAI:
         for n in "[]+=@#!$%^&;{}(),":
             temp_entry_string = temp_entry_string.replace(n,' ')
 
-        temp_entry_string = temp_entry_string.strip()
+        if not len((temp_entry_string := temp_entry_string.strip())):
+            if return_tuple:
+                return ()
+            return None
 
         while '  ' in entry_string:
             entry_string = entry_string.replace('  ',' ')
@@ -2225,620 +1938,759 @@ class ChloeAI:
 
         if not output_file_type in {'excel','xlsx','csv','text','txt'}:
             output_file_type = 'excel'
-
-        if entity_names_only:
-            if output_name == f"searched_term_query_{entry_string}":
-                output_name = f"searched_name_query_{entry_string}"
-            found_matches = {}
-            if "." in temp_entry_string:
-                temp_entry_string = temp_entry_string[:temp_entry_string.find(".")]
-            if not len(temp_entry_string):
-                if return_tuple:
-                    return ()
-                return None
-            if not exists((search_names_folder := f'{self.db_path}/_names_checked')):
-                mkdir(search_names_folder)
-            elif not overwrite_saved_found_matches:
-                for previous_search in tuple([txt_file[:txt_file.rfind(".")] for txt_file in tuple(listdir(search_names_folder))]):
-                    if previous_search in temp_entry_string:
-                        if isinstance(entity_name_extension,str):
-                            with open(f'{self.db_path}/_names_checked/{previous_search}.txt',encoding='utf-8') as tf:
-                                entity_name_extension = entity_name_extension.lower().replace(' ','')
-                                if '.' in entity_name_extension:
-                                    entity_name_extension = entity_name_extension[entity_name_extension.rfind('.')+1:]
-                                if not len(entity_name_extension):
-                                    if return_tuple:
-                                        return ()
-                                    return None
-                                if len((relevant_files := tuple([item.rstrip('\n') for item in tuple(tf.readlines())]))):
-                                    if entity_name_extension in ('any','all','every'):
-                                        if save_results_to_file:
-                                            genSearchQueryResultFile(relevant_files,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
-                                        if return_tuple:
-                                            return relevant_files
-                                        else:
-                                            return None
-                                    else:
-                                        entity_name_extension = f".{entity_name_extension}"
-                                        if len((specified_relevant_files := tuple([relevant_file for relevant_file in relevant_files if relevant_file.lower().endswith(entity_name_extension)]))):
-                                            if save_results_to_file:
-                                                genSearchQueryResultFile(specified_relevant_files,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
-                                            if self.chloe_vocalization:
-                                                playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
-                                            if return_tuple:
-                                                return specified_relevant_files
-                                            else:
-                                                return None
-                                        elif return_tuple:
-                                            return ()
-                                        else:
-                                            return None
-                                elif return_tuple:
-                                    return ()
-                                else:
-                                    return None
-                        elif isinstance(entity_name_extension,(tuple,list,set)):
-                            for n in range(len((entity_name_extension := list(entity_name_extension)))):
-                                entity_name_extension[n] = entity_name_extension[n].replace(' ','')
-                                entity_name_extension[n] = entity_name_extension[n].lower()[entity_name_extension[n].rfind(".")+1:]
-                        elif return_tuple:
-                            return ()
-                        else:
-                            return None
-
-            if tqdm_imported:
-                iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled, desc = f"Searching for relevant instances of {entry_string}")
-            else:
-                iterator = tuple(self.used_names)
-            for db_name in iterator:
-                items = []
-                with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                    metadata_files = [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]
-                    if '_metadata.txt' in metadata_files:
-                        with zf.open('_metadata.txt') as tf:
-                            while True:
-                                line = tf.readline()
-                                if not line:
-                                    break
-                                line = decodeZipTxtLine(line)
-                                line = line[:line.find('|')]
-                                items.append(f"{line[:line.rfind('_')]}.{line[line.rfind('_')+1:]}")
-                        metadata_files.remove('_metadata.txt')
-                    for metadata_file in (metadata_files := tuple(metadata_files)):
-                        if metadata_file.lower().endswith('_gdb_metadata.txt'):
-                            gdb_file_name = metadata_file[:metadata_file.rfind('_')]
-                            items.append(f"{gdb_file_name[:gdb_file_name.rfind('_')]}.{gdb_file_name[gdb_file_name.rfind('_')+1:]}")
-                for item in (items := tuple(items)):
-                    if temp_entry_string in getTestName(item[:item.rfind(".")]):
-                        if not (extension_str := item[item.rfind(".")+1:]) in found_matches.keys():
-                            found_matches[extension_str] = [f"{db_name}|{item}"]
-                        else:
-                            found_matches[extension_str].append(f"{db_name}|{item}")
-            try: del items
-            except NameError: pass
-            try: del extension_str
-            except NameError: pass
-
-            if len(found_matches.keys()):
-                output_tuple = []
-                for extension_str in tuple(sorted(found_matches.keys())):
-                    for item in found_matches[extension_str]:
-                        output_tuple.append("%s\\%s" % (self.path_pointer[item[:item.find('|')]].replace('/','\\'),item))
-                del found_matches
-                if save_found_matches:
-                    with open(f"{self.db_path}/_names_checked/{temp_entry_string}.txt",'w',encoding='utf-8') as tf:
-                        tf.write(output_tuple[0])
-                        for n in range(1,len(output_tuple)):
-                            tf.write(f"\n{output_tuple[n]}")
-                if isinstance(entity_name_extension,str):
-                    entity_name_extension = entity_name_extension.replace('.','')
-                    if (entity_name_extension := entity_name_extension.lower().strip()) in ('any','all','every'):
-                        relevant_output_tuple = tuple(output_tuple)
-                    else:
-                        relevant_output_tuple = tuple([item for item in tuple(output_tuple) if item[item.rfind(".")+1:].lower() == entity_name_extension])
-                elif isinstance(entity_name_extension,(tuple,list,set)):
-                    try:
-                        entity_name_extension = {name_extension.lower().strip().replace('.','') for name_extension in tuple(entity_name_extension)}
-                    except TypeError:
-                        if return_tuple:
-                            return ()
-                        return None
-                    relevant_output_tuple = tuple([item for item in tuple(output_tuple) if item[item.rfind(".")+1:].lower() in entity_name_extension])
-                elif return_tuple:
-                    return ()
-                else:
-                    return None
-                try: del output_tuple
-                except NameError: pass
-                try: del entity_name_extension
-                except NameError: pass
-                if save_results_to_file:
-                    genSearchQueryResultFile(relevant_output_tuple,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
-                if self.chloe_vocalization:
-                    playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
-                if return_tuple:
-                    return relevant_output_tuple
-            elif return_tuple:
-                return ()
-            return None
-
-        found_matches = []
-
-        if not exists((search_results_folder := f'{self.db_path}/_terms_searched')):
-            mkdir(search_results_folder)
-        elif not overwrite_saved_found_matches:
-            if not ' ' in entry_string:
-                for previous_search in tuple([txt_file[:txt_file.rfind(".")] for txt_file in tuple(listdir(search_results_folder))]):
-                    if previous_search in entry_string:
-                        if isinstance(check_type,str):
-                            match check_type.lower().replace(' ',''):
-                                case 'all' | 'any' | 'every':
-                                    found_matches = tuple([line.rstrip('\n') for line in open(f'{search_results_folder}/{previous_search}.txt','r',encoding='utf-8').readlines()])
-                                case 'txt':
-                                    found_matches = tuple([line.rstrip('\n') for line in open(f'{search_results_folder}/{previous_search}.txt','r',encoding='utf-8').readlines() if line.rstrip('\n').lower().endswith('.txt')])
-                                case 'pdf':
-                                    found_matches = tuple([line.rstrip('\n') for line in open(f'{search_results_folder}/{previous_search}.txt','r',encoding='utf-8').readlines() if line.rstrip('\n').lower().endswith('.pdf')])
-                                case 'gdb':
-                                    found_matches = tuple([line.rstrip('\n') for line in open(f'{search_results_folder}/{previous_search}.txt','r',encoding='utf-8').readlines() if line.rstrip('\n').lower().endswith('.gdb')])
-                                case 'shp':
-                                    found_matches = tuple([line.rstrip('\n') for line in open(f'{search_results_folder}/{previous_search}.txt','r',encoding='utf-8').readlines() if line.rstrip('\n').lower().endswith('.shp')])
-                                case 'doc':
-                                    found_matches = tuple([line.rstrip('\n') for line in open(f'{search_results_folder}/{previous_search}.txt','r',encoding='utf-8').readlines() if line.rstrip('\n').lower().endswith('.docx')])
-                                case 'img':
-                                    if not include_entity_name:
-                                        if return_tuple:
-                                            return ()
-                                        return None
-                                    check_type = set(self.image_types)
-                                    found_matches = tuple([line.rstrip('\n') for line in open(f'{search_results_folder}/{previous_search}.txt','r',encoding='utf-8').readlines() if line.rstrip('\n').lower()[:line.rfind('.')] in check_type])
-                                case _:
-                                    if return_tuple:
-                                        return ()
-                                    return None
-                        elif isinstance(check_type,(tuple,list,set)):
-                            try:
-                                if 'img' in (check_type := {item.lower().replace(' ','') for item in tuple(check_type)}):
-                                    for img_type in self.image_types:
-                                        check_type.add(img_type)
-                                    check_type.remove('img')
-                            except TypeError:
+        if not exists(f'{self.db_path}/_terms_searched'):
+            mkdir(f'{self.db_path}/_terms_searched')
+        elif overwrite_saved_found_matches:
+            pass
+        elif entity_names_only:
+            test_str = f'{temp_entry_string}$names'
+            for previous_search in tuple([txt_file[:txt_file.rfind(".")] for txt_file in tuple(listdir(f'{self.db_path}/_terms_searched')) if txt_file.endswith('$names.txt')]):
+                if test_str == previous_search:
+                    if isinstance(check_type,str):
+                        if (check_type := check_type.lower()) == 'docx':
+                            check_type = 'doc'
+                        match check_type:
+                            case 'txt':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.txt'):
+                                            found_name_matches.append(entity)
+                            case 'pdf':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.pdf'):
+                                            found_name_matches.append(entity)
+                            case 'doc':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.docx'):
+                                            found_name_matches.append(entity)
+                            case 'shp':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.shp'):
+                                            found_name_matches.append(entity)
+                            case 'gdb':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.gdb'):
+                                            found_name_matches.append(entity)
+                            case 'img':
+                                temp_extensions = tuple(self.accepted_image_extensions)
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        for extension in temp_extensions:
+                                            if entity.lower().endswith(extension):
+                                                found_name_matches.append(entity)
+                                                break
+                                del temp_extensions
+                            case 'alia':
+                                temp_extensions = tuple(list(self.image_types) + ['txt','pdf','docx','shp','gdb'])
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        for extension in temp_extensions:
+                                            if not entity.lower()[entity.rfind(".")+1:].endswith(extension) or not '.' in entity:
+                                                found_name_matches.append(entity)
+                                                break
+                                del temp_extensions
+                            case _:
                                 if return_tuple:
                                     return ()
-                                else:
-                                    return None
-                            found_matches = tuple([line.rstrip('\n') for line in open(f'{search_results_folder}/{previous_search}.txt','r',encoding='utf-8').readlines() if line.rstrip('\n')[item.rfind('.')+1:].lower() if check_type])
-                        else:
-                            return None
+                                return None
+                        names_found = True
+                    elif isinstance(check_type,(set,list,tuple)):
+                        check_type = {item.lower() for item in tuple(check_type)}
+                        if 'docx' in check_type:
+                            check_type.remove('docx')
+                            check_type.add('doc')
+                        if 'img' in check_type:
+                            check_type.remove('img')
+                            for extension in self.image_types:
+                                check_type.add(extension)
+                        #irrelevant_extensions = {'txt','gdb','pdf','docx','shp'} + (image_types_set := set(self.image_types))
+                        with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                            while True:
+                                entity = tf.readline()
+                                if not entity:
+                                    break
+                                entity = decodeZipTxtLine(entity).split('|')[0]
+                                if (extension := entity[entity.rfind('.')+1:].lower()) in check_type:
+                                    match extension:
+                                        case 'txt':
+                                            found_name_matches.append(entity)
+                                        case 'pdf':
+                                            found_name_matches.append(entity)
+                                        case 'doc':
+                                            found_name_matches.append(entity)
+                                        case 'shp':
+                                            found_name_matches.append(entity)
+                                        case 'gdb':
+                                            found_name_matches.append(entity)
+                                        case _:
+                                            if extension in image_types_set:
+                                                found_name_matches.append(entity)
+                                            elif "alia" in check_type:
+                                                found_name_matches.append(entity)
+                    elif return_tuple:
+                        return ()
+                    else:
+                        return None
+                    if len((found_matches := tuple(found_name_matches))):
                         if save_results_to_file:
-                            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
+                            genSearchQueryResultFile(found_matches,output_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwriteOutput,set(self.image_types))
                         if return_tuple:
                             return found_matches
-                        else:
-                            return None
-            else:
-                counter = 0 ; end_num = len(entry_string.split(' ')) ; relevant_memories = []
-                for previous_search in tuple([txt_file[:txt_file.rfind(".")] for txt_file in tuple(listdir(search_results_folder))]):
-                    if previous_search in entry_string:
-                        relevant_memories.append(f"{previous_search}.txt")
-                        counter += 1
-                        if counter == end_num:
-                            break
-                del counter
-                relevant_file_paths = {}
-                for relevant_memory in (relevant_memories := tuple(relevant_memories)):
-                    for line in (open(f'{search_results_folder}/{relevant_memory}','r',encoding='utf-8').readlines()):
-                        if (current_line := line.rstrip('\n')) in relevant_file_paths.keys():
-                            relevant_file_paths[current_line] += 1
-                        else:
-                            relevant_file_paths[current_line] = 0
-                for file_name in tuple(relevant_file_paths.keys()):
-                    if not relevant_file_paths[file_name] != end_num:
-                        del relevant_file_paths[file_name]
-                if len((relevant_file_paths := tuple(relevant_file_paths.keys()))):
-                    zip_file_path_to_files = {}
-                    for relevant_file_path in relevant_file_paths:
-                        if (current_path := relevant_file_path[:relevant_file_path.rfind("/")]) in self.paths_in_db:
-                            if current_path in zip_file_path_to_files.keys():
-                                zip_file_path_to_files[current_path].append(relevant_file_path[relevant_file_path.rfind("/")+1:])
-                            else:
-                                zip_file_path_to_files[current_path] = [relevant_file_path[relevant_file_path.rfind("/")+1:]]
-                    del end_num
-                    if tqdm_imported:
-                        item_file_paths = tqdm(tuple(zip_file_path_to_files.keys()), disable = not terminal_progress_display_enabled, desc = f"Searching for instances of {entry_string}")
+                        return None
+                    elif return_tuple:
+                        return ()
                     else:
-                        item_file_paths = tuple(zip_file_path_to_files.keys())
+                        return None
+        else:
+            contents_found = False ; names_found = False
+            test_contents_str = f'{temp_entry_string}$contents' ; test_name_str = f'{temp_entry_string}$names'
+            found_matches = [] ; found_name_matches = []
+            for previous_search in tuple([txt_file[:txt_file.rfind(".")] for txt_file in tuple(listdir(f'{self.db_path}/_terms_searched'))]):
+                if test_contents_str == previous_search:
                     if isinstance(check_type,str):
-                        match (temp_ending := check_type.lower().replace(' ','')):
-                            case 'any' | 'all' | 'every':
-                                for item_file_path in item_file_paths:
-                                    with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
-                                        for item in zip_file_path_to_files[item_file_path]:
-                                            match (temp_ending := item[item.rfind(".")+1:].lower()):
-                                                case 'txt':
-                                                    if include_entity_name:
-                                                        if temp_entry_string in getTestName(item):
-                                                            found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                            continue
-                                                    if isQueryMatchKether(entry_string,tuple(zf.open(f'_txt_files/{item}').readlines())):
-                                                        found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                case 'pdf' | 'docx':
-                                                    starting_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}/'
-                                                    for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith(starting_name)]):
-                                                        if include_entity_name:
-                                                            if temp_entry_string in getTestName(relevant_archived_file):
-                                                                found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                                break
-                                                        if isQueryMatchKether(entry_string,tuple(zf.open(f'{starting_name}{relevant_archived_file}').readlines())):
-                                                            found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                            break
-                                                case 'shp':
-                                                    starting_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}/'
-                                                    for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith(starting_name)]):
-                                                        if include_entity_name:
-                                                            if temp_entry_string in getTestName(relevant_archived_file):
-                                                                found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                                continue
-                                                        if isQueryMatchDaath(entry_string,f'{starting_name}{relevant_archived_file}',zf):
-                                                            found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                case 'gdb':
-                                                    starting_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}/'
-                                                    for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith(starting_name)]):
-                                                        if include_entity_name:
-                                                            if temp_entry_string in getTestName(relevant_archived_file):
-                                                                found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                                break
-                                                        if isQueryMatchDaath(entry_string,f'{starting_name}{relevant_archived_file}',zf):
-                                                            found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                            break
-                                                case _:
-                                                    if temp_ending in self.image_types:
-                                                        if include_entity_name:
-                                                            if temp_entry_string in getTestName(item):
-                                                                found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
+                        if (check_type := check_type.lower()) == 'docx':
+                            check_type = 'doc'
+                        match check_type:
                             case 'txt':
-                                for item_file_path in item_file_paths:
-                                    with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
-                                        for item in zip_file_path_to_files[item_file_path]:
-                                            if include_entity_name:
-                                                if temp_entry_string in getTestName(relevant_archived_file):
-                                                    found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                    continue
-                                            if isQueryMatchKether(entry_string,tuple(zf.open(f'_txt_files/{item}').readlines())):
-                                                found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                            case 'pdf' | 'docx':
-                                for item_file_path in item_file_paths:
-                                    with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
-                                        for item in zip_file_path_to_files[item_file_path]:
-                                            starting_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}/'
-                                            for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith(starting_name)]):
-                                                if include_entity_name:
-                                                    if temp_entry_string in getTestName(relevant_archived_file):
-                                                        found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                        break
-                                                if isQueryMatchKether(entry_string,tuple(zf.open(f'{starting_name}{relevant_archived_file}').readlines())):
-                                                    found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                    break
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.txt'):
+                                            found_matches.append(entity)
+                            case 'pdf':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.pdf'):
+                                            found_matches.append(entity)
+                            case 'doc':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.docx'):
+                                            found_matches.append(entity)
                             case 'shp':
-                                for item_file_path in item_file_paths:
-                                    with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
-                                        for item in zip_file_path_to_files[item_file_path]:
-                                            starting_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}/'
-                                            for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith(starting_name)]):
-                                                if include_entity_name:
-                                                    if temp_entry_string in getTestName(relevant_archived_file):
-                                                        found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                        continue
-                                                if isQueryMatchDaath(entry_string,f'{starting_name}{relevant_archived_file}',zf):
-                                                    found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.shp'):
+                                            found_matches.append(entity)
                             case 'gdb':
-                                for item_file_path in item_file_paths:
-                                    with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
-                                        for item in zip_file_path_to_files[item_file_path]:
-                                            starting_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}/'
-                                            for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith(starting_name)]):
-                                                if include_entity_name:
-                                                    if temp_entry_string in getTestName(relevant_archived_file):
-                                                        found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                        break
-                                                if isQueryMatchDaath(entry_string,f'{starting_name}{relevant_archived_file}',zf):
-                                                    found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                    break
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.gdb'):
+                                            found_matches.append(entity)
+                            case 'img':
+                                temp_extensions = tuple(self.accepted_image_extensions)
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        for extension in temp_extensions:
+                                            if entity.lower().endswith(extension):
+                                                found_matches.append(entity)
+                                                break
+                                del temp_extensions
+                            case 'alia':
+                                temp_extensions = tuple(list(self.image_types) + ['txt','pdf','docx','shp','gdb'])
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        for extension in temp_extensions:
+                                            if not entity.lower()[entity.rfind(".")+1:].endswith(extension) or not '.' in entity:
+                                                found_matches.append(entity)
+                                                break
+                                del temp_extensions
                             case _:
-                                if temp_ending in self.image_types:
-                                    for item_file_path in item_file_paths:
-                                        with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
-                                            for item in zip_file_path_to_files[item_file_path]:
-                                                if include_entity_name:
-                                                    if temp_entry_string in getTestName(item):
-                                                        found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                else:
-                                    if return_tuple:
-                                        return ()
-                                    return None
-                    elif isinstance(check_type,(tuple,list,set)):
-                        try:
-                            if 'img' in (check_type := {item.lower().replace(' ','') for item in tuple(check_type)}):
-                                for img_type in self.image_types:
-                                    check_type.add(img_type)
-                                check_type.remove('img')
-                        except TypeError:
-                            if return_tuple:
-                                return ()
-                            return None
-                        for item_file_path in item_file_paths:
-                            with ZipFile(f'{self.db_path}/{self.crintum_pointer[item_file_path]}.zip') as zf:
-                                for item in zip_file_path_to_files[item_file_path]:
-                                    if (entity_type := item.lower()[item.rfind(".")+1:]) in check_type:
-                                        match entity_type:
-                                            case 'txt':
-                                                for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith('_txt_files/')]):
-                                                    if include_entity_name:
-                                                        if temp_entry_string in getTestName(relevant_archived_file):
-                                                            found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                            continue
-                                                    if isQueryMatchKether(entry_string,tuple(zf.open(f'_txt_files/{item}').readlines())):
-                                                        found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                            case 'pdf':
-                                                starting_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}/'
-                                                for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith(starting_name)]):
-                                                    if include_entity_name:
-                                                        if temp_entry_string in getTestName(relevant_archived_file):
-                                                            found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                            break
-                                                    if isQueryMatchKether(entry_string,tuple(zf.open(f'{starting_name}{relevant_archived_file}').readlines())):
-                                                        found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                        break
-                                            case 'shp':
-                                                for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith('_shp_files/')]):
-                                                    if include_entity_name:
-                                                        if temp_entry_string in getTestName(relevant_archived_file):
-                                                            found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                            continue
-                                                    if isQueryMatchDaath(entry_string,f'_shp_files/{relevant_archived_file}',zf):
-                                                        found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                            case 'gdb':
-                                                starting_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}/'
-                                                for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith(starting_name)]):
-                                                    if include_entity_name:
-                                                        if temp_entry_string in getTestName(relevant_archived_file):
-                                                            found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                            break
-                                                    if isQueryMatchDaath(entry_string,f'{starting_name}{relevant_archived_file}',zf):
-                                                        found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                        break
-                                            case 'docx':
-                                                starting_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}/'
-                                                for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith(starting_name)]):
-                                                    if include_entity_name:
-                                                        if temp_entry_string in getTestName(relevant_archived_file):
-                                                            found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                            break
-                                                    if isQueryMatchKether(entry_string,tuple(zf.open(f'{starting_name}{relevant_archived_file}').readlines())):
-                                                        found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
-                                                        break
-                                            case _:
-                                                if entity_type in self.image_types:
-                                                    for relevant_archived_file in tuple([archived_file for archived_file in tuple(zf.namelist()) if archived_file.startswith('_images/')]):
-                                                        if include_entity_name:
-                                                            if temp_entry_string in getTestName(relevant_archived_file):
-                                                                found_matches.append("%s\\%s" % (item_file_path.replace("/","\\"),item))
+                                if return_tuple:
+                                    return ()
+                                return None
+                        contents_found = True
+                    elif isinstance(check_type,(tuple,set,list)):
+                        check_type = {item.lower() for item in tuple(check_type)}
+                        if 'docx' in check_type:
+                            check_type.remove('docx')
+                            check_type.add('doc')
+                        if 'img' in check_type:
+                            check_type.remove('img')
+                            for extension in self.image_types:
+                                check_type.add(extension)
+                        irrelevant_extensions = {'txt','gdb','pdf','docx','shp'} + (image_types_set := set(self.image_types))
+                        with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                            while True:
+                                entity = tf.readline()
+                                if not entity:
+                                    break
+                                entity = decodeZipTxtLine(entity).split('|')[0]
+                                if (extension := entity[entity.rfind('.')+1:].lower()) in check_type:
+                                    match extension:
+                                        case 'txt':
+                                            found_matches.append(entity)
+                                        case 'pdf':
+                                            found_matches.append(entity)
+                                        case 'doc':
+                                            found_matches.append(entity)
+                                        case 'shp':
+                                            found_matches.append(entity)
+                                        case 'gdb':
+                                            found_matches.append(entity)
+                                        case _:
+                                            if extension in image_types_set:
+                                                found_matches.append(entity)
+                                            elif not extension in irrelevant_extensions and "alia" in check_type:
+                                                found_matches.append(entity)
+                    elif return_tuple:
+                        return ()
                     else:
-                        if return_tuple:
-                            return ()
                         return None
-                    if save_results_to_file:
-                        genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
-                    if return_tuple:
-                        if self.chloe_vocalization:
-                            playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
-                        return found_matches
+                if test_name_str == previous_search:
+                    if isinstance(check_type,str):
+                        if (check_type := check_type.lower()) == 'docx':
+                            check_type = 'doc'
+                        match check_type:
+                            case 'txt':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.txt'):
+                                            found_name_matches.append(entity)
+                            case 'pdf':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.pdf'):
+                                            found_name_matches.append(entity)
+                            case 'doc':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.docx'):
+                                            found_name_matches.append(entity)
+                            case 'shp':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.shp'):
+                                            found_name_matches.append(entity)
+                            case 'gdb':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity.lower().endswith('.gdb'):
+                                            found_name_matches.append(entity)
+                            case 'img':
+                                temp_extensions = tuple(self.accepted_image_extensions)
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        for extension in temp_extensions:
+                                            if entity.lower().endswith(extension):
+                                                found_name_matches.append(entity)
+                                                break
+                                del temp_extensions
+                            case 'alia':
+                                temp_extensions = tuple(list(self.image_types) + ['txt','pdf','docx','shp','gdb'])
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        for extension in temp_extensions:
+                                            if not entity.lower()[entity.rfind(".")+1:].endswith(extension):
+                                                found_name_matches.append(entity)
+                                                break
+                                del temp_extensions
+                            case _:
+                                if return_tuple:
+                                    return ()
+                                return None
+                        names_found = True
+                    elif isinstance(check_type,(set,list,tuple)):
+                        check_type = {item.lower() for item in tuple(check_type)}
+                        if 'docx' in check_type:
+                            check_type.remove('docx')
+                            check_type.add('doc')
+                        if 'img' in check_type:
+                            check_type.remove('img')
+                            for extension in self.image_types:
+                                check_type.add(extension)
+                        irrelevant_extensions = {'txt','gdb','pdf','docx','shp'} + (image_types_set := set(self.image_types))
+                        with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                            while True:
+                                entity = tf.readline()
+                                if not entity:
+                                    break
+                                entity = decodeZipTxtLine(entity).split('|')[0]
+                                if (extension := entity[entity.rfind('.')+1:].lower()) in check_type:
+                                    match extension:
+                                        case 'txt':
+                                            found_name_matches.append(entity)
+                                        case 'pdf':
+                                            found_name_matches.append(entity)
+                                        case 'doc':
+                                            found_name_matches.append(entity)
+                                        case 'shp':
+                                            found_name_matches.append(entity)
+                                        case 'gdb':
+                                            found_name_matches.append(entity)
+                                        case _:
+                                            if extension in image_types_set:
+                                                found_name_matches.append(entity)
+                                            elif not extension in irrelevant_extensions and "alia" in check_type:
+                                                found_name_matches.append(entity)
+                    elif return_tuple:
+                        return ()
                     else:
-                        if self.chloe_vocalization:
-                            playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
                         return None
-
-        del search_results_folder
+                if contents_found and names_found:
+                    break
+            if len(found_matches := tuple(set(list(found_matches)+list(found_name_matches)))) and any((contents_found,names_found)):
+                if save_results_to_file:
+                    genSearchQueryResultFile(found_matches,output_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwriteOutput,set(self.image_types))
+                if return_tuple:
+                    return found_matches
+                return None
 
         found_matches = []
+        found_name_matches = []
         if tqdm_imported:
             iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled, desc = f"Searching for instances of {entry_string}")
         else:
             iterator = tuple(self.used_names)
-        if not ' ' in entry_string:
-            for used_name in iterator:
-                extracted_data = {}
-                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                    for item in tuple(zf.namelist()):
-                        if '/' in item[:-1]:
-                            if not (folder_name := item[:item.find("/")]) in extracted_data.keys():
-                                extracted_data[folder_name] = [item[item.find("/")+1:]]
-                            else:
-                                extracted_data[folder_name].append(item[item.find("/")+1:])
-                    try: del folder_name
-                    except NameError: pass
-                    for classify in tuple(extracted_data.keys()):
-                        if classify == '_txt_files':
-                            for txt_file in extracted_data[classify]:
-                                if include_entity_name:
-                                    if temp_entry_string in getTestName(txt_file):
-                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
-                                        continue
-                                if isQueryMatchKether(entry_string,tuple(zf.open(f'_txt_files/{txt_file}').readlines())):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
-                        elif classify == '_shp_files':
-                            for txt_file in extracted_data[classify]:
-                                if include_entity_name:
-                                    if temp_entry_string in getTestName(txt_file):
-                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
-                                        continue
-                                if isQueryMatchDaath(entry_string,f'_shp_files/{txt_file}',zf):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
-                        elif classify.lower().endswith('_gdb'):
-                            found_equal = False
-                            for txt_file in extracted_data[classify]:
-                                if include_entity_name:
-                                    if temp_entry_string in getTestName(txt_file):
-                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+        if not entity_names_only:
+            if not ' ' in entry_string:
+                for used_name in iterator:
+                    extracted_data = {}
+                    with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                        for item in (items := tuple(zf.namelist())):
+                            if '/' in item[:-1]:
+                                if not (folder_name := item[:item.find("/")]) in extracted_data.keys():
+                                    extracted_data[folder_name] = [item[item.find("/")+1:]]
+                                else:
+                                    extracted_data[folder_name].append(item[item.find("/")+1:])
+                        try: del folder_name
+                        except NameError: pass
+                        if '_alia_dosieroj.txt' in items:
+                            with zf.open('_alia_dosieroj.txt') as tf:
+                                while True:
+                                    entity = tf.readline()
+                                    if not entity:
                                         break
-                                if isQueryMatchDaath(entry_string,f'{classify}/{txt_file}',zf):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
-                                    break
-                        elif classify.lower().endswith('_pdf'):
-                            for txt_file in extracted_data[classify]:
-                                if include_entity_name:
-                                    if temp_entry_string in getTestName(txt_file):
-                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
-                                        break
-                                if isQueryMatchKether(entry_string,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
-                                    break
-                        elif classify.lower().endswith('_docx'):
-                            for txt_file in extracted_data[classify]:
-                                if include_entity_name:
-                                    if temp_entry_string in getTestName(txt_file):
-                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
-                                        break
-                                if isQueryMatchKether(entry_string,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
-                                    break
-                        elif classify == '_images':
-                            if include_entity_name:
+                                    if temp_entry_string in getTestName((entity := decodeZipTxtLine(entity).split('|')[0])):
+                                        found_name_matches.append(entity)
+                        try: del items
+                        except NameError: pass
+                        for classify in tuple(extracted_data.keys()):
+                            if classify == '_txt_files':
                                 for txt_file in extracted_data[classify]:
                                     if temp_entry_string in getTestName(txt_file):
-                                        found_matches.append("%s\\%s%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind(".")],txt_file[txt_file.rfind("."):]))
-            if save_found_matches:
-                if len((found_matches := tuple(sorted(found_matches)))):
-                    with open(f'{self.db_path}/_terms_searched/{entry_string}.txt','w',encoding='utf-8') as tf:
-                        tf.write(found_matches[0])
-                        for n in range(1,len(found_matches)):
-                            tf.write(f'\n{found_matches[n]}')
-                else:
-                    # No matches found.
-                    with open(f'{self.db_path}/_terms_searched/{entry_string}.txt','w',encoding='utf-8') as tf:
-                        pass
-        else:
-            terms = tuple(entry_string.split(' '))
-            if save_found_matches:
-                term_memories = {term : [] for term in terms}
-            for used_name in iterator:
-                extracted_data = {}
-                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                    for item in tuple(zf.namelist()):
-                        if '/' in item[:-1]:
-                            if not (folder_name := item[:item.find("/")]) in extracted_data.keys(): extracted_data[folder_name] = [item[item.find("/")+1:]]
-                            else: extracted_data[folder_name].append(item[item.find("/")+1:])
-                    try: del folder_name
-                    except NameError: pass
-                    for classify in tuple(extracted_data.keys()):
-                        if classify == '_txt_files':
-                            for txt_file in extracted_data[classify]:
-                                if include_entity_name:
+                                        found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                                    if isQueryMatchKether(entry_string,tuple(zf.open(f'_txt_files/{txt_file}').readlines())):
+                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                            elif classify == '_shp_files':
+                                for txt_file in extracted_data[classify]:
                                     if temp_entry_string in getTestName(txt_file):
                                         found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
-                                        continue
-                                if isQueryMatchGewurah(entry_string,(txt_lines := tuple(zf.open(f'_txt_files/{txt_file}').readlines())),max_line_concat):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
-                                if save_found_matches:
-                                    for term in terms:
-                                        if include_entity_name:
-                                            if term.replace('_',' ') in getTestName(txt_file):
-                                                found_matches.append("%s\\%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file))
-                                                continue
-                                        if isQueryMatchKether(term,txt_lines):
-                                            term_memories[term].append("%s\\%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file))
-                                del txt_lines
-                        elif classify == '_shp_files':
-                            for txt_file in extracted_data[classify]:
-                                if include_entity_name:
-                                    if temp_entry_string in getTestName(txt_file):
+                                    if isQueryMatchDaath(entry_string,f'_shp_files/{txt_file}',zf):
                                         found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
-                                        continue
-                                if isQueryMatchChochmah(entry_string,f'_shp_files/{txt_file}',zf):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
-                                if save_found_matches:
-                                    for term in terms:
-                                        if include_entity_name:
-                                            if term.replace('_',' ') in getTestName(txt_file):
-                                                term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
-                                                continue
-                                        if isQueryMatchDaath(term,f'_shp_files/{txt_file}',zf):
-                                            term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
-                        elif classify.lower().endswith('_gdb'):
-                            for txt_file in extracted_data[classify]:
-                                if include_entity_name:
-                                    if temp_entry_string in getTestName(txt_file):
+                            elif classify.lower().endswith('_gdb'):
+                                found_equal = False
+                                if temp_entry_string in getTestName(classify):
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                                for txt_file in extracted_data[classify]:
+                                    if isQueryMatchDaath(entry_string,f'{classify}/{txt_file}',zf):
                                         found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
                                         break
-                                if isQueryMatchChochmah(entry_string,f'{classify}/{txt_file}',zf):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
-                                    break
-                            if save_found_matches:
-                                for term in terms:
-                                    for txt_file in extracted_data[classify]:
-                                        if include_entity_name:
-                                            if term.replace('_',' ') in getTestName(txt_file):
-                                                term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
-                                                break
-                                        if isQueryMatchDaath(term,f'{classify}/{txt_file}',zf):
-                                            term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
-                                            break
-                        elif classify.lower().endswith('_pdf'):
-                            for txt_file in extracted_data[classify]:
-                                if include_entity_name:
-                                    if temp_entry_string in getTestName(txt_file):
+                            elif classify.lower().endswith('_pdf'):
+                                if temp_entry_string in getTestName(classify):
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                                if 'image_histogram_data.txt' in extracted_data[classify]:
+                                    extracted_data[classify].remove('image_histogram_data.txt')
+                                for txt_file in extracted_data[classify]:
+                                    if isQueryMatchKether(entry_string,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
                                         found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
                                         break
-                                if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{classify}/{txt_file}').readlines()),max_line_concat):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
-                                    break
-                            if save_found_matches:
-                                for term in terms:
-                                    for txt_file in extracted_data[classify]:
-                                        if include_entity_name:
-                                            if term.replace('_',' ') in getTestName(txt_file):
-                                                term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
-                                                break
-                                        if isQueryMatchKether(term,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
-                                            term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
-                                            break
-                        elif classify.lower().endswith('_docx'):
-                            for txt_file in extracted_data[classify]:
-                                if include_entity_name:
-                                    if temp_entry_string in getTestName(txt_file):
+                            elif classify.lower().endswith('_docx'):
+                                if temp_entry_string in getTestName(classify):
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
+                                if 'image_histogram_data.txt' in extracted_data[classify]:
+                                    extracted_data[classify].remove('image_histogram_data.txt')
+                                for txt_file in extracted_data[classify]:
+                                    if isQueryMatchKether(entry_string,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
                                         found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
                                         break
-                                if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{classify}/{txt_file}').readlines()),max_line_concat):
-                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
-                                    break
-                            if save_found_matches:
-                                for term in terms:
-                                    for txt_file in extracted_data[classify]:
-                                        if include_entity_name:
+                            elif classify == '_images':
+                                for txt_file in extracted_data[classify]:
+                                    if temp_entry_string in getTestName(txt_file):
+                                        found_name_matches.append("%s\\%s%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind(".")],txt_file[txt_file.rfind("."):]))
+                if save_found_matches:
+                    if len((found_matches := tuple(sorted(found_matches)))):
+                        with open(f'{self.db_path}/_terms_searched/{entry_string}$contents.txt','w',encoding='utf-8') as tf:
+                            tf.write(found_matches[0])
+                            for n in range(1,len(found_matches)):
+                                tf.write(f'\n{found_matches[n]}')
+                    else:
+                        with open(f'{self.db_path}/_terms_searched/{entry_string}$contents.txt','w',encoding='utf-8') as tf:
+                            pass
+                    if len((found_name_matches := tuple(sorted(found_name_matches)))):
+                        with open(f'{self.db_path}/_terms_searched/{entry_string}$names.txt','w',encoding='utf-8') as tf:
+                            tf.write(found_name_matches[0])
+                            for n in range(1,len(found_name_matches)):
+                                tf.write(f'\n{found_name_matches[n]}')
+                    else:
+                        with open(f'{self.db_path}/_terms_searched/{entry_string}$names.txt','w',encoding='utf-8') as tf:
+                            pass
+            else:
+                terms = tuple(entry_string.split(' '))
+                if save_found_matches:
+                    term_memories = {term : [] for term in terms}
+                    term_name_memories = {term : [] for term in terms}
+                for used_name in iterator:
+                    extracted_data = {}
+                    with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                        for item in (items := tuple(zf.namelist())):
+                            if '/' in item[:-1]:
+                                if not (folder_name := item[:item.find("/")]) in extracted_data.keys(): extracted_data[folder_name] = [item[item.find("/")+1:]]
+                                else: extracted_data[folder_name].append(item[item.find("/")+1:])
+                        try: del folder_name
+                        except NameError: pass
+                        if '_alia_dosieroj.txt' in items:
+                            with zf.open(f'_alia_dosieroj.txt') as tf:
+                                while True:
+                                    entity = tf.readline()
+                                    if not entity:
+                                        break
+                                    entity = decodeZipTxtLine(entity).split('|')[0]
+                                    if temp_entry_string in (test_name := getTestName(entity)):
+                                        found_name_matches.append("%s\\%s" % (self.path_pointer[used_name].replace('/','\\'),entity))
+                                    for term in terms:
+                                        if term in test_name:
+                                            term_name_memories[term].append("%s\\%s" % (self.path_pointer[used_name].replace('/','\\'),entity))
+                        try: del items
+                        except NameError: pass
+                        for classify in tuple(extracted_data.keys()):
+                            if classify == '_txt_files':
+                                for txt_file in extracted_data[classify]:
+                                    if temp_entry_string in getTestName(txt_file):
+                                        found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                                    if isQueryMatchGewurah(entry_string,(txt_lines := tuple(zf.open(f'_txt_files/{txt_file}').readlines())),max_line_concat):
+                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                                    if save_found_matches:
+                                        for term in terms:
                                             if term.replace('_',' ') in getTestName(txt_file):
+                                                term_name_memories.append("%s\\%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file))
+                                            if isQueryMatchKether(term,txt_lines):
+                                                term_memories[term].append("%s\\%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file))
+                                    del txt_lines
+                            elif classify == '_shp_files':
+                                for txt_file in extracted_data[classify]:
+                                    if temp_entry_string in getTestName(txt_file):
+                                        found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                                    if isQueryMatchChochmah(entry_string,f'_shp_files/{txt_file}',zf):
+                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                                    if save_found_matches:
+                                        for term in terms:
+                                            if term.replace('_',' ') in getTestName(txt_file):
+                                                term_name_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                                            if isQueryMatchDaath(term,f'_shp_files/{txt_file}',zf):
+                                                term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                            elif classify.lower().endswith('_gdb'):
+                                if temp_entry_string in getTestName(classify):
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                                for txt_file in extracted_data[classify]:
+                                    if isQueryMatchChochmah(entry_string,f'{classify}/{txt_file}',zf):
+                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                                        break
+                                if save_found_matches:
+                                    for term in terms:
+                                        for txt_file in extracted_data[classify]:
+                                            if term.replace('_',' ') in getTestName(txt_file):
+                                                term_name_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                                            if isQueryMatchDaath(term,f'{classify}/{txt_file}',zf):
+                                                term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                            elif classify.lower().endswith('_pdf'):
+                                if temp_entry_string in getTestName(classify):
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                                if 'image_histogram_data.txt' in extracted_data[classify]:
+                                    extracted_data[classify].remove('image_histogram_data.txt')
+                                for txt_file in extracted_data[classify]:
+                                    if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{classify}/{txt_file}').readlines()),max_line_concat):
+                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                                        break
+                                if save_found_matches:
+                                    for term in terms:
+                                        for txt_file in extracted_data[classify]:
+                                            if term.replace('_',' ') in getTestName(txt_file):
+                                                term_name_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                                            if isQueryMatchKether(term,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
+                                                term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                            elif classify.lower().endswith('_docx'):
+                                if temp_entry_string in getTestName(classify):
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
+                                if 'image_histogram_data.txt' in extracted_data[classify]:
+                                    extracted_data[classify].remove('image_histogram_data.txt')
+                                for txt_file in extracted_data[classify]:
+                                    if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{classify}/{txt_file}').readlines()),max_line_concat):
+                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
+                                        break
+                                if save_found_matches:
+                                    for term in terms:
+                                        for txt_file in extracted_data[classify]:
+                                            if term.replace('_',' ') in getTestName(txt_file):
+                                                term_name_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
+                                            if isQueryMatchKether(term,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
                                                 term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
-                                                break
-                                        if isQueryMatchKether(term,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
-                                            term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
-                                            break
-                        elif classify == '_images':
-                            if include_entity_name:
+                            elif classify == '_images':
                                 for txt_file in extracted_data[classify]:
                                     if temp_entry_string in (test_name := getTestName(txt_file)):
-                                        found_matches.append("%s\\%s%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind(".")],txt_file[txt_file.rfind("."):]))
+                                        found_name_matches.append("%s\\%s%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind(".")],txt_file[txt_file.rfind("."):]))
                                     if save_found_matches:
                                         for term in terms:
                                             if term.replace('_',' ') in test_name:
-                                                term_memories[term].append("%s\\%s%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind(".")],txt_file[txt_file.rfind("."):]))
-            if save_found_matches:
-                for term in terms:
-                    if not len(term_memories[term]):
-                        del term_memories[term]
+                                                term_name_memories[term].append("%s\\%s%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind(".")],txt_file[txt_file.rfind("."):]))
+                if save_found_matches:
+                    for term in terms:
+                        if not len(term_memories[term]):
+                            del term_memories[term]
+                            with open(f'{self.db_path}/_terms_searched/{term}$contents.txt','w',encoding='utf-8') as tf:
+                                pass
+                        else:
+                            term_memories[term] = tuple(sorted(term_memories[term]))
+                            with open(f'{self.db_path}/_terms_searched/{term}$contents.txt','w',encoding='utf-8') as tf:
+                                tf.write(term_memories[term][0])
+                                for n in range(1,len(term_memories[term])):
+                                    tf.write(f'\n{term_memories[term][n]}')
+                        if not len(term_name_memories[term]):
+                            del term_name_memories[term]
+                            with open(f'{self.db_path}/_terms_searched/{term}$names.txt','w',encoding='utf-8') as tf:
+                                pass
+                        else:
+                            term_name_memories[term] = tuple(sorted(term_name_memories[term]))
+                            with open(f'{self.db_path}/_terms_searched/{term}$names.txt','w',encoding='utf-8') as tf:
+                                tf.write(term_name_memories[term][0])
+                                for n in range(1,len(term_name_memories[term])):
+                                    tf.write(f'\n{term_name_memories[term][n]}')
+        else:
+            if not ' ' in entry_string:
+                for used_name in iterator:
+                    extracted_data = {}
+                    with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                        for item in (items := tuple(zf.namelist())):
+                            if '/' in item[:-1]:
+                                if not (folder_name := item[:item.find("/")]) in extracted_data.keys():
+                                    extracted_data[folder_name] = [item[item.find("/")+1:]]
+                                else:
+                                    extracted_data[folder_name].append(item[item.find("/")+1:])
+                        try: del folder_name
+                        except NameError: pass
+                        if '_alia_dosieroj.txt' in items:
+                            if '_alia_dosieroj.txt' in items:
+                                with zf.open(f'_alia_dosieroj.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        if temp_entry_string in (test_name := getTestName((entity := decodeZipTxtLine(entity).split('|')[0]))):
+                                            found_name_matches.append("%s\\%s" % (self.path_pointer[used_name].replace('/','\\'),entity))
+                        try: del items
+                        except NameError: pass
+                        try: del entity ; del test_name
+                        except NameError: pass
+                        for classify in tuple(extracted_data.keys()):
+                            if classify == '_txt_files':
+                                for txt_file in extracted_data[classify]:
+                                    if temp_entry_string in getTestName(txt_file):
+                                        found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                            elif classify == '_shp_files':
+                                for txt_file in extracted_data[classify]:
+                                    if temp_entry_string in getTestName(txt_file):
+                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                            elif classify.lower().endswith('_gdb'):
+                                found_equal = False
+                                if temp_entry_string in getTestName(classify):
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                            elif classify.lower().endswith('_pdf'):
+                                if temp_entry_string in getTestName(classify):
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                            elif classify.lower().endswith('_docx'):
+                                if temp_entry_string in getTestName(classify):
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
+                            elif classify == '_images':
+                                for txt_file in extracted_data[classify]:
+                                    if temp_entry_string in getTestName(txt_file):
+                                        found_name_matches.append("%s\\%s%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind(".")],txt_file[txt_file.rfind("."):]))
+                if save_found_matches:
+                    if len((found_name_matches := tuple(sorted(found_name_matches)))):
+                        with open(f'{self.db_path}/_terms_searched/{entry_string}$names.txt','w',encoding='utf-8') as tf:
+                            tf.write(found_name_matches[0])
+                            for n in range(1,len(found_name_matches)):
+                                tf.write(f'\n{found_name_matches[n]}')
                     else:
-                        term_memories[term] = tuple(sorted(term_memories[term]))
-                        with open(f'{self.db_path}/_terms_searched/{term}.txt','w',encoding='utf-8') as tf:
-                            tf.write(term_memories[term][0])
-                            for n in range(1,len(term_memories[term])):
-                                tf.write(f'\n{term_memories[term][n]}')
+                        with open(f'{self.db_path}/_terms_searched/{entry_string}$names.txt','w',encoding='utf-8') as tf:
+                            pass
+            else:
+                terms = tuple(entry_string.split(' '))
+                if save_found_matches:
+                    term_memories = {term : [] for term in terms}
+                    term_name_memories = {term : [] for term in terms}
+                for used_name in iterator:
+                    extracted_data = {}
+                    with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                        for item in (items := tuple(zf.namelist())):
+                            if '/' in item[:-1]:
+                                if not (folder_name := item[:item.find("/")]) in extracted_data.keys(): extracted_data[folder_name] = [item[item.find("/")+1:]]
+                                else: extracted_data[folder_name].append(item[item.find("/")+1:])
+                        try: del folder_name
+                        except NameError: pass
+                        if '_alia_dosieroj.txt' in items:
+                            with zf.open(f'_alia_dosieroj.txt',encoding='utf-8') as tf:
+                                while True:
+                                    entity = tf.readline()
+                                    if not entity:
+                                        break
+                                    if temp_entry_string in (test_name := getTestName((entity := decodeZipTxtLine(entity).split('|')[0]))):
+                                        found_name_matches.append("%s\\%s" % (self.path_pointer[used_name].replace('/','\\'),entity))
+                                    for term in terms:
+                                        if term in test_name:
+                                            term_name_memories[term].append("%s\\%s" % (self.path_pointer[used_name].replace('/','\\'),entity))
+                        try: del items
+                        except NameError: pass
+                        try: del entity ; del test_name
+                        except NameError: pass
+                        for classify in tuple(extracted_data.keys()):
+                            if classify == '_txt_files':
+                                for txt_file in extracted_data[classify]:
+                                    if temp_entry_string in getTestName(txt_file):
+                                        found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                                    if save_found_matches:
+                                        for term in terms:
+                                            if term.replace('_',' ') in getTestName(txt_file):
+                                                term_name_memories.append("%s\\%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file))
+                                    del txt_lines
+                            elif classify == '_shp_files':
+                                for txt_file in extracted_data[classify]:
+                                    if temp_entry_string in getTestName(txt_file):
+                                        found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                                    if save_found_matches:
+                                        for term in terms:
+                                            if term.replace('_',' ') in getTestName(txt_file):
+                                                term_name_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                            elif classify.lower().endswith('_gdb'):
+                                if temp_entry_string in getTestName(classify):
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                                if save_found_matches:
+                                    for term in terms:
+                                        for txt_file in extracted_data[classify]:
+                                            if term.replace('_',' ') in getTestName(txt_file):
+                                                term_name_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                            elif classify.lower().endswith('_pdf'):
+                                if temp_entry_string in getTestName(classify):
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                                if save_found_matches:
+                                    for term in terms:
+                                        for txt_file in extracted_data[classify]:
+                                            if term.replace('_',' ') in getTestName(txt_file):
+                                                term_name_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                            elif classify.lower().endswith('_docx'):
+                                if temp_entry_string in getTestName(classify):
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
+                                if save_found_matches:
+                                    for term in terms:
+                                        for txt_file in extracted_data[classify]:
+                                            if term.replace('_',' ') in getTestName(txt_file):
+                                                term_name_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
+                            elif classify == '_images':
+                                for txt_file in extracted_data[classify]:
+                                    if temp_entry_string in (test_name := getTestName(txt_file)):
+                                        found_name_matches.append("%s\\%s%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind(".")],txt_file[txt_file.rfind("."):]))
+                                    if save_found_matches:
+                                        for term in terms:
+                                            if term.replace('_',' ') in test_name:
+                                                term_name_memories[term].append("%s\\%s%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind(".")],txt_file[txt_file.rfind("."):]))
+                if save_found_matches:
+                    for term in terms:
+                        if not len(term_name_memories[term]):
+                            del term_name_memories[term]
+                            with open(f'{self.db_path}/_terms_searched/{term}$names.txt','w',encoding='utf-8') as tf:
+                                pass
+                        else:
+                            term_name_memories[term] = tuple(sorted(term_name_memories[term]))
+                            with open(f'{self.db_path}/_terms_searched/{term}$names.txt','w',encoding='utf-8') as tf:
+                                tf.write(term_name_memories[term][0])
+                                for n in range(1,len(term_name_memories[term])):
+                                    tf.write(f'\n{term_name_memories[term][n]}')
 
         try: del extracted_data
         except NameError: pass
@@ -2853,36 +2705,95 @@ class ChloeAI:
                 case 'all' | 'any' | 'every':
                     pass
                 case 'txt':
-                    found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.txt')])
+                    if entity_names_only:
+                        found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.txt')])
+                    else:
+                        found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.txt')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.txt')])
                 case 'pdf':
-                    found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.pdf')])
+                    if entity_names_only:
+                        found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.pdf')])
+                    else:
+                        found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.pdf')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.pdf')])
                 case 'gdb':
-                    found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.gdb')])
+                    if entity_names_only:
+                        found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.gdb')])
+                    else:
+                        found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.gdb')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.gdb')])
                 case 'shp':
-                    found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.shp')])
+                    if entity_names_only:
+                        found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.shp')])
+                    else:
+                        found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.shp')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.shp')])
                 case 'doc':
-                    found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.docx')])
+                    if entity_names_only:
+                        found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.docx')])
+                    else:
+                        found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.docx')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.docx')])
                 case 'img':
                     if not include_entity_name:
                         if return_tuple:
                             return ()
                         return None
                     check_type = set(self.image_types)
-                    found_matches = tuple([found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.'):] in check_type])
+                    found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind('.'):] in check_type])
                 case _:
-                    # Invalid output type.
-                    if return_tuple:
-                        return ()
-                    return None
+                    if not include_entity_name:
+                        if return_tuple:
+                            return ()
+                        return None
+                    irrelevant_extensions = {'txt','pdf','docx','shp','gdb'} + set(self.image_types)
+                    found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind(".")+1:]])
+            if not len(found_matches):
+                if return_tuple:
+                    return ()
+                return None
         elif isinstance(check_type,(tuple,list,set)):
             check_type = {item.lower().replace(' ','') for item in tuple(check_type)}
             if 'img' in check_type:
                 for img_type in self.image_types:
                     check_type.add(img_type)
                 check_type.remove('img')
-            try:
-                found_matches = tuple([found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.')+1:] in check_type])
-            except TypeError:
+            if 'doc' in check_type:
+                check_type.remove('doc')
+                check_type.add('docx')
+            if entity_names_only:
+                if 'alia' in check_type:
+                    check_type.remove('alia')
+                    irrelevant_extensions = {'txt','pdf','docx','shp','gdb'} + set(self.image_types)
+                    alia_check_extensions = {irrelevant_extension for irrelevant_extension in tuple(irrelevant_extensions) if not irrelevant_extension in check_type}
+                    found_matches = []
+                    for found_name_match in found_name_matches:
+                        if (extension := found_name_match[found_name_match.rfind('.')+1:]) in check_type or extension in alia_check_extensions:
+                            found_matches.append(found_name_match)
+                else:
+                    found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind('.')+1:] in check_type])
+            elif include_entity_name:
+                if 'alia' in check_type:
+                    check_type.remove('alia')
+                    irrelevant_extensions = {'txt','pdf','docx','shp','gdb'} + set(self.image_types)
+                    alia_check_extensions = {irrelevant_extension for irrelevant_extension in tuple(irrelevant_extensions) if not irrelevant_extension in check_type}
+                    neo_found_matches = []
+                    for found_match in tuple(set(list(found_name_matches)+list(found_matches))):
+                        if (extension := found_match[found_match.rfind('.')+1:]) in check_type or extension in alia_check_extensions:
+                            neo_found_matches.append(found_match)
+                    found_matches = tuple(neo_found_matches)
+                    del neo_found_matches
+                else:
+                    found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind('.')+1:] in check_type] + [found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.')+1:] in check_type])
+            else:
+                if 'alia' in check_type:
+                    check_type.remove('alia')
+                    irrelevant_extensions = {'txt','pdf','docx','shp','gdb'} + set(self.image_types)
+                    alia_check_extensions = {irrelevant_extension for irrelevant_extension in tuple(irrelevant_extensions) if not irrelevant_extension in check_type}
+                    neo_found_matches = []
+                    for found_match in found_matches:
+                        if (extension := found_match[found_match.rfind('.')+1:]) in check_type or extension in alia_check_extensions:
+                            neo_found_matches.append(found_match)
+                    found_matches = tuple(neo_found_matches)
+                    del neo_found_matches
+                else:
+                    found_matches = tuple([found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.')+1:] in check_type])
+            if not len(found_matches):
                 if return_tuple:
                     return ()
                 return None
@@ -2891,9 +2802,12 @@ class ChloeAI:
                 return ()
             return None
 
+        try: del found_name_matches
+        except NameError: pass
+
         # Account for not selecting all on first run
         if save_results_to_file:
-            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
+            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
 
         if self.chloe_vocalization:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
@@ -2913,7 +2827,7 @@ class ChloeAI:
         return None
 
 
-    def findAllDuplicates(self, return_tuple : bool = False, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', terminal_progress_display_enabled : bool = False) -> None | tuple[tuple]:
+    def findAllDuplicates(self, include_other_entities : bool = False, return_tuple : bool = False, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', terminal_progress_display_enabled : bool = False) -> None | tuple[tuple]:
         '''
         Check items of matching type against each other and can optionally be
         outputted and viewed by the user.
@@ -3476,6 +3390,158 @@ class ChloeAI:
                 if item.startswith(f"{current_db_name}|"):
                     checked.remove(item)
 
+        alia_found_duplicates = []
+
+        if include_other_entities:
+            checked = set()
+            found_extensions = {}
+            no_extensions = set()
+            for used_name in (aliaj := tuple([used_name for used_name in tuple(self.used_names) if '_alia_dosieroj.txt' in set(ZipFile(f'{self.db_path}/{used_name}.zip').namelist())])):
+                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                    with zf.open('_alia_dosieroj.txt') as tf:
+                        found_extensions[used_name] = set()
+                        while True:
+                            entity = tf.readline()
+                            if not entity:
+                                break
+                            entity = decodeZipTxtLine(line).split('|')[0]
+                            if not '.' in entity:
+                                no_extensions.add(used_name)
+                            else:
+                                found_extensions[used_name].add(entity.lower()[entity.rfind('.')+1:])
+            num_dbs = len((aliaj := tuple(found_extensions.keys())))
+            if tqdm_imported:
+                if terminal_progress_display_enabled:
+                    sys_clear()
+                iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, desc = f"Checking for vague potential duplicates in {self.database_name}")
+            else:
+                iterator = range(num_dbs-1)
+            if num_dbs:
+                for a in iterator:
+                    del found_extensions[(current_db_name := aliaj[a])]
+                    with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
+                        extensions_item_date = {}
+                        with zf.open('_alia_dosieroj.txt') as tf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = decodeZipTxtLine(line).split('|')
+                                if not f"{current_db_name}|{line[0]}" in checked:
+                                    if '.' in line[0]:
+                                        if not (extension := line[0].lower()[line[0].rfind(".")+1:]) in extensions_item_date.keys():
+                                            extensions_item_date[extension] = [(line[0],line[1],line[3])]
+                                        else:
+                                            extensions_item_date[extension].append((line[0],line[1],line[3]))
+                                else:
+                                    checked.remove(f'{current_db_name}|{line[0]}')
+                    try: del line
+                    except NameError: pass
+                    if len(extensions_item_date.keys()):
+                        for extension in tuple(extensions_item_date.keys()):
+                            num_items = len((items := tuple(extensions_item_date[extension])))
+                            for b in range(num_items-1):
+                                if f'{current_db_name}|{items[b][0]}' in checked:
+                                    checked.remove(f'{current_db_name}|{items[b][0]}')
+                                    continue
+                                alia_found_duplicates.append([f'{current_db_name}|{items[b][0]}'])
+                                modified_date = items[b][1]
+                                size = items[b][2]
+                                for c in range(b+1,num_items):
+                                    if not f'{current_db_name}|{items[c][0]}' in checked:
+                                        if modified_date == items[c][1]:
+                                            if size == items[c][2]:
+                                                alia_found_duplicates[-1].append(f'{current_db_name}|{items[c][0]}')
+                                                checked.add(f'{current_db_name}|{items[c][0]}')
+                                current_extension = items[b][0].lower()[items[b][0].rfind('.')+1:]
+                                for c in range(a+1,num_dbs):
+                                    if current_extension in found_extensions[(other_db_name := aliaj[c])]:
+                                        with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf:
+                                            with zf.open('_alia_dosieroj.txt') as tf:
+                                                while True:
+                                                    line = tf.readline()
+                                                    if not line:
+                                                        break
+                                                    line = decodeZipTxtLine(line).split('|')
+                                                    if not f'{other_db_name}|{line[0]}' in checked:
+                                                        if line[0].lower().endswith(f'.{current_extension}'):
+                                                            if line[1] == modified_date:
+                                                                if line[3] == size:
+                                                                    alia_found_duplicates[-1].append(f'{other_db_name}|{line[0]}')
+                                                                    checked.add(f'{other_db_name}|{line[0]}')
+                                if len((alia_found_duplicates[-1])) == 1:
+                                    del alia_found_duplicates[-1]
+                                else:
+                                    alia_found_duplicates[-1] = tuple(alia_found_duplicates[-1])
+                try: del extensions_item_date
+                except NameError: pass
+            del found_extensions
+            num_dbs = len((aliaj := tuple(no_extensions)))
+            del no_extensions
+            if tqdm_imported:
+                if terminal_progress_display_enabled:
+                    sys_clear()
+                iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, desc = f"Checking for vague potential duplicates in {self.database_name}")
+            else:
+                iterator = range(num_dbs-1)
+            checked = set()
+            for a in iterator:
+                current_db_name = aliaj[a]
+                with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
+                    item_date_size = {}
+                    with zf.open('_alia_dosieroj.txt') as tf:
+                        while True:
+                            line = tf.readline()
+                            if not line:
+                                break
+                            line = decodeZipTxtLine(line).split('|')
+                            if not f"{current_db_name}|{line[0]}" in checked:
+                                if not '.' in line[0]:
+                                    item_date_size[line[0]] = (line[1],line[3])
+                            else:
+                                checked.remove(f'{current_db_name}|{line[0]}')
+                try: del line
+                except NameError: pass
+                if (num_items := len((items := tuple(item_date_size.keys())))):
+                    for b in range(num_items-1):
+                        if f'{current_db_name}|{items[b]}' in checked:
+                            checked.remove(f'{current_db_name}|{items[b]}')
+                            continue
+                        alia_found_duplicates.append([f'{current_db_name}|{items[b]}'])
+                        modified_date = item_date_size[(current_item := items[b])][0]
+                        size = item_date_size[current_item][1]
+                        for c in range(b+1,num_items):
+                            if not f'{current_db_name}|{items[c]}' in checked:
+                                if modified_date == item_date_size[items[c]][0]:
+                                    if size == item_date_size[items[c]][1]:
+                                        alia_found_duplicates[-1].append(f'{current_db_name}|{items[c]}')
+                                        checked.add(f'{current_db_name}|{items[c]}')
+                        for c in range(a+1,num_dbs):
+                            other_db_name = aliaj[c]
+                            with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf:
+                                with zf.open('_alia_dosieroj.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line).split('|')
+                                        if not f'{other_db_name}|{line[0]}' in checked:
+                                            if modified_date == line[1]:
+                                                if size == line[3]:
+                                                    alia_found_duplicates[-1].append(f'{other_db_name}|{line[0]}')
+                                                    checked.add(f'{other_db_name}|{line[0]}')
+                        if len(alia_found_duplicates[-1]) == 1:
+                            del alia_found_duplicates[-1]
+                        else:
+                            alia_found_duplicates[-1] = tuple(alia_found_duplicates[-1])
+            try: del aliaj
+            except NameError: pass
+            for n in range(len(alia_found_duplicates)):
+                alia_found_duplicates[n] = list(alia_found_duplicates[n])
+                for x in range(len(alia_found_duplicates[n])):
+                    alia_found_duplicates[n][x] = "%s\\%s" % (self.path_pointer[alia_found_duplicates[n][x][:alia_found_duplicates[n][x].find('|')]].replace('/','\\'),alia_found_duplicates[n][x][alia_found_duplicates[n][x].find('|')+1:])
+                alia_found_duplicates[n] = tuple(alia_found_duplicates[n])
+
         if self.chloe_vocalization:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
 
@@ -3485,8 +3551,9 @@ class ChloeAI:
                 for x in range(len(found_duplicates[n])):
                     found_duplicates[n][x] = "%s\\%s.%s" % (self.path_pointer[found_duplicates[n][x][:found_duplicates[n][x].find("|")]].replace('/','\\'),found_duplicates[n][x][found_duplicates[n][x].find("|")+1:found_duplicates[n][x].rfind("_")],found_duplicates[n][x][found_duplicates[n][x].rfind("_")+1:])
                 found_duplicates[n] = tuple(found_duplicates[n])
-            if len((found_duplicates := tuple(found_duplicates))) and save_results_to_file:
-                genDuplicateFinderResultFile(found_duplicates,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output)
+
+            if len((found_duplicates := tuple(found_duplicates + alia_found_duplicates))) and save_results_to_file:
+                genDuplicateFinderResultFile(found_duplicates,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
             if return_tuple:
                 return found_duplicates
 
@@ -3925,7 +3992,7 @@ class ChloeAI:
         return None
 
 
-    def getTotalSizeOfActualRefEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', terminal_progress_display_enabled : bool = False) -> int:
+    def getTotalSizeOfActualRefEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display_enabled : bool = False) -> int:
         '''
         The total size of actual referenced entities themselves in bytes.
         '''
@@ -3942,62 +4009,213 @@ class ChloeAI:
         if isinstance(check_type,str):
             match (check_type := check_type.lower().strip()):
                 case 'any' | 'all' | 'every':
-                    for used_name in iterator:
-                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            for metadata_file in tuple([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
-                                if metadata_file == '_metadata.txt':
-                                    with zf.open(metadata_file) as tf:
-                                        while True:
-                                            line = tf.readline()
-                                            if not line:
-                                                break
-                                            line = decodeZipTxtLine(line)
-                                            for _ in range(4):
-                                                line = line[line.find('|')+1:]
-                                            total_size += Decimal(line[:line.find('|')])
-                                else:
-                                    # GDBs
-                                    with zf.open(metadata_file) as tf:
-                                        line = tf.readline() # First line is redundant in this case.
+                    if include_other_entities:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_alia_dosieroj.txt' in (items := tuple(zf.namelist())):
+                                    with zf.open('_alia_dosieroj.txt') as tf:
                                         while True:
                                             line = tf.readline()
                                             if not line:
                                                 break
                                             line = decodeZipTxtLine(line)
                                             total_size += Decimal(line[line.rfind('|')+1:])
-                case 'txt' | 'pdf' | 'shp':
-                    for used_name in iterator:
-                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            if '_metadata.txt' in set(zf.namelist()):
-                                with zf.open('_metadata.txt') as tf:
-                                    while True:
-                                        line = tf.readline()
-                                        if not line:
-                                            break
-                                        line = decodeZipTxtLine(line).lower()
-                                        if line[:line.rfind('.')].endswith(f'_{check_type}'):
-                                            for _ in range(4):
-                                                line = line[line.find('|')+1:]
-                                            total_size += Decimal(line[:line.find("|")])
-                case 'docx':
-                    for used_name in iterator:
-                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            if '_metadata.txt' in set(zf.namelist()):
-                                with zf.open('_metadata.txt') as tf:
-                                    while True:
-                                        line = tf.readline()
-                                        if not line:
-                                            break
-                                        line = decodeZipTxtLine(line).lower()
-                                        if line[:line.rfind('.')].endswith('_docx'):
-                                            for _ in range(4):
-                                                line = line[line.find('|')+1:]
-                                            total_size += Decimal(line[:line.find("|")])
+                                if '_metadata.txt' in (metadata_files :=  [item for item in items if not '/' in item and item.endswith('_metadata.txt')]):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line)
+                                            total_size += Decimal(line[line.rfind('|')+1:])
+                                    metadata_files.remove('_metadata.txt')
+                                if len((metadata_files := tuple(metadata_files))):
+                                    for metadata_file in metadata_files:
+                                        with zf.open(metadata_file) as tf:
+                                            line = tf.readline()
+                                            while True:
+                                                if not line:
+                                                    break
+                                                total_size += Decimal(line[line.rfind('|')+1:])
+                    else:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in (metadata_files :=  [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line)
+                                            total_size += Decimal(line[line.rfind('|')+1:])
+                                    metadata_files.remove('_metadata.txt')
+                                if len((metadata_files := tuple(metadata_files))):
+                                    for metadata_file in metadata_files:
+                                        with zf.open(metadata_file) as tf:
+                                            line = tf.readline()
+                                            while True:
+                                                if not line:
+                                                    break
+                                                total_size += Decimal(line[line.rfind('|')+1:])
+                case 'txt' | 'pdf' | 'shp' | 'doc' | 'img':
+                    if include_other_entities:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in (items := set(zf.namelist())):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line).lower().split('|')
+                                            if check_type == line[1]:
+                                                total_size += Decimal(line[-1])
+                                if '_alia_dosieroj.txt' in items:
+                                    with zf.open('_alia_dosieroj.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line)
+                                            total_size += Decimal(line[line.rfind('|')+1:])
+                    else:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in set(zf.namelist()):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line).lower().split('|')
+                                            if check_type == line[1]:
+                                                total_size += Decimal(line[-1])
                 case 'gdb':
+                    if include_other_entities:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_alia_dosieroj.txt' in (items := tuple(zf.namelist())):
+                                    with zf.open('_alia_dosieroj.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line)
+                                            total_size += Decimal(line[line.rfind('|')+1:])
+                                if '_metadata.txt' in (metadata_files := [item for item in items if not '/' and item.endswith('_metadata.txt')]):
+                                    metadata_files.remove('_metadata.txt')
+                                if len((metadata_files := tuple(metadata_files))):
+                                    for metadata_file in metadata_files:
+                                        with zf.open(metadata_file) as tf:
+                                            line = tf.readline()
+                                            while True:
+                                                line = tf.readline()
+                                                if not line:
+                                                    break
+                                                line = decodeZipTxtLine(line)
+                                                total_size += Decimal(line[line.rfind('|')+1:])
+                    else:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' and item.endswith('_metadata.txt')]):
+                                    metadata_files.remove('_metadata.txt')
+                                if len((metadata_files := tuple(metadata_files))):
+                                    with zf.open(metadata_file) as tf:
+                                        line = tf.readline()
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line)
+                                            total_size += Decimal(line[line.rfind('|')+1:])
+                case _:
+                    if include_other_entities:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_alia_dosieroj.txt' in set(zf.namelist()):
+                                    with zf.open('_alia_dosieroj.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line)
+                                            total_size += Decimal(line[line.rfind('|')+1:])
+                    else:
+                        return 0
+        elif isinstance(check_type,(tuple,list,set)):
+            check_type = {item.lower().replace(' ','') for item in tuple(check_type)}
+            if 'img' in check_type:
+                for img_type in self.image_types:
+                    check_type.add(img_type)
+                check_type.remove('img')
+            if include_other_entities or 'alia' in check_type:
+                if 'alia' in check_type:
+                    check_type.remove('alia')
+                if 'gdb' in check_type:
+                    check_type.remove('gdb')
                     for used_name in iterator:
                         with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            metadata_files = [item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]
-                            if '_metadata.txt' in metadata_files:
+                            if '_alia_dosieroj.txt' in (items := tuple(zf.namelist())):
+                                with zf.open('_alia_dosieroj.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line)
+                                        total_size += Decimal(line[line.rfind('|')+1:])
+                            if '_metadata.txt' in (metadata_files := [item for item in items if not '/' in item and '_metadata.txt' in item]):
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line).lower().split('|')
+                                        if line[1] in check_type:
+                                            total_size += Decimal(line[-1])
+                                metadata_files.remove('_metadata.txt')
+                            for metadata_file in (metadata_files := tuple(metadata_files)):
+                                with zf.open(metadata_file) as tf:
+                                    line = tf.readline()
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line)
+                                        total_size += Decimal(line[line.rfind('|')+1:])
+                else:
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_alia_dosieroj.txt' in (items := tuple(zf.namelist())):
+                                with zf.open('_alia_dosieroj.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line)
+                                        total_size += Decimal(line[line.rfind('|')+1:])
+                            if '_metadata.txt' in items:
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line).lower().split('|')
+                                        if line[1] in check_type:
+                                            total_size += Decimal(line[-1])
+            else:
+                if 'gdb' in check_type:
+                    check_type.remove('gdb')
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = decodeZipTxtLine(line).lower().split('|')
+                                        if line[1] == check_type:
+                                            total_size += Decimal(line[-1])
                                 metadata_files.remove('_metadata.txt')
                             for metadata_file in (metadata_files := tuple(metadata_files)):
                                 with zf.open(metadata_file) as tf:
@@ -4008,8 +4226,7 @@ class ChloeAI:
                                             break
                                         line = decodeZipTxtLine(line)
                                         total_size += Decimal(line[line.rfind('|')+1:])
-                case _:
-                    # assumed to be img
+                else:
                     for used_name in iterator:
                         with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
                             if '_metadata.txt' in set(zf.namelist()):
@@ -4018,42 +4235,9 @@ class ChloeAI:
                                         line = tf.readline()
                                         if not line:
                                             break
-                                        line = decodeZipTxtLine(line)
-                                        if f".{line[line.rfind('_')+1:line.rfind('.')]}" in self.accepted_image_extensions:
-                                            for _ in range(4):
-                                                line = line[line.find('|')+1:]
-                                            total_size += Decimal(line[:line.find("|")])
-        elif isinstance(check_type,(tuple,list,set)):
-            check_type = {item.lower().replace(' ','') for item in tuple(check_type)}
-            if 'img' in check_type:
-                for img_type in self.image_types:
-                    check_type.add(img_type)
-                check_type.remove('img')
-            for used_name in iterator:
-                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                    if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item]):
-                        with zf.open('_metadata.txt') as tf:
-                            while True:
-                                line = tf.readline()
-                                if not line:
-                                    break
-                                line = decodeZipTxtLine(line)
-                                temp_line = line[:line.find('|')]
-                                if temp_line[temp_line.find('_')+1:temp_line.rfind('.')].lower() in check_type:
-                                    for _ in range(4):
-                                        line = line[line.find('|')+1:]
-                                    total_size += Decimal(line[:line.find('|')])
-                        metadata_files.remove('_metadata.txt')
-                    if 'gdb' in check_type:
-                        for metadata_file in (metadata_files := tuple(metadata_files)):
-                            with zf.open(metadata_file) as tf:
-                                line = tf.readline() # First line is redundant in this case.
-                                while True:
-                                    line = tf.readline()
-                                    if not line:
-                                        break
-                                    line = decodeZipTxtLine(line)
-                                    total_size += Decimal(line[line.rfind('|')+1:])
+                                        line = decodeZipTxtLine(line).lower().split('|')
+                                        if line[1] == check_type:
+                                            total_size += Decimal(line[-1])
         else:
             # invalid input.
             return 0
@@ -4064,28 +4248,10 @@ class ChloeAI:
         return int(total_size)
 
 
-    def getTotalNumRefEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', terminal_progress_display_enabled : bool = False) -> int:
+    def getTotalNumRefEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display_enabled : bool = False) -> int:
         '''
         Number of entities in database.
         '''
-
-        def genRefCountFunc(archive_db_path : str, exclusive_ending : str) -> int:
-
-            counter = 0
-
-            with ZipFile(archive_db_path) as zf:
-                if '_metadata.txt' in set(zf.namelist()):
-                    with zf.open('_metadata.txt') as tf:
-                        while True:
-                            line = tf.readline()
-                            if not line:
-                                break
-                            line = decodeZipTxtLine(line).lower()
-                            if line[:line.find('|')].endswith(exclusive_ending):
-                                counter += 1
-
-            return counter
-
 
         entity_counter = 0
 
@@ -4097,73 +4263,210 @@ class ChloeAI:
             iterator = tuple(self.used_names)
 
         if isinstance(check_type,str):
+            if (check_type := check_type.lower().strip()) == 'doc':
+                check_type = 'docx'
             match (checking_type := check_type.lower().strip()):
                 case 'any' | 'all' | 'every':
+                    if include_other_entities:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in (entities := set(zf.namelist())):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            entity_counter += 1
+                                    entities.remove('_metadata.txt')
+                                entity_counter += len([item for item in tuple(entities) if not '/' in item and item.endswith('_metadata.txt')])
+                                if '_alia_dosieroj.txt' in entities:
+                                    with zf.open('_alia_dosieroj.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            entity_counter += 1
+                    else:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in (entities := set(zf.namelist())):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            entity_counter += 1
+                                    entities.remove('_metadata.txt')
+                                entity_counter += len([item for item in tuple(entities) if not '/' in item and item.endswith('_metadata.txt')])
+                case 'gdb':
+                    if include_other_entities:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_alia_dosieroj.txt' in (items := tuple(zf.namelist())):
+                                    with zf.open('_alia_dosieroj.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            entity_counter += 1
+                                if '_metadata.txt' in (metadata_files := [item for item in items if not '/' in item and item.endswith('_metadata.txt')]):
+                                    entity_counter += len(metadata_files)-1
+                                else:
+                                    entity_counter += len(metadata_files)
+                    else:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]):
+                                    entity_counter += len(metadata_files)-1
+                                else:
+                                    entity_counter += len(metadata_files)
+                case 'img':
+                    if include_other_entities:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in (items := set(zf.namelist())):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line)
+                                            if f".{line[line.rfind('_')+1:line.rfind('.')]}" in self.accepted_image_extensions:
+                                                entity_counter += 1
+                                if '_alia_dosieroj.txt' in items:
+                                    with zf.open('_alia_dosieroj.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            entity_counter += 1
+                    else:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in set(zf.namelist()):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line)
+                                            if f".{line[line.rfind('_')+1:line.rfind('.')]}" in self.accepted_image_extensions:
+                                                entity_counter += 1
+                case 'alia':
                     for used_name in iterator:
                         with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            # accounts for GDB reference metadata files.
-                            entities = set(zf.namelist())
-                            entity_counter += len([item for item in tuple(entities) if not '/' in item and '_metadata.txt' in item])-1
-                            if '_metadata.txt' in entities:
-                                with zf.open('_metadata.txt') as tf:
+                            if '_alia_dosieroj.txt' in (items := set(zf.namelist())):
+                                with zf.open('_alia_dosieroj.txt') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity_counter += 1
+                case _:
+                    # text files, shapefiles, PDFs, and Word Documents.
+                    if include_other_entities:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in (items := set(zf.namelist())):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            entity = tf.readline()
+                                            if not entity:
+                                                break
+                                            entity = decodeZipTxtLine(entity).split('|')[0]
+                                            if entity.lower()[entity.rfind('.')+1:] == check_type:
+                                                entity_counter += 1
+                                if '_alia_dosieroj.txt' in items:
+                                    with zf.open('_alia_dosieroj.txt') as tf:
+                                        while True:
+                                            entity = tf.readline()
+                                            if not entity:
+                                                break
+                                            entity_counter += 1
+        elif isinstance(check_type,(set,tuple,list)):
+            check_type = {item.lower().strip() for item in tuple(check_type)}
+            if 'img' in check_type:
+                check_type.remove('img')
+                for img_type in self.image_types:
+                    check_type.add(img_type)
+            if 'doc' in check_type:
+                check_type.remove('doc')
+                check_type.add('docx')
+            if include_other_entities or 'alia' in check_type:
+                if 'alia' in check_type:
+                    check_type.remove('alia')
+                if 'gdb' in check_type:
+                    check_type.remove('gdb')
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_alia_dosieroj.txt' in (items := set(zf.namelist())):
+                                with zf.open('_alia_dosieroj.txt') as tf:
                                     while True:
                                         line = tf.readline()
                                         if not line:
                                             break
                                         entity_counter += 1
-                case 'docx':
-                    for used_name in iterator:
-                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            if '_metadata.txt' in set(zf.namelist()):
+                            if '_metadata.txt' in (metadata_files := [item for item in tuple(items) if not '/' in item and item.endswith('_metadata.txt')]):
                                 with zf.open('_metadata.txt') as tf:
                                     while True:
-                                        line = tf.readline()
-                                        if not line:
+                                        entity = tf.readline()
+                                        if not entity:
                                             break
-                                        line = decodeZipTxtLine(line).lower()
-                                        if line[:line.find('|')].endswith('_docx'):
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity[entity.rfind('.')+1:] in check_type:
                                             entity_counter += 1
-                case 'gdb':
-                    for used_name in iterator:
-                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            entity_counter += len([item for item in tuple(zf.namelist()) if not '/' in item and '_metadata.txt' in item])-1
-                case 'img':
-                    for used_name in iterator:
-                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            if '_metadata.txt' in set(zf.namelist()):
-                                with zf.open('_metadata.txt') as tf:
-                                    while True:
-                                        line = tf.readline()
-                                        if not line:
-                                            break
-                                        line = decodeZipTxtLine(line)
-                                        if f".{line[line.rfind('_')+1:line.rfind('.')]}" in self.accepted_image_extensions:
-                                            entity_counter += 1
-                case _:
-                    # text files, shapefiles, and PDFs.
-                    for used_name in iterator:
-                        entity_counter += genRefCountFunc(f'{self.db_path}/{used_name}.zip',checking_type)
-        elif isinstance(check_type,(set,tuple,list)):
-            check_type = {item.lower().replace(' ','') for item in tuple(check_type)}
-            if 'img' in check_type:
-                for img_type in self.image_types:
-                    check_type.add(img_type)
-                check_type.remove('img')
-            for used_name in iterator:
-                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                    entities = set(zf.namelist())
-                    if 'gdb' in check_type:
-                        entity_counter += len([item for item in tuple(entities) if not '/' in item and '_metadata.txt' in item])-1
-                    if '_metadata.txt' in entities:
-                        with zf.open('_metadata.txt') as zf:
-                            while True:
-                                line = tf.readline()
-                                if not line:
-                                    break
-                                line = decodeZipTxtLine(line)
-                                line = line[:line.find('|')]
-                                if line[line.rfind("_")+1:] in check_type:
+                                metadata_files.remove('_metadata.txt')
+                            for metadata_file in (metadata_files := tuple(metadata_files)):
+                                if metadata_file.lower().endswith('_gdb_metadata.txt'):
                                     entity_counter += 1
+                else:
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_alia_dosieroj.txt' in (items := set(zf.namelist())):
+                                with zf.open('_alia_dosieroj.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        entity_counter += 1
+                            if '_metadata.txt' in items:
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        if entity[entity.rfind('.')+1:] in check_type:
+                                            entity_counter += 1
+            elif 'gdb' in check_type:
+                check_type.remove('gdb')
+                for used_name in iterator:
+                    with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                        if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]):
+                            with zf.open('_metadata.txt') as tf:
+                                while True:
+                                    entity = tf.readline()
+                                    if not entity:
+                                        break
+                                    entity = decodeZipTxtLine(entity).split('|')[0]
+                                    if entity[entity.rfind('.')+1:] in check_type:
+                                        entity_counter += 1
+                            metadata_files.remove('_metadata.txt')
+                        for metadata_file in (metadata_files := tuple(metadata_files)):
+                            if metadata_file.lower().endswith('_gdb_metadata.txt'):
+                                entity_counter += 1
+            else:
+                for used_name in iterator:
+                    with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                        if '_metadata.txt' in set(zf.namelist()):
+                            with zf.open('_metadata.txt') as tf:
+                                while True:
+                                    entity = tf.readline()
+                                    if not entity:
+                                        break
+                                    entity = decodeZipTxtLine(entity).split('|')[0]
+                                    if entity[entity.rfind('.')+1:] in check_type:
+                                        entity_counter += 1
         else:
             # invalid input.
             return 0
