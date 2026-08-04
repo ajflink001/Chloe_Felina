@@ -503,15 +503,36 @@ class ChloeAI:
                                             if not self.archive_doc_data(f'{current_path}/{item}'):
                                                 self.archive_alia_data(f'{current_path}/{item}')
                                         except Exception:
-                                            pass
+                                            if exists(f'{current_folder}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
+                                                rmtree(f'{current_folder}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
+                                            self.archive_alia_data(f'{current_folder}/{item}')
                                 case 'PDF':
-                                    pass
+                                    for item in tuple(new_entities[check_type].keys()):
+                                        try:
+                                            if not self.archive_pdf_data(f'{current_path}/{item}'):
+                                                self.archive_alia_data(f'{current_path}/{item}')
+                                        except Exception:
+                                            if exists(f'{current_folder}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
+                                                rmtree(f'{current_folder}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
+                                            self.archive_alia_data(f'{current_folder}/{item}')
                                 case 'GDB':
-                                    pass
+                                    for item in tuple(new_entities[check_type].keys()):
+                                        self.archive_gdb_data(f'{current_path}/{item}')
+                                        except Exception:
+                                            if exists(f'{current_folder}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
+                                                rmtree(f'{current_folder}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
                                 case 'SHP':
-                                    pass
+                                    for item in tuple(new_entities[check_type].keys()):
+                                        try:
+                                            pass
+                                        except Exception:
+                                            pass
                                 case 'IMG':
-                                    pass
+                                    for item in tuple(new_entities[check_type].keys()):
+                                        try:
+                                            pass
+                                        except Exception:
+                                            pass
                                 case _:
                                     self.archive_alia_data(f'{current_path}/{item}')
                     if found_removed_entities:
@@ -710,8 +731,6 @@ class ChloeAI:
                                 except Exception:
                                     if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
                                         rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
-                            else:
-                                self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'SHP':
                             if arcpy_imported:
                                 try:
@@ -1813,19 +1832,19 @@ class ChloeAI:
         return None
 
 
-    def archive_pdf_data(self, pdf_path : str, archive_db_name : str) -> None:
+    def archive_pdf_data(self, pdf_path : str, archive_db_name : str) -> bool:
 
         nulls = {"",0,None}
 
         if (baseline_metadata := getBaselineMetadata(pdf_path)) is None:
-            return None
+            return False
 
         baseline_metadata = '|'.join(baseline_metadata)
 
         try:
             reader = PdfReader(pdf_path)
         except Exception:
-            return None
+            return False
 
         metadata_info = []
 
@@ -1972,7 +1991,7 @@ class ChloeAI:
                 # This prevents PDFs that are forms from being processed.
                 if line.startswith('Please wait... If this message is not eventually replaced by the proper contents of the document, your PDF viewer may not be able to display this type of document.'):
                     rmtree(pdf_folder)
-                    return None
+                    return False
         if exists(f'{pdf_folder}/image_histogram_data.txt'):
             with open(f'{pdf_folder}/image_histogram_data.txt','r',encoding='utf-8') as tf:
                 while True:
@@ -1996,7 +2015,7 @@ class ChloeAI:
                 with open(_metadata,'a',encoding='latin-1') as tf:
                     tf.write(f'\n{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
 
-        return None
+        return True
 
 
     def archive_alia_data(self, alia_path : str, archive_db_name : str) -> None:
