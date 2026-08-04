@@ -177,6 +177,8 @@ class ChloeAI:
                     items.remove('crintum_pointer.txt')
                 if '_backup_crintum_pointer.txt' in items:
                     items.remove('_backup_crintum_pointer.txt')
+                if 'Windows_MetaInfo.zip' in items:
+                    items.remove('Windows_MetaInfo.zip')
                 for item in (items:= tuple(items)):
                     if isdir((item_path := f'{self.db_path}/{item}')):
                         try:
@@ -332,7 +334,7 @@ class ChloeAI:
         # rename the local drive to something other C, you are in for an
         # "interesting" time.
 
-        ignored_items = {'crintum_pointer.txt','_terms_searched','_names_checked'}
+        ignored_items = {'crintum_pointer.txt','_terms_searched','_names_checked','Windows_MetaInfo.zip'}
 
         # Remove redundant files and folders.
         for item in tuple(listdir(self.db_path)):
@@ -395,8 +397,129 @@ class ChloeAI:
                 iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display_enabled, desc = "Checking for Additions, Removals, and Modifications")
             else:
                 iterator = tuple(self.used_names)
+            check_types = ('TXT','PDF','DOC','IMG','SHP')
+            all_check_types = ('ALIA','TXT','PDF','DOC','IMG','SHP','GDB')
+            image_types_set = set(self.image_types)
             for used_name in iterator:
-                pass
+                current_data = {}
+                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                    if '_alia_dosieroj.txt' in (items := tuple(zf.namelist())):
+                        current_data['alia'] = {}
+                        with zf.open('_alia_dosieroj.txt') as tf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = decodeZipTxtLine(line).split('|')
+                                current_data['alia'][line[0]] = tuple(line[1:])
+                    if '_metadata.txt' in (metadata_files := [item for item in items if '/' in item and item.endswith('_metadata.txt')]):
+                        for check_type in check_types:
+                            current_data[check_type] = {}
+                        with zf.open('_metadata.txt') as tf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = decodeZipTxtLine(line).split('|')
+                                current_data[line[1]][line[0]] = tuple(line[2:])
+                        metadata_files.remove('_metadata.txt')
+                    if len((metadata_files := tuple(metadata_files))):
+                        current_data['GDB'] = {metadata_file[:metadata_file.rfind('_metadata.txt')] : tuple(decodeZipTxtLine(zf.open(metadata_file).readline()).split('|')) for metadata_file in metadata_files}
+                if not len((items := tuple(listdir((current_path := self.path_pointer[used_name]))))):
+                    remove(f'{self.db_path}/{used_name}.zip')
+                    self.removeCrintumEntry(self.path_pointer[used_name])
+                else:
+                    for check_type in tuple(current_data.keys()):
+                        if not len(current_data[check_type].keys()):
+                            del current_data[check_type]
+                    actual_entities_data = {check_type : {} for check_type in all_check_types}
+                    new_entities = {}
+                    modified_entities = {}
+                    removed_entities = {}
+                    for item in items:
+                        if isfile(f'{current_path}/{item}'):
+                            if not '.' in item:
+                                actual_entities_data['ALIA'][item] = []
+                            match (check_type := item[item.rfind('.')+1:].upper()):
+                                case 'TXT' | 'SHP' | 'PDF':
+                                    actual_entities_data[check_type][item] = []
+                                case 'DOCX':
+                                    actual_entities_data['DOC'][item] = []
+                                case _:
+                                    if check_type.lower() in image_types_set:
+                                        actual_entities_data['IMG'][item] = []
+                                    else:
+                                        actual_entities_data['ALIA'][item] = []
+                        else:
+                            if item.lower().endswith('.gdb'):
+                                actual_entities_data['GDB'][item] = []
+                    for check_type in tuple(actual_entities_data.keys()):
+                        if not len(actual_entities_data[check_type].keys()):
+                            del actual_entities_data[check_type]
+                    found_new_entities = False
+                    for check_type in tuple(actual_entities_data.keys()):
+                        if not check_type in current_data.keys():
+                            found_new_entities = True
+                            for item in tuple(actual_entities_data[check_type].keys()):
+                                new_entities[check_type].append(item)
+                            continue
+                        testing_set = set(current_data[check_type].keys())
+                        for item in tuple(actual_entities_data[check_type]):
+                            if not item in testing_set:
+                                found_new_entities = True
+                                new_entities[check_type].append(item)
+                    found_removed_entities = False
+                    for check_type in tuple(current_data.keys()):
+                        if not check_type in actual_entities_data.keys():
+                            found_removed_entities = True
+                            for item in tuple(current_data[check_type].keys()):
+                                removed_entities[check_type].append(item)
+                            continue
+                        testing_set = set(actual_entities_data[check_type].keys())
+                        for item in tuple(current_data[check_type]):
+                            if not item in testing_set:
+                                found_removed_entities = True
+                                removed_entities[check_type].append(item)
+                    if found_new_entities:
+                        self.uncompressZIP(used_name)
+                        current_folder = f'{self.db_path}/{used_name}'
+                        for check_type in (new_entities.keys()):
+                            match check_type:
+                                case 'TXT':
+                                    for item in tuple(new_entities[check_type].keys()):
+                                        try:
+                                            if not self.archive_txt_data(f'{current_path}/{item}'):
+                                                self.archive_alia_data(f'{current_path}/{item}')
+                                        except Exception:
+                                            if exists(f'{current_folder}/_txt_files/{item}'):
+                                                remove(f'{current_folder}/_txt_files/{item}')
+                                            if exists(f'{current_folder}/_txt_files'):
+                                                if not len(f'{current_folder}/_txt_files'):
+                                                    rmtree(f'{current_folder}_txt_files')
+                                            self.archive_alia_data(f'{current_path}/{item}')
+                                case 'DOC':
+                                    for item in tuple(new_entities[check_type].keys()):
+                                        try:
+                                            if not self.archive_doc_data(f'{current_path}/{item}'):
+                                                self.archive_alia_data(f'{current_path}/{item}')
+                                        except Exception:
+                                            pass
+                                case 'PDF':
+                                    pass
+                                case 'GDB':
+                                    pass
+                                case 'SHP':
+                                    pass
+                                case 'IMG':
+                                    pass
+                                case _:
+                                    self.archive_alia_data(f'{current_path}/{item}')
+                    if found_removed_entities:
+                        if not exists(f'{self.db_path}/{used_name}'):
+                            self.uncompressZIP(used_name)
+                    if found_new_entities or found_removed_entities:
+                        if not exists(f'{self.db_path}/{used_name}'):
+                            self.uncompressZIP(used_name)
 
         return None
 
@@ -602,7 +725,8 @@ class ChloeAI:
                                 self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'TXT':
                             try:
-                                self.archive_txt_data(f'{reference_directory}/{name}',archive_db_name)
+                                if not self.archive_txt_data(f'{reference_directory}/{name}',archive_db_name):
+                                    self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                             except Exception:
                                 if exists(f'{self.db_path}/{archive_db_name}/_txt_files/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}.txt'):
                                     remove(f'{self.db_path}/{archive_db_name}/_txt_files/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}.txt')
@@ -612,7 +736,8 @@ class ChloeAI:
                         case 'PDF':
                             if pypdf_imported and pil_imported:
                                 try:
-                                    self.archive_pdf_data(f'{reference_directory}/{name}',archive_db_name)
+                                    if not self.archive_pdf_data(f'{reference_directory}/{name}',archive_db_name):
+                                        self.archive_alia_data(f'{reference_directory}/{name}')
                                 except Exception:
                                     # accounts for something going wrong when attempting to access information from PDFs
                                     if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
@@ -651,10 +776,13 @@ class ChloeAI:
         return None
 
 
-    def compWinSysInfo(self, include_windows : bool = True, include_program_files : bool = False, include_program_files_x86 : bool = False, include_programdata : bool = False, include_user_appdata : bool = False, replace_existing_info : bool = False, terminal_progress_display_enabled : bool = True) -> None:
+    def compWinSysInfo(self, replace_existing_info : bool = False, terminal_progress_display_enabled : bool = False) -> None:
 
         if not replace_existing_info and exists(f'{self.db_path}/Windows_MetaInfo.zip'):
             return None
+
+        if tqdm_imported and terminal_progress_display_enabled:
+            sys_clear()
 
         import hashlib
 
@@ -668,173 +796,120 @@ class ChloeAI:
         if not exists(f'{self.db_path}/Windows_MetaInfo'):
             mkdir(f'{self.db_path}/Windows_MetaInfo')
 
+        def getBasicInfo(file_path : str) -> tuple:
+
+            temp_list = []
+
+            try: temp_list.append(getModifiedDate(file_path))
+            except Exception: temp_list.append('UNKNOWN')
+
+            try: temp_list.append(getCreatedDate(file_path))
+            except Exception: temp_list.append('UNKNOWN')
+
+            try: temp_list.append(str(getSizeOfItem(file_path)))
+            except Exception: temp_list.append('UNKNOWN')
+
+            try: temp_list.append(md5_checksum(file_path))
+            except Exception:temp_list.append('UNKNOWN')
+
+            return tuple(temp_list)
+
         path_index = {}
 
-        if include_windows:
-            for root,dirs,files in walker('C:/Windows'):
-                if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
-                    file_info = {}
-                    for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
-                        file_info[file] = []
-                        file_path = f'{root}/{item}'
-                        try:
-                            file_info[file].append(getModifiedDate(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                        try:
-                            file_info[file].append(getCreatedDate(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                        try:
-                            file_info[file].append(getSizeOfItem(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                        try:
-                            file_info[file].append(md5_checksum(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                    if len((files := tuple(file_info.keys()))):
-                        directory_name = randstr(12)
-                        while directory_name in path_index.keys():
-                            directory_name = randstr(12)
-                        path_index[root] = directory_name
-                        with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                            tf.write("%s|%s" % (file[0],'|'.join(file_info[file[0]])))
-                            for n in range(1,len(files)):
-                                tf.write(f"\n%s|%s" % (file[n],'|'.join(file_info[file[n]])))
-
-        if include_program_files:
-            for root,dirs,files in walker('C:/Program Files'):
-                if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
-                    file_info = {}
-                    for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
-                        file_info[file] = []
-                        file_path = f'{root}/{item}'
-                        try:
-                            file_info[file].append(getModifiedDate(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                        try:
-                            file_info[file].append(getCreatedDate(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                        try:
-                            file_info[file].append(getSizeOfItem(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                        try:
-                            file_info[file].append(md5_checksum(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                    if len((files := tuple(file_info.keys()))):
-                        directory_name = randstr(12)
-                        while directory_name in path_index.keys():
-                            directory_name = randstr(12)
-                        path_index[root] = directory_name
-                        with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                            tf.write("%s|%s" % (file[0],'|'.join(file_info[file[0]])))
-                            for n in range(1,len(files)):
-                                tf.write(f"\n%s|%s" % (file[n],'|'.join(file_info[file[n]])))
-
-        if include_program_files_x86:
-            for root,dirs,files in walker('C:/Program Files (x86)'):
-                if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
-                    file_info = {}
-                    for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
-                        file_info[file] = []
-                        file_path = f'{root}/{item}'
-                        try:
-                            file_info[file].append(getModifiedDate(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                        try:
-                            file_info[file].append(getCreatedDate(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                        try:
-                            file_info[file].append(getSizeOfItem(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                        try:
-                            file_info[file].append(md5_checksum(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                    if len((files := tuple(file_info.keys()))):
-                        directory_name = randstr(12)
-                        while directory_name in path_index.keys():
-                            directory_name = randstr(12)
-                        path_index[root] = directory_name
-                        with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                            tf.write("%s|%s" % (file[0],'|'.join(file_info[file[0]])))
-                            for n in range(1,len(files)):
-                                tf.write(f"\n%s|%s" % (file[n],'|'.join(file_info[file[n]])))
-
-        if include_programdata:
-            for root,dirs,files in walker('C:/ProgramData'):
-                if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
-                    file_info = {}
-                    for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
-                        file_info[file] = []
-                        file_path = f'{root}/{item}'
-                        try:
-                            file_info[file].append(getModifiedDate(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                        try:
-                            file_info[file].append(getCreatedDate(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                        try:
-                            file_info[file].append(getSizeOfItem(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                        try:
-                            file_info[file].append(md5_checksum(file_path))
-                        except Exception:
-                            file_info[file].append('UNKNOWN')
-                    if len((files := tuple(file_info.keys()))):
-                        directory_name = randstr(12)
-                        while directory_name in path_index.keys():
-                            directory_name = randstr(12)
-                        path_index[root] = directory_name
-                        with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                            tf.write("%s|%s" % (file[0],'|'.join(file_info[file[0]])))
-                            for n in range(1,len(files)):
-                                tf.write(f"\n%s|%s" % (file[n],'|'.join(file_info[file[n]])))
-
-        if include_user_appdata:
-            for user in tuple(listdir("C:/Users")):
-                for root,dirs,files in walker(f'C:/Users/{user}/AppData'):
+        if tqdm_imported:
+            for prime_dir in ('C:/Windows','C:/Program Files','C:/Program Files (x86)','C:/ProgramData'):
+                for root,dirs,files in walker(prime_dir):
                     if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
                         file_info = {}
-                        for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
-                            file_info[file] = []
-                            file_path = f'{root}/{item}'
-                            try:
-                                file_info[file].append(getModifiedDate(file_path))
-                            except Exception:
-                                file_info[file].append('UNKNOWN')
-                            try:
-                                file_info[file].append(getCreatedDate(file_path))
-                            except Exception:
-                                file_info[file].append('UNKNOWN')
-                            try:
-                                file_info[file].append(getSizeOfItem(file_path))
-                            except Exception:
-                                file_info[file].append('UNKNOWN')
-                            try:
-                                file_info[file].append(md5_checksum(file_path))
-                            except Exception:
-                                file_info[file].append('UNKNOWN')
+                        for file in tqdm(tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]), disable = not terminal_progress_display_enabled, desc = root[root.rfind('/')+1:]):
+                            file_info[file] = getBasicInfo(f'{root}/{file}')
                         if len((files := tuple(file_info.keys()))):
                             directory_name = randstr(12)
                             while directory_name in path_index.keys():
                                 directory_name = randstr(12)
                             path_index[root] = directory_name
                             with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                                tf.write("%s|%s" % (file[0],'|'.join(file_info[file[0]])))
+                                tf.write("%s|%s" % (files[0],'|'.join(file_info[files[0]])))
                                 for n in range(1,len(files)):
-                                    tf.write(f"\n%s|%s" % (file[n],'|'.join(file_info[file[n]])))
+                                    tf.write(f"\n%s|%s" % (files[n],'|'.join(file_info[files[n]])))
+                        else:
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                pass
+                if terminal_progress_display_enabled:
+                    sys_clear()
+            for user in tuple(listdir('C:/Users')):
+                for root,dirs,files in walker(f'C:/Users/{user}/AppData'):
+                    if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
+                        file_info = {}
+                        for file in tqdm(tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]), disable = not terminal_progress_display_enabled, desc = root[root.rfind('/')+1:]):
+                            file_info[file] = getBasicInfo(f'{root}/{file}')
+                        if len((files := tuple(file_info.keys()))):
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                tf.write("%s|%s" % (files[0],'|'.join(file_info[files[0]])))
+                                for n in range(1,len(files)):
+                                    tf.write(f"\n%s|%s" % (files[n],'|'.join(file_info[files[n]])))
+                        else:
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                pass
+            if terminal_progress_display_enabled:
+                sys_clear()
+        else:
+            for prime_dir in ('C:/Windows','C:/Program Files','C:/Program Files (x86)','C:/ProgramData'):
+                for root,dirs,files in walker(prime_dir):
+                    if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
+                        file_info = {}
+                        for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
+                            file_info[file] = getBasicInfo(f'{root}/{file}')
+                        if len((files := tuple(file_info.keys()))):
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                tf.write("%s|%s" % (files[0],'|'.join(file_info[files[0]])))
+                                for n in range(1,len(files)):
+                                    tf.write(f"\n%s|%s" % (files[n],'|'.join(file_info[files[n]])))
+                        else:
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                pass
+            for user in tuple(listdir('C:/Users')):
+                for root,dirs,files in walker(f'C:/Users/{user}/AppData'):
+                    if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
+                        file_info = {}
+                        for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
+                            file_info[file] = getBasicInfo(f'{root}/{file}')
+                        if len((files := tuple(file_info.keys()))):
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                tf.write("%s|%s" % (files[0],'|'.join(file_info[files[0]])))
+                                for n in range(1,len(files)):
+                                    tf.write(f"\n%s|%s" % (files[n],'|'.join(file_info[files[n]])))
+                        else:
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                pass
 
         path_index_paths = tuple(path_index.keys())
 
@@ -843,8 +918,80 @@ class ChloeAI:
             for n in range(1,len(path_index_paths)):
                 tf.write(f'\n{path_index_paths[n]}|{path_index[path_index_paths[n]]}')
 
+        current_dir = getcwd()
+        try:
+            chdir(f'{self.db_path}/Windows_MetaInfo')
+            items = tuple(listdir(getcwd()))
+            with ZipFile('Windows_MetaInfo.zip','w',ZIP_DEFLATED,True,9) as zf:
+                for item in items:
+                    if isfile(item):
+                        zf.write(item)
+            chdir(current_dir)
+        except Exception:
+            chdir(current_dir)
+
         if exists(f'{self.db_path}/Windows_MetaInfo.zip'):
             remove(f'{self.db_path}/Windows_MetaInfo.zip')
+
+        createCopy(f'{self.db_path}/Windows_MetaInfo/Windows_MetaInfo.zip',f'{self.db_path}/Windows_MetaInfo.zip')
+        rmtree(f'{self.db_path}/Windows_MetaInfo')
+        if exists(f'{self.db_path}/Windows_MetaInfo'):
+            remove(f'{self.db_path}/Windows_MetaInfo')
+
+        return None
+
+
+    def checkWinSysChanges(self, terminal_progress_display_enabled : bool = False) -> None:
+
+        if not exists(f'{self.db_path}/Windows_MetaInfo.zip'):
+            return None
+
+        if tqdm_imported:
+            sys_clear()
+
+        winsys_folder_path = {}
+
+        with ZipFile(f'{self.db_path}/Windows_MetaInfo.zip') as zf:
+            with zf.open('_directory_reference.txt') as tf:
+                while True:
+                    line = tf.readline()
+                    if not line:
+                        break
+                    line = decodeZipTxtLine(line).split('|')
+                    winsys_folder_path[line[1]] = line[0]
+
+        try: del line
+        except NameError: pass
+
+        missing_folders = []
+        additional_folders = []
+        missing_items = []
+        additional_items = []
+        modified_items = []
+
+        existing_paths = {winsys_folder_path[folder] for folder in tuple(winsys_folder_path.keys())}
+
+        for folder in tuple(winsys_folder_path.keys()):
+            if not exists(folder):
+                valid_new_folder = True
+                for missing_folder in tuple(missing_folders):
+                    if missing_folder.startswith(folder):
+                        valid_new_folder = False
+                        break
+                if valid_new_folder:
+                    missing_folders.append(folder)
+            else:
+                file_items = []
+                for item in tuple(listdir((current_path := winsys_folder_path[folder]))):
+                    if isfile(f'{current_path}/{item}'):
+                        file_items.append(item)
+                    elif not item in existing_paths:
+                        additional_folders.append(item)
+                if not len((file_items := tuple(file_items))):
+                    with ZipFile(f'{self.db_path}/Windows_MetaInfo.zip') as zf:
+                        with zf.open()
+                else:
+                    pass
 
         return None
 
@@ -1004,10 +1151,10 @@ class ChloeAI:
         return tuple(histo_ratio)
 
 
-    def archive_txt_data(self, txt_path : str, archive_db_name : str) -> None:
+    def archive_txt_data(self, txt_path : str, archive_db_name : str) -> bool:
 
         if (baseline_metadata := getBaselineMetadata(txt_path)) is None:
-            return None
+            return False
 
         baseline_metadata = '|'.join(baseline_metadata)
 
@@ -1032,7 +1179,7 @@ class ChloeAI:
                 if exists(txt_folder):
                     if not len(listdir(txt_folder)):
                         rmtree(txt_folder)
-                return None
+                return False
 
             counter = 0
 
@@ -1067,15 +1214,15 @@ class ChloeAI:
                     if exists(new_txt_file):
                         remove(new_txt_file)
 
-        return None
+        return True
 
 
-    def archive_doc_data(self, doc_path : str, archive_db_name : str) -> None:
+    def archive_doc_data(self, doc_path : str, archive_db_name : str) -> bool:
 
         nulls = {"",0,None}
 
         if (baseline_metadata := getBaselineMetadata(doc_path)) is None:
-            return None
+            return False
 
         baseline_metadata = '|'.join(baseline_metadata)
 
@@ -1331,7 +1478,7 @@ class ChloeAI:
                 with open(_metadata,'a',encoding='latin-1') as tf:
                     tf.write(f'\n{doc_path[doc_path.rfind("/")+1:doc_path.rfind(".")]}_{doc_path[doc_path.rfind(".")+1:]}|DOC|{baseline_metadata}|{counters[0]}|{counters[1]}')
 
-        return None
+        return True
 
 
     def archive_shp_data(self, shp_path : str, archive_db_name : str) -> None:
