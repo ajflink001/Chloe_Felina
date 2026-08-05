@@ -46,6 +46,10 @@ img - Image files (So far, .tif, .tiff, .jpeg, .jpg, .png, .dib, .jp2, .j2k, .jp
 
 
 
+alia - Any txt, doc, pdf, shp, gdb, or img entity that could not properly have its information extracted or any file not currently supported to have thorough data extraction.
+
+
+
 
 
 Note 1: For example, ".txt" and ".TXT" are considered to be the same. So, the casing of a file extension is irrelevant.
@@ -53,6 +57,10 @@ Note 1: For example, ".txt" and ".TXT" are considered to be the same. So, the ca
 
 
 Note 2: If certain image files are not being processed or you are unsure what image files your installation of PIL (i.e., pillow) is able to read. For example, Python installations included with certain iterations of ArcGIS Pro may not have support for WebP files.
+
+
+
+Note 3: "alia" means "other" in Esperanto.
 
 
 
@@ -120,11 +128,11 @@ Parameters:
 
 
 
-**ChloeAI.updateAndRefreshDatabase**
+**ChloeAI.autoUpdateDatabase**
 
 
 
-Purpose: This checks the data in the database against the actual data that said data is referencing and makes appropriate changes by removing references to directories that no longer exist, items being modified, items being added, and/or items being removed. This ensures that the data in the Chloe Felina database is up to date and not referencing inaccurate and/or nonexistent data.
+Purpose: This is meant to check the data in the database against the actual data that said data is referencing and makes appropriate changes by removing references to directories that no longer exist, items being modified, items being added, and/or items being removed. In version 1 of Chloe Felina, **ChloeAI.updateAndRefreshDatabase** is retroactively considered an experimental feature that proved to be very unstable and not straightforward, especially when trying to implement changes for version 2 of Chloe Felina. As of writing, it only checks to see if referenced directories still exist and to remove them if they do not. In Chloe Felina 2.1.0, it is intended that this function will handle updating zip files to account for added, removed, and/or modified files from the directories they are referencing.
 
 
 
@@ -132,7 +140,7 @@ Parameters:
 
 
 
-**keep\_db\_if\_no\_connection** (*Boolean*) - This requires the win32api (i.e., pywin32) module to be installed for this parameter to come into effect. If while getting data for the directory that a zip file in the database is referencing that the directory cannot be found or connection to it (i.e., the non-local drive) cannot be established, checks for that zip file are skipped and are assumed to be correct due to being unable to be verified. If this parameter is False, being unable to find the referenced directory or connect to the drive that the directory is located within will result in the zip file being deleted and its references removed from the database. By default, this is True.
+**keep\_db\_if\_no\_connection** (*Boolean*) - This requires the win32api (i.e., pywin32) module to be installed for this parameter to come into effect. If while getting data for the directory that a zip file in the database is referencing that the directory cannot be found or connection to it (i.e., the non-local drive) cannot be established, checks for that zip file are skipped and are assumed to be correct due to being unable to be verified. If this parameter is False, being unable to find the referenced directory or connect to the drive that the directory is located within will result in the zip file being deleted and its references removed from the database. By default, this is True. This parameter applies exclusively to referenced directories in the Chloe Felina database that are not the main drive (i.e., C Drive in the vast majority of case).
 
 
 
@@ -198,6 +206,38 @@ Parameters:
 
 
 
+**ChloeAI.compWinSysInfo**
+
+
+
+Purpose: This compiles baseline metadata as well as (attempting) to calculate an md5 checksum of all files found within C:\\Windows, C:\\Program Files, C:\\Program Files (x86), C:\\ProgramData, and the AppData directory located within the C:\\Users\\\[GIVEN USER] into a zip file for the purpose of being used with **ChloeAI.checkWinSysChanges** to attempt to generate an Excel document of all files that have been added, removed, and/or modified since the generated zip file (called "Windows\_MetaInfo") has been created and added to the Chloe Felina database. As of writing, **ChloeAI.checkWinSysChanges** is incomplete making this function not useful until it is completed. It is optimal to run this and its companion function **ChloeAI.checkWinSysChanges** with an Administrator account.
+
+
+
+Parameters:
+
+
+
+**replace\_existing\_info** (*Boolean*) - If True and "Windows\_MetaInfo.zip" exists within the Chloe Felina database, "Windows\_MetaInfo.zip" will be deleted and replaced with a new iteration of a file of the same name. By default, this is False.
+
+
+
+**terminal\_progress\_display\_enabled** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
+
+
+
+
+
+**ChloeAI.checkWinSysChanges**
+
+
+
+Planned Purpose: This is a companion function to **ChloeAI.compWinSysInfo**. This checks the stored information on files located within C:\\Windows, C:\\Program Files, C:\\Program Files (x86), C:\\ProgramData, and the AppData directory located within the C:\\Users\\\[GIVEN USER] in "Windows\_MetaInfo.zip" against actual files stored there to determine any modifications, additions, and/or removals have been done. This is meant as an alternative to security software as instead of checking for specific activities and/or changes this checks for any changes.
+
+
+
+
+
 **ChloeAI.searchQuery**
 
 
@@ -214,7 +254,7 @@ Parameters:
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), or file geodatabase, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked for the presence of **entry\_string**. By default, the string is "any".
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked for the presence of **entry\_string**. By default, the string is "any".
 
 
 
@@ -310,6 +350,10 @@ Parameters:
 
 
 
+**include\_other\_entities** (*Boolean*) - This parameter does a baseline process of attempting to find duplicates among file/entity types not covered as of yet for thorough data extraction. These are anything listed in a text file called "alia\_dosieroj" within the zip files in the Chloe Felina database that reference directories. Contextually and likely, not all zip files will contain this text file. By default, this is False.
+
+
+
 **return\_tuple** (*Boolean*) - This allows the returning of a nested tuple of items in the Chloe Felina database found to be (potential) duplicates of each other where items within a given sub-tuple within the tuple are all considered to be duplicates of each other. By default, this is False.
 
 
@@ -356,7 +400,27 @@ Parameters:
 
 
 
-NOT IMPLEMENTED YET
+Planned Purpose: This will output an organized list of files/entities that are determined to be potentially identical to the given input file.
+
+
+
+
+
+**ChloeAI.compileEntitesOnSize**
+
+
+
+Planned Purpose: This will compile an organized list of files/entities that are of a certain byte size.
+
+
+
+
+
+**ChloeAI.compileAllEntities**
+
+
+
+Planned Purpose: This will compile and organized list of all files/entities referenced by the database.
 
 
 
@@ -372,7 +436,7 @@ Purpose: This outputs the total size of the files that are being referenced in t
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of entry\_string. If "doc", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), or file geodatabase, respectively, will be checked.
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked. By default, the string is "any".
 
 
 
@@ -392,7 +456,7 @@ Purpose: This simply outputs an integer value of the number of items with refere
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of entry\_string. If "doc", "pdf", "txt", "shp", "img", or "gdb" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), or file geodatabase, respectively, will be checked.
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked. By default, the string is "any".
 
 
 
