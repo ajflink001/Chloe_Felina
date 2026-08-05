@@ -153,11 +153,11 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
         output_location = output_location.replace('\\','/')
 
     if output_type in ('excel','xlsx'):
-        output_suffix = 'cf_duplicate_findings.xlsx'
+        output_suffix = '_cf_duplicate_findings.xlsx'
     elif output_type == 'csv':
-        output_suffix = 'cf_duplicate_findings.csv'
+        output_suffix = '_cf_duplicate_findings.csv'
     else:
-        output_suffix = 'cf_duplicate_findings.txt'
+        output_suffix = '_cf_duplicate_findings.txt'
 
     if output_name in (None,'') or not isinstance(output_name,str):
         output_name = randstr()
@@ -238,12 +238,12 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                         else:
                             organized_files['alia'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                             counter['alia'] = len(organized_files['alia'][0])
-        prefix_association = {'gdb' : 'File Geodatabases', 'img' : 'Images', 'pdf' : 'PDFs', 'shp' : 'ShapeFiles', 'txt' : 'Text Files', 'doc' : 'Word Documents', 'alia' : 'Miscellaneous'}
+        suffix_association = {'gdb' : 'File Geodatabases', 'img' : 'Images', 'pdf' : 'PDFs', 'shp' : 'ShapeFiles', 'txt' : 'Text Files', 'doc' : 'Word Documents', 'alia' : 'Questionable'}
         upper_letters = tuple(ascii_uppercase)
         for entity_type in tuple(counter.keys()):
             if counter[entity_type] <= 26:
                 columns = upper_letters[:counter[entity_type]]
-                wb.create_sheet((worksheet_name := prefix_association[entity_type]))
+                wb.create_sheet((worksheet_name := suffix_association[entity_type]))
                 ws = wb[worksheet_name]
                 for n in range(len(organized_files[entity_type])):
                     ws[f'{columns[n]}1'] = f"Match #{n+1}"
@@ -252,7 +252,7 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                 adjust_column_width(ws)
             elif counter[entity_type] <= 702:
                 columns = tuple(list(upper_letters) + [f'{a}{b}' for a in upper_letters for b in upper_letters])[:counter[entity_type]]
-                wb.create_sheet((worksheet_name := prefix_association[entity_type]))
+                wb.create_sheet((worksheet_name := suffix_association[entity_type]))
                 ws = wb[worksheet_name]
                 for n in range(len(organized_files[entity_type])):
                     ws[f'{columns[n]}1'] = f"Match #{n+1}"
@@ -261,7 +261,7 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                 adjust_column_width(ws)
             elif counter[entity_type] <= 16_384:
                 columns = tuple(list(upper_letters) + [f'{a}{b}' for a in upper_letters for b in upper_letters] + [f'{a}{b}{c}' for a in upper_letters for b in upper_letters for c in upper_letters])[:counter[entity_type]]
-                wb.create_sheet((worksheet_name := prefix_association[entity_type]))
+                wb.create_sheet((worksheet_name := suffix_association[entity_type]))
                 ws = wb[worksheet_name]
                 for n in range(len(organized_files[entity_type])):
                     ws[f'{columns[n]}1'] = f"Match #{n+1}"
@@ -274,7 +274,7 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                 iteration_num = 1
                 match_counter = 1
                 while num > 16_384:
-                    wb.create_sheet((sheet_title := f'{prefix_association[entity_type]} {iteration_num}'))
+                    wb.create_sheet((sheet_title := f'{suffix_association[entity_type]} {iteration_num}'))
                     ws = wb[sheet_title]
                     for n in range(16_384):
                         ws[f'{columns[n]}1'] = f"Match #{match_counter}"
@@ -287,7 +287,7 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                     num -= 16_384
                 if len(organized_files[entity_type]) <= 26:
                     columns = upper_letters[:len(organized_files[entity_type])]
-                    wb.create_sheet(sheet_title = f'{prefix_association[entity_type]} {iteration_num}')
+                    wb.create_sheet(sheet_title = f'{suffix_association[entity_type]} {iteration_num}')
                     ws = wb[sheet_title]
                     for n in range(len(columns)):
                         ws[f'{columns[n]}1'] = f"Match # {match_counter}"
@@ -297,7 +297,7 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                     adjust_column_width(ws)
                 elif len(organized_files[entity_type]) <= 702:
                     columns = tuple(list(upper_letters) + [f'{a}{b}' for a in upper_letters for b in upper_letters])[:len(organized_files[entity_type])]
-                    wb.create_sheet(sheet_title = f'{prefix_association[entity_type]} {iteration_num}')
+                    wb.create_sheet(sheet_title = f'{suffix_association[entity_type]} {iteration_num}')
                     ws = wb[sheet_title]
                     for n in range(len(columns)):
                         ws[f'{columns[n]}1'] = f"Match # {match_counter}"
@@ -307,7 +307,7 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                     adjust_column_width(ws)
                 else:
                     columns = tuple(list(upper_letters) + [f'{a}{b}' for a in upper_letters for b in upper_letters] + [f'{a}{b}{c}' for a in upper_letters for b in upper_letters for c in upper_letters])[:len(organized_files[entity_type])]
-                    wb.create_sheet(sheet_title = f'{prefix_association[entity_type]} {iteration_num}')
+                    wb.create_sheet(sheet_title = f'{suffix_association[entity_type]} {iteration_num}')
                     ws = wb[sheet_title]
                     for n in range(len(columns)):
                         ws[f'{columns[n]}1'] = f"Match # {match_counter}"

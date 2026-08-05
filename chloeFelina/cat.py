@@ -325,6 +325,9 @@ class ChloeAI:
 
 
     def autoUpdateDatabase(self, keep_db_if_no_connection : bool = True, clear_terms_searched : bool = True, terminal_progress_display_enabled : bool = False) -> None:
+        '''
+        WIP
+        '''
 
         if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
@@ -393,154 +396,6 @@ class ChloeAI:
             del redact_dbs
             try: del reference_directory
             except NameError: pass
-            if tqdm_imported:
-                iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display_enabled, desc = "Checking for Additions, Removals, and Modifications")
-            else:
-                iterator = tuple(self.used_names)
-            check_types = ('TXT','PDF','DOC','IMG','SHP')
-            all_check_types = ('ALIA','TXT','PDF','DOC','IMG','SHP','GDB')
-            image_types_set = set(self.image_types)
-            for used_name in iterator:
-                current_data = {}
-                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                    if '_alia_dosieroj.txt' in (items := tuple(zf.namelist())):
-                        current_data['alia'] = {}
-                        with zf.open('_alia_dosieroj.txt') as tf:
-                            while True:
-                                line = tf.readline()
-                                if not line:
-                                    break
-                                line = decodeZipTxtLine(line).split('|')
-                                current_data['alia'][line[0]] = tuple(line[1:])
-                    if '_metadata.txt' in (metadata_files := [item for item in items if '/' in item and item.endswith('_metadata.txt')]):
-                        for check_type in check_types:
-                            current_data[check_type] = {}
-                        with zf.open('_metadata.txt') as tf:
-                            while True:
-                                line = tf.readline()
-                                if not line:
-                                    break
-                                line = decodeZipTxtLine(line).split('|')
-                                current_data[line[1]][line[0]] = tuple(line[2:])
-                        metadata_files.remove('_metadata.txt')
-                    if len((metadata_files := tuple(metadata_files))):
-                        current_data['GDB'] = {metadata_file[:metadata_file.rfind('_metadata.txt')] : tuple(decodeZipTxtLine(zf.open(metadata_file).readline()).split('|')) for metadata_file in metadata_files}
-                if not len((items := tuple(listdir((current_path := self.path_pointer[used_name]))))):
-                    remove(f'{self.db_path}/{used_name}.zip')
-                    self.removeCrintumEntry(self.path_pointer[used_name])
-                else:
-                    for check_type in tuple(current_data.keys()):
-                        if not len(current_data[check_type].keys()):
-                            del current_data[check_type]
-                    actual_entities_data = {check_type : {} for check_type in all_check_types}
-                    new_entities = {}
-                    modified_entities = {}
-                    removed_entities = {}
-                    for item in items:
-                        if isfile(f'{current_path}/{item}'):
-                            if not '.' in item:
-                                actual_entities_data['ALIA'][item] = []
-                            match (check_type := item[item.rfind('.')+1:].upper()):
-                                case 'TXT' | 'SHP' | 'PDF':
-                                    actual_entities_data[check_type][item] = []
-                                case 'DOCX':
-                                    actual_entities_data['DOC'][item] = []
-                                case _:
-                                    if check_type.lower() in image_types_set:
-                                        actual_entities_data['IMG'][item] = []
-                                    else:
-                                        actual_entities_data['ALIA'][item] = []
-                        else:
-                            if item.lower().endswith('.gdb'):
-                                actual_entities_data['GDB'][item] = []
-                    for check_type in tuple(actual_entities_data.keys()):
-                        if not len(actual_entities_data[check_type].keys()):
-                            del actual_entities_data[check_type]
-                    found_new_entities = False
-                    for check_type in tuple(actual_entities_data.keys()):
-                        if not check_type in current_data.keys():
-                            found_new_entities = True
-                            for item in tuple(actual_entities_data[check_type].keys()):
-                                new_entities[check_type].append(item)
-                            continue
-                        testing_set = set(current_data[check_type].keys())
-                        for item in tuple(actual_entities_data[check_type]):
-                            if not item in testing_set:
-                                found_new_entities = True
-                                new_entities[check_type].append(item)
-                    found_removed_entities = False
-                    for check_type in tuple(current_data.keys()):
-                        if not check_type in actual_entities_data.keys():
-                            found_removed_entities = True
-                            for item in tuple(current_data[check_type].keys()):
-                                removed_entities[check_type].append(item)
-                            continue
-                        testing_set = set(actual_entities_data[check_type].keys())
-                        for item in tuple(current_data[check_type]):
-                            if not item in testing_set:
-                                found_removed_entities = True
-                                removed_entities[check_type].append(item)
-                    if found_new_entities:
-                        self.uncompressZIP(used_name)
-                        current_folder = f'{self.db_path}/{used_name}'
-                        for check_type in (new_entities.keys()):
-                            match check_type:
-                                case 'TXT':
-                                    for item in tuple(new_entities[check_type].keys()):
-                                        try:
-                                            if not self.archive_txt_data(f'{current_path}/{item}'):
-                                                self.archive_alia_data(f'{current_path}/{item}')
-                                        except Exception:
-                                            if exists(f'{current_folder}/_txt_files/{item}'):
-                                                remove(f'{current_folder}/_txt_files/{item}')
-                                            if exists(f'{current_folder}/_txt_files'):
-                                                if not len(f'{current_folder}/_txt_files'):
-                                                    rmtree(f'{current_folder}_txt_files')
-                                            self.archive_alia_data(f'{current_path}/{item}')
-                                case 'DOC':
-                                    for item in tuple(new_entities[check_type].keys()):
-                                        try:
-                                            if not self.archive_doc_data(f'{current_path}/{item}'):
-                                                self.archive_alia_data(f'{current_path}/{item}')
-                                        except Exception:
-                                            if exists(f'{current_folder}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
-                                                rmtree(f'{current_folder}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
-                                            self.archive_alia_data(f'{current_folder}/{item}')
-                                case 'PDF':
-                                    for item in tuple(new_entities[check_type].keys()):
-                                        try:
-                                            if not self.archive_pdf_data(f'{current_path}/{item}'):
-                                                self.archive_alia_data(f'{current_path}/{item}')
-                                        except Exception:
-                                            if exists(f'{current_folder}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
-                                                rmtree(f'{current_folder}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
-                                            self.archive_alia_data(f'{current_folder}/{item}')
-                                case 'GDB':
-                                    for item in tuple(new_entities[check_type].keys()):
-                                        self.archive_gdb_data(f'{current_path}/{item}')
-                                        except Exception:
-                                            if exists(f'{current_folder}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
-                                                rmtree(f'{current_folder}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
-                                case 'SHP':
-                                    for item in tuple(new_entities[check_type].keys()):
-                                        try:
-                                            pass
-                                        except Exception:
-                                            pass
-                                case 'IMG':
-                                    for item in tuple(new_entities[check_type].keys()):
-                                        try:
-                                            pass
-                                        except Exception:
-                                            pass
-                                case _:
-                                    self.archive_alia_data(f'{current_path}/{item}')
-                    if found_removed_entities:
-                        if not exists(f'{self.db_path}/{used_name}'):
-                            self.uncompressZIP(used_name)
-                    if found_new_entities or found_removed_entities:
-                        if not exists(f'{self.db_path}/{used_name}'):
-                            self.uncompressZIP(used_name)
 
         return None
 
@@ -727,19 +582,23 @@ class ChloeAI:
                         case 'GDB':
                             if arcpy_imported:
                                 try:
-                                    self.archive_gdb_data(f'{reference_directory}/{name}',archive_db_name)
+                                    if not self.archive_gdb_data(f'{reference_directory}/{name}',archive_db_name):
+                                        if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
+                                            rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
                                 except Exception:
                                     if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
                                         rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
                         case 'SHP':
                             if arcpy_imported:
                                 try:
-                                    self.archive_shp_data(f'{reference_directory}/{name}',archive_db_name)
+                                    if not self.archive_shp_data(f'{reference_directory}/{name}',archive_db_name):
+                                        self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                                 except Exception:
                                     if exists(f'{self.db_path}/{archive_db_name}/_shp_files/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}.txt'):
                                         remove(f'{self.db_path}/{archive_db_name}/_shp_files/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}.txt')
                                         if not len(listdir(f'{self.db_path}/{archive_db_name}/_shp_files')):
                                             rmtree(f'{self.db_path}/{archive_db_name}/_shp_files')
+                                    self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                             else:
                                 self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'TXT':
@@ -761,6 +620,7 @@ class ChloeAI:
                                     # accounts for something going wrong when attempting to access information from PDFs
                                     if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
                                         rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
+                                    self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                             else:
                                 self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'DOC':
@@ -771,11 +631,13 @@ class ChloeAI:
                                     # accounts for something going wrong when attempting to access information from Word documents
                                     if exists(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}'):
                                         rmtree(f'{self.db_path}/{archive_db_name}/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}')
+                                    self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                             else:
                                 self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'IMG':
                             if pil_imported:
-                                self.archive_img_data(f'{reference_directory}/{name}',archive_db_name)
+                                if not self.archive_img_data(f'{reference_directory}/{name}',archive_db_name):
+                                    self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                             else:
                                 self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case _:
@@ -1007,8 +869,7 @@ class ChloeAI:
                     elif not item in existing_paths:
                         additional_folders.append(item)
                 if not len((file_items := tuple(file_items))):
-                    with ZipFile(f'{self.db_path}/Windows_MetaInfo.zip') as zf:
-                        with zf.open()
+                    pass
                 else:
                     pass
 
@@ -1500,10 +1361,10 @@ class ChloeAI:
         return True
 
 
-    def archive_shp_data(self, shp_path : str, archive_db_name : str) -> None:
+    def archive_shp_data(self, shp_path : str, archive_db_name : str) -> bool:
 
         if (baseline_metadata := getBaselineMetadata(shp_path)) is None:
-            return None
+            return False
 
         baseline_metadata = '|'.join(baseline_metadata)
 
@@ -1522,9 +1383,9 @@ class ChloeAI:
                 break
         except Exception:
             # Shapefile cannot be read via ArcPy for unknown reasons.
-            return None
+            return False
         if oid_name is None:
-            return None
+            return False
         fields = [field.name for field in tuple(arcpy.ListFields(shapefile_name)) if not field.name.lower() in redundant_fields]
         fields.remove(oid_name)
         fields = sorted(fields)
@@ -1615,10 +1476,10 @@ class ChloeAI:
                 with open(_metadata,'a',encoding='latin-1') as tf:
                     tf.write(f"\n{shapefile_name[:shapefile_name.rfind('.')]}_{shapefile_name[shapefile_name.rfind('.')+1:]}|SHP|{baseline_metadata}|{counter}")
 
-        return None
+        return True
 
 
-    def archive_gdb_data(self, gdb_path : str, archive_db_name : str) -> None:
+    def archive_gdb_data(self, gdb_path : str, archive_db_name : str) -> bool:
 
         # Views, Relationship Classes, Mosaic Datasets, Raster Datasets,
         # Trajectory Datasets, Catalog Datasets, and Oriented Imagery Datasets
@@ -1629,11 +1490,11 @@ class ChloeAI:
             for gdb_item in tuple(listdir(gdb_path)):
                 if not gdb_item.lower().endswith('.lock'):
                     if (item_size := getSizeOfItem(f"{gdb_path}/{gdb_item}")) is None:
-                        return None
+                        return False
                     gdb_files[gdb_item] = (getModifiedDate(f'{gdb_path}/{gdb_item}')[4:],getCreatedDate(f'{gdb_path}/{gdb_item}')[4:],item_size)
             del item_size
         except Exception:
-            return None
+            return False
 
         mkdir((output_subfolder := f'{self.db_path}/{archive_db_name}/{gdb_path[gdb_path.rfind("/")+1:gdb_path.rfind(".")]}_{gdb_path[gdb_path.rfind(".")+1:]}'))
 
@@ -1661,9 +1522,9 @@ class ChloeAI:
                     break
             except Exception:
                 # Item cannot be read via ArcPy for unknown reasons.
-                return None
+                return False
             if oid_name is None:
-                return None
+                return False
             fields = [field.name for field in tuple(arcpy.ListFields(entity_name)) if not field.name.lower() in redundant_fields]
             fields.remove(oid_name)
             fields = sorted(fields)
@@ -1761,7 +1622,7 @@ class ChloeAI:
 
         if not len(object_counters):
             rmtree(output_subfolder)
-            return None
+            return False
 
         try:
             object_counters = '|'.join(sorted(object_counters))
@@ -1781,13 +1642,13 @@ class ChloeAI:
                 for n in range(1,len(gdb_items)):
                     tf.write(f"\n{gdb_items[n]}|{gdb_files[gdb_items[n]][0]}|{gdb_files[gdb_items[n]][1]}|{gdb_files[gdb_items[n]][2]}")
 
-        return None
+        return True
 
 
-    def archive_img_data(self, image_path : str, archive_db_name : str) -> None:
+    def archive_img_data(self, image_path : str, archive_db_name : str) -> bool:
 
         if (baseline_metadata := getBaselineMetadata(image_path)) is None:
-            return None
+            return False
 
         baseline_metadata = '|'.join(baseline_metadata)
 
@@ -1807,7 +1668,7 @@ class ChloeAI:
                     tf.write(f'\n{histo_ratio[n]}')
                     counter += 1
         else:
-            return None
+            return False
 
         del histo_ratio
 
@@ -1829,7 +1690,7 @@ class ChloeAI:
                 with open(_metadata,'a',encoding='latin-1') as tf:
                     tf.write(f'\n{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}|IMG|{baseline_metadata}|{counter}')
 
-        return None
+        return True
 
 
     def archive_pdf_data(self, pdf_path : str, archive_db_name : str) -> bool:
@@ -2018,10 +1879,10 @@ class ChloeAI:
         return True
 
 
-    def archive_alia_data(self, alia_path : str, archive_db_name : str) -> None:
+    def archive_alia_data(self, alia_path : str, archive_db_name : str) -> bool:
 
         if (baseline_metadata := getBaselineMetadata(alia_path)) is None:
-            return None
+            return False
 
         baseline_metadata = '|'.join(baseline_metadata)
 
@@ -2032,10 +1893,10 @@ class ChloeAI:
             with open(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt','a',encoding='utf-8') as tf:
                 tf.write(f'\n{alia_path[alia_path.rfind("/")+1:]}|{baseline_metadata}')
 
-        return None
+        return True
 
 
-    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, entity_names_only : bool = False, entity_name_extension : str | tuple[str] | list[str] | set[str] = 'any', return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
+    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, entity_names_only : bool = False, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
         '''
         This allows, by default, the searching for the presence of specific
         term(s) in entities with data in the database as well as the name of the
@@ -3726,435 +3587,31 @@ class ChloeAI:
         return None
 
 
-    def findEntityDuplicate(self, item_path : str, input_txt_file_encoding : str = 'utf-8', return_tuple : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[tuple] | None:
-        '''
-        Check specified item against items of matching type in Chloe Felina
-        database.
-        WIP
-        '''
+    def findEntityDuplicates(self, entity_path : str, return_tuple : bool = False, save_results_to_file : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
 
-        if not exists((item_path := item_path.replace('\\','/'))):
-            if return_tuple:
-                return ()
+        if not exists((entity_path := entity.path.replace('\\','/'))):
             return None
 
-        found_duplicates = []
-
-        if tqdm_imported:
-            if terminal_progress_display_enabled:
-                sys_clear()
-            iterator = tqdm(tuple(self.used_names, disable = not terminal_progress_display_enabled, desc = f"Finding duplicates of {item_path[item_path.rfind('/')+1:]}"))
+        if not '.' in entity_path[entity_path.rfind('/')+1:]:
+            pass
         else:
-            iterator = tuple(self.used_names)
-
-        match item_path[item_path.rfind(".")+1:].lower():
-            case 'txt':
-                if getBaselineMetadata(item_path) is None:
-                    if return_tuple:
-                        return ()
-                    return None
-                del metadata_info
-                if (lines := getTxtFileLines(item_path,txt_file_encoding)) is None:
-                    if return_tuple:
-                        return ()
-                    return None
-                num_lines_str = str((num_lines := len((lines := tuple(lines)))))
-                num_lines_range = range(num_lines)
-                del num_lines
-                for db_name in iterator:
-                    with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                        if '_metadata.txt' in zf.namelist():
-                            with zf.open(f'_metadata.txt') as tf:
-                                while True:
-                                    entity = tf.readline()
-                                    if not entity:
-                                        break
-                                    entity = decodeZipTxtLine(entity).split('|')
-                                    if entity[1] == 'TXT':
-                                        if entity[5] == num_lines_str:
-                                            temp_lines = []
-                                            with zf.open(f'_txt_files/{entity[0]}.txt') as tf2:
-                                                while True:
-                                                    line = tf.readline()
-                                                    if not line:
-                                                        break
-                                                    temp_lines.append(decodeZipTxtLine(line))
-                                                temp_lines = tuple(temp_lines)
-                                                duplicate_match = True
-                                                for a in num_lines_range:
-                                                    if lines[a] != temp_lines[a]:
-                                                        duplicate_match = False
-                                                        break
-                                                if duplicate_match:
-                                                    found_duplicates.append(f'{db_name}|{entity[0]}')
-            case 'shp':
-                if not arcpy_imported:
-                    if return_tuple:
-                        return ()
-                    return None
-                if getBaselineMetadata(item_path) is None:
-                    if return_tuple:
-                        return ()
-                    return None
-                if not exists(f'{self.db_path}/_temp_entity'):
-                    mkdir(f'{self.db_path}/_temp_entity')
-                try:
-                    self.archive_shp_data(item_path,'_temp_entity')
-                except Exception:
-                    if return_tuple:
-                        return ()
-                    return None
-                try:
-                    txt_metadata_item = listdir(f'{self.db_path}/_temp_entity')[0]
-                except Exception:
-                    if return_tuple:
-                        return ()
-                    return None
-                lines = []
-                with open(f'{self.db_path}/_temp_entity/{txt_metadata_item}',encoding='utf-8') as tf:
-                    while True:
-                        line = tf.readline()
-                        if not line:
-                            break
-                        lines.append(decodeZipTxtLine(line))
-                try:
-                    del line
-                    if return_tuple:
-                        return ()
-                    return None
-                except NameError:
-                    pass
-                num_lines_str = str((num_lines := len((lines := tuple(lines)))))
-                num_lines_range = range(num_lines)
-                del num_lines
-                for db_name in iterator:
-                    with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                        if '_metadata.txt' in zf.namelist():
-                            with zf.open('_metadata.txt') as tf:
-                                while True:
-                                    entity = tf.readline()
-                                    if not entity:
-                                        break
-                                    entity = decodeZipTxtLine(entity).split('|')
-                                    if 'SHP' == entity[1]:
-                                        if entity[5] == num_lines_str:
-                                            temp_lines = []
-                                            with zf.open(f'_shp_files/{entity[0]}.txt') as tf2:
-                                                while True:
-                                                    line = tf.readline()
-                                                    if not line:
-                                                        break
-                                                    temp_lines.append(decodeZipTxtLine(line))
-                                            temp_lines = tuple(temp_lines)
-                                            duplicate_match = True
-                                            for a in num_lines_range:
-                                                if lines[a] != temp_lines[a]:
-                                                    duplicate_match = False
-                                                    break
-                                            if duplicate_match:
-                                                found_duplicates.append(f'{db_name}|{entity[0]}')
-                rmtree(f'{self.db_path}/_temp_entity',ignore_errors=True)
-            case 'pdf':
-                if not pil_imported or not pypdf_imported:
-                    if return_tuple:
-                        return ()
-                    return None
-                if getBaselineMetadata(item_path) is None:
-                    if return_tuple:
-                        return ()
-                    return None
-                if not exists(f'{self.db_path}/_temp_entity'):
-                    mkdir(f'{self.db_path}/_temp_entity')
-                try:
-                    self.archive_pdf_data(item_path,'_temp_entity')
-                except Exception:
-                    if return_tuple:
-                        return ()
-                    return None
-                lines = []
-                num_lines = []
-                item_name = item_path[item_path.rfind('/')+1:]
-                item_name = "%s_%s" % (item_name[:item_name.rfind(".")],item_name[item_name.rfind(".")+1:])
-                if exists(f'{self.db_path}/_temp_entity/{item_name}/pdf_extracted_text.txt'):
-                    lines.append([])
-                    with open(f'{self.db_path}/_temp_entity/{item_name}/pdf_extracted_text.txt',encoding='utf-8') as tf:
-                        while True:
-                            line = tf.readline()
-                            if not line:
-                                break
-                            lines[0].append(line.rstrip('\n'))
-                    lines[0] = tuple(lines[0])
-                    num_lines.append((num := len(lines[0])))
-                    num_lines_str = '%i|' % (num)
-                else:
-                    lines.append(None)
-                    num_lines.append(0)
-                    num_lines_str = "0|"
-                if exists(f'{self.db_path}/_temp_entity/{item_name}/image_histogram_data.txt'):
-                    lines.append([])
-                    with open(f'{self.db_path}/_temp_entity/{item_name}/image_histogram_data.txt',encoding='utf-8') as tf:
-                        while True:
-                            line = tf.readline()
-                            if not line:
-                                break
-                            lines[1].append(line.strip('\n'))
-                    lines[1] = tuple(lines[1])
-                    num_lines.append((num := len(lines[1])))
-                    num_lines_str = "%s%i" % (num_lines_str,num)
-                else:
-                    lines.append(None)
-                    num_lines.append(0)
-                    num_lines_str = f"{num_lines_str}0"
-                lines = tuple(lines)
-                num_lines = tuple(num_lines)
-                if num_lines_str == "0|0":
-                    # No data accessible for comparisons to be made.
-                    if return_tuple:
-                        return ()
-                    return None
-                range_1 = range(num_lines[0])
-                range_2 = range(num_lines[1])
-                for db_name in iterator:
-                    with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                        if '_metadata.txt' in zf.namelist():
-                            with zf.open('_metadata.txt') as zf:
-                                while True:
-                                    entity = tf.readline()
-                                    if not entity:
-                                        break
-                                    entity = decodeZipTxtLine(entity).split('|')
-                                    if 'PDF' == entity[1]:
-                                        if num_lines_str == f'{entity[5]}|{entity[6]}':
-                                            duplicate_match = True
-                                            if num_lines[0]:
-                                                temp_lines = []
-                                                with zf.open(f'{entity[0]}/pdf_extracted_text.txt') as tf2:
-                                                    while True:
-                                                        line = tf2.readline()
-                                                        if not line:
-                                                            break
-                                                        temp_lines.append(decodeZipTxtLine(line))
-                                                temp_lines = tuple(temp_lines)
-                                                for a in range_1:
-                                                    if lines[a] != temp_lines[a]:
-                                                        duplicate_match = False
-                                                        break
-                                            if not duplicate_match:
-                                                continue
-                                            if num_lines[1]:
-                                                temp_lines = []
-                                                with zf.open(f'{entity[0]}/image_histogram_data.txt') as tf2:
-                                                    while True:
-                                                        line = tf2.readline()
-                                                        if not line:
-                                                            break
-                                                        temp_lines.append(decodeZipTxtLine(line))
-                                                temp_lines = tuple(temp_lines)
-                                                for a in range_2:
-                                                    if lines[b] != temp_lines[b]:
-                                                        duplicate_match = False
-                                                        break
-                                            if duplicate_match:
-                                                found_duplicates.append(f'{db_name}|{entity[0]}')
-                rmtree(f'{self.db_path}/_temp_entity',ignore_errors=True)
-            case 'docx':
-                if not docx2_imported or not docx_imported or not pil_imported:
-                    if return_tuple:
-                        return ()
-                    return None
-                if getBaselineMetadata(item_path) is None:
-                    if return_tuple:
-                        return ()
-                    return None
-                if not exists(f'{self.db_path}/_temp_entity'):
-                    mkdir(f'{self.db_path}/_temp_entity')
-                try:
-                    self.archive_doc_data(item_path,'_temp_entity')
-                except Exception:
-                    if return_tuple:
-                        return ()
-                    return None
-                lines = []
-                num_lines = []
-                item_name = item_path[item_path.rfind('/')+1:]
-                item_name = "%s_%s" % (item_name[:item_name.rfind(".")],item_name[item_name.rfind(".")+1:])
-                if exists(f'{self.db_path}/_temp_entity/{item_name}/doc_extracted_text.txt'):
-                    lines.append([])
-                    with open(f'{self.db_path}/_temp_entity/{item_name}/doc_extracted_text.txt',encoding='utf-8') as tf:
-                        while True:
-                            line = tf.readline()
-                            if not line:
-                                break
-                            lines[0].append(line.rstrip('\n'))
-                    lines[0] = tuple(lines[0])
-                    num_lines.append((num := len(lines[0])))
-                    num_lines_str = '%i|' % (num)
-                else:
-                    lines.append(None)
-                    num_lines.append(0)
-                    num_lines_str = "0|"
-                if exists(f'{self.db_path}/_temp_entity/{item_name}/image_histogram_data.txt'):
-                    lines.append([])
-                    with open(f'{self.db_path}/_temp_entity/{item_name}/image_histogram_data.txt',encoding='utf-8') as tf:
-                        while True:
-                            line = tf.readline()
-                            if not line:
-                                break
-                            lines[1].append(line.strip('\n'))
-                    lines[1] = tuple(lines[1])
-                    num_lines.append((num := len(lines[1])))
-                    num_lines_str = "%s%i" % (num_lines_str,num)
-                else:
-                    lines.append(None)
-                    num_lines.append(0)
-                    num_lines_str = f"{num_lines_str}0"
-                lines = tuple(lines)
-                num_lines = tuple(num_lines)
-                if num_lines_str == "0|0":
-                    # No data accessible for comparisons to be made.
-                    if return_tuple:
-                        return ()
-                    return None
-                range_1 = range(num_lines[0])
-                range_2 = range(num_lines[1])
-                for db_name in iterator:
-                    with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                        if '_metadata.txt' in zf.namelist():
-                            with zf.open('_metadata.txt') as zf:
-                                while True:
-                                    entity = tf.readline()
-                                    if not entity:
-                                        break
-                                    entity = decodeZipTxtLine(entity).split('|')
-                                    if 'DOC' == entity[1]:
-                                        if num_lines_str == f'{entity[5]}|{entity[6]}':
-                                            duplicate_match = True
-                                            if num_lines[0]:
-                                                temp_lines = []
-                                                with zf.open(f'{entity[0]}/doc_extracted_text.txt') as tf2:
-                                                    while True:
-                                                        line = tf2.readline()
-                                                        if not line:
-                                                            break
-                                                        temp_lines.append(decodeZipTxtLine(line))
-                                                temp_lines = tuple(temp_lines)
-                                                for a in range_1:
-                                                    if lines[a] != temp_lines[a]:
-                                                        duplicate_match = False
-                                                        break
-                                            if not duplicate_match:
-                                                continue
-                                            if num_lines[1]:
-                                                temp_lines = []
-                                                with zf.open(f'{entity[0]}/image_histogram_data.txt') as tf2:
-                                                    while True:
-                                                        line = tf2.readline()
-                                                        if not line:
-                                                            break
-                                                        temp_lines.append(decodeZipTxtLine(line))
-                                                temp_lines = tuple(temp_lines)
-                                                for a in range_2:
-                                                    if lines[b] != temp_lines[b]:
-                                                        duplicate_match = False
-                                                        break
-                                            if duplicate_match:
-                                                found_duplicates.append(f'{db_name}|{entity[0]}')
-                rmtree(f'{self.db_path}/_temp_entity',ignore_errors=True)
-            case 'gdb':
-                if not arcpy_imported or not isdir(item_path):
-                    if return_tuple:
-                        return ()
-                    return None
-                if not exists(f'{self.db_path}/_temp_entity'):
-                    mkdir(f'{self.db_path}/_temp_entity')
-                try:
-                    self.archive_gdb_data(item_path,'_temp_entity')
-                except Exception:
-                    if return_tuple:
-                        return ()
-                    return None
-                item_name = item_path[item_path.rfind('/')+1:]
-                item_name = "%s_%s" % (item_name[:item_name.rfind(".")],item_name[item_name.rfind(".")+1:])
-                gdb_item_names = []
-                gdb_item_line_counts_str = ''
-                with open(f'{item_name}_metadata.txt',encoding='utf-8') as tf:
-                    line = tf.readline()
-                    if not line:
-                        if return_tuple:
-                            return ()
-                        return None
-                    gdb_item_line_counts_str = line.rstrip('\n')
-                    gdb_item_names = tuple([item[:item.rfind(' ')] for item in tuple(gdb_item_line_counts_str.split('|'))])
-                try: del line
-                except NameError: pass
-                if not len(gdb_item_names):
-                    if return_tuple:
-                        return ()
-                    return None
-                for db_name in iterator:
-                    with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                        if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]):
-                            metadata_files.remove('_metadata.txt')
-                        for metadata_file in (metadata_files := tuple(metadata_files)):
-                            if metadata_file.lower().endswith('_gdb_metadata.txt'):
-                                pass
-                rmtree(f'{self.db_path}/{db_name}',ignore_errors=True)
-            case _:
-                if not pil_imported:
-                    if return_tuple:
-                        return ()
-                    return None
-                # assumed to be an image file.
-                if f'.{item_path[item_path.rfind(".")+1:]}' in self.accepted_image_extensions:
-                    if getBaselineMetadata(item_path) is None:
-                        if return_tuple:
-                            return ()
-                        return None
-                    try:
-                        num_lines_str = str((num_lines := len((histo_ratios := self.getImageInformation(item_path)))))
-                    except Exception:
-                        if return_tuple:
-                            return ()
-                        return None
-                    num_lines_range = range(num_lines)
-                    del num_lines
-                    for db_name in iterator:
-                        with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                            if '_metadata.txt' in zf.namelist():
-                                with zf.open('_metadata.txt') as tf:
-                                    while True:
-                                        entity = tf.readline()
-                                        if not entity:
-                                            break
-                                        entity = decodeZipTxtLine(entity).split('|')
-                                        if entity[1] == 'IMG':
-                                            if num_lines_str == entity[5]:
-                                                temp_lines = []
-                                                with zf.open(f'_images/{entity[0]}.txt') as tf2:
-                                                    while True:
-                                                        line = tf.readline()
-                                                        if not line:
-                                                            break
-                                                        temp_lines.append(decodeZipTxtLine(line))
-                                                temp_lines = tuple(temp_lines)
-                                                duplicate_match = True
-                                                for a in num_lines_range:
-                                                    if histo_ratios[a] != temp_lines[a]:
-                                                        duplicate_match = False
-                                                        break
-                                                if duplicate_match:
-                                                    found_duplicates.append(f'{db_name}|{entity[0]}')
-                else:
-                    # file type not supported.
-                    if return_tuple:
-                        return ()
-                    return None
-
-        if len((found_duplicates := tuple(found_duplicates))):
             pass
 
-        if return_tuple:
-            return found_duplicates
+        return None
+
+
+    def compileEntitesOnTime(self, year : str | int |list | tuple | set, month : str | int | list | tuple | set, day_number : str | int | list | tuple | set, day_of_week : int | str, terminal_progress_display_enabled : bool = False) -> None:
+
+        return None
+
+
+    def compileEntitiesOnSize(self, compare_sign : str, size_bytes : int, terminal_progress_display_enabled : bool = False) -> None:
+
+        return None
+
+
+    def compileAllEntities(self, terminal_progress_display_enabled : bool = False, terminal_progress_display_enabled : bool = False) -> None:
+
         return None
 
 
