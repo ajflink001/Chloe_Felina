@@ -406,7 +406,17 @@ Planned Purpose: This will output an organized list of files/entities that are d
 
 
 
-**ChloeAI.compileEntitesOnSize**
+ChloeAI.compileEntitiesOnTime
+
+
+
+Planned Purpose: This will output an organized list of files/entities of a specified creation date and/or modified date.
+
+
+
+
+
+**ChloeAI.compileEntitiesOnSize**
 
 
 
