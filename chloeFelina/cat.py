@@ -3610,7 +3610,7 @@ class ChloeAI:
         return None
 
 
-    def compileAllEntities(self, terminal_progress_display_enabled : bool = False, terminal_progress_display_enabled : bool = False) -> None:
+    def compileAllEntities(self, terminal_progress_display_enabled : bool = False) -> None:
 
         return None
 
