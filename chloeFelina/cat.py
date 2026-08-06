@@ -3600,7 +3600,7 @@ class ChloeAI:
         return None
 
 
-    def compileEntitesOnTime(self, year : str | int |list | tuple | set, month : str | int | list | tuple | set, day_number : str | int | list | tuple | set, day_of_week : int | str, terminal_progress_display_enabled : bool = False) -> None:
+    def compileEntitiesOnTime(self, year : str | int |list | tuple | set, month : str | int | list | tuple | set, day_number : str | int | list | tuple | set, day_of_week : int | str, terminal_progress_display_enabled : bool = False) -> None:
 
         return None
 
