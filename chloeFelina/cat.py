@@ -59,9 +59,14 @@ win32api_imported = True
 try: from win32api import GetLogicalDriveStrings
 except ImportError: win32api_imported = False
 except ModuleNotFoundError: win32api_imported = False
+# openpyxl
+openpyxl_imported = True
+try: from openpyxl import Workbook,load_workbook
+except ImportError: openpyxl_imported = False
+except ModuleNotFoundError: openpyxl_imported = False
 
 # Built-In Python Modules
-import csv,logging,warnings
+import csv,logging,warnings,hashlib
 from os import walk as walker
 from os import listdir,mkdir,chdir,getcwd,remove,chmod,rename
 from os.path import exists,isfile,isdir
@@ -77,7 +82,7 @@ from winsound import PlaySound,SND_FILENAME
 from secrets import choice
 
 # Custom Python Modules
-from chloeFelina.purr import isQueryMatchKether,isQueryMatchBinah,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName,decodeZipTxtLine,getTxtFileLines
+from chloeFelina.purr import isQueryMatchKether,isQueryMatchBinah,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName,decodeZipTxtLine,getTxtFileLines,fileNameFixer
 from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,genSearchQueryResultFile,forbidden_dirs,backupGen,genDuplicateFinderResultFile
 from chloeFelina.paxium import encrypt as pax_encrypt
 from chloeFelina.paxium import decrypt as pax_decrypt
@@ -107,6 +112,13 @@ _chloe_voice_path = "%s/Chloe_True_Voice" % temp_path[:temp_path.rfind('/')]
 
 del temp_path
 
+def md5_checksum(fname : str) -> str:
+    hash_md5 = hashlib.md5()
+    with open(fname, 'rb') as f:
+        for chunk in iter(lambda : f.read(4096),b""):
+            hash_md5.update(chunk)
+    return str(hash_md5.hexdigest())
+
 def playChloeHappy(use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10) -> None:
 
     random_audio = choice(("chloe_meow_001.wav","chloe_meow_002.wav","chloe_meow_003.wav","chloe_meow_004.wav",'chloe_trill_001.wav','chloe_trill_002.wav','chloe_trill_003.wav'))
@@ -129,16 +141,16 @@ class ChloeAI:
         self.crintum_obfuscation = crintum_obfuscation
         self.database_name = database_name[:]
 
-        user_path = str(Path.home()).replace('\\','/')
+        self.user_path = str(Path.home()).replace('\\','/')
 
         if database_location is None or not exists(database_location):
-            self.db_path = f'{user_path}/Documents/{database_name}'
+            self.db_path = f'{self.user_path}/Documents/{database_name}'
             if not exists(self.db_path):
                 try:
                     mkdir(self.db_path)
                 except Exception:
                     database_name = 'datumbazo'
-                    self.db_path = f'{user_path}/Documents/{database_name}'
+                    self.db_path = f'{self.user_path}/Documents/{database_name}'
                     mkdir(self.db_path)
         else:
             database_location = database_location.replace("\\","/")
@@ -146,12 +158,12 @@ class ChloeAI:
             try:
                 for registered_user in tuple(listdir('C:/Users')):
                     if self.db_path.startswith(f"C:/Users/{registered_user}/AppData"):
-                        self.db_path = f"{user_path}/Documents/{database_name}"
+                        self.db_path = f"{self.user_path}/Documents/{database_name}"
                         break
             except Exception:
                 pass
             if self.db_path.startswith("C:/Windows") or self.db_path in forbidden_dirs():
-                self.db_path = f'{user_path}/Documents/{database_name}'
+                self.db_path = f'{self.user_path}/Documents/{database_name}'
 
         if exists(self.db_path):
             if not 'crintum_pointer.txt' in (items := set(listdir(self.db_path))) and not '_backup_crintum_pointer.txt' in items and not len(items):
@@ -202,7 +214,7 @@ class ChloeAI:
             try:
                 mkdir(self.db_path)
             except Exception:
-                mkdir(f'{user_path}/Documents/datumbazo')
+                mkdir(f'{self.user_path}/Documents/datumbazo')
             with open(f'{self.db_path}/crintum_pointer.txt','w',encoding='utf-8') as tf:
                 pass
 
@@ -398,6 +410,51 @@ class ChloeAI:
             del redact_dbs
             try: del reference_directory
             except NameError: pass
+            for ref_path in tuple(self.paths_in_db):
+                db_items = {}
+                with ZipFile(f'{self.db_path}/{self.crintum_pointer[ref_path]}') as zf:
+                    if '_alia_dosieroj.txt' in (zf_items := set(zf.namelist())):
+                        db_items['ALIA'] = {}
+                        with zf.open('_alia_dosieroj.txt') as tf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = decodeZipTxtLine(line).split('|')
+                                db_items['ALIA'][line[0]] = tuple(line[1:])
+                        zf_items.remove('_alia_dosieroj.txt')
+                    if '_metadata.txt' in zf_items:
+                        with zf.open('_metadata.txt') as tf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = decodeZipTxtLine(line).split('|')
+                                if line[1] in db_items.keys():
+                                    db_items[line[1]][line[0]] = tuple(line[2:])
+                                else:
+                                    db_items[line[1]] = {line[0] : tuple(line[2:])}
+                        zf_items.remove('_metadata.txt')
+                    if len((gdb_metadata_files := tuple([item for item in tuple(zf_items) if not '/' in item and item.lower().endswith('gdb_metadata.txt')]))):
+                        db_items['GDB'] = {}
+                        for gdb_metadata_file in gdb_metadata_files:
+                            with zf.open(gdb_metadata_file) as tf:
+                                db_items['GDB'][gdb_metadata_file[:gdb_metadata_file.rfind('_')]] = decodeZipTxtLine(tf.readline())
+                try: del zf_items
+                except NameError: pass
+                try: del gdb_metadata_files
+                except NameError: pass
+                real_items = {}
+                try:
+                    real_items_tuple = tuple([item for item in tuple(listdir(ref_path)) if isfile(f'{ref_path}/{item}') or (isdir(f'{ref_path}/{item}') and item.lower().endswith('.gdb'))])
+                except Exception:
+                    continue
+                for item in real_items_tuple:
+                    if not '.' in item:
+                        if 'ALIA' in real_items.keys():
+                            real_items['ALIA'][item] = getBaselineMetadata(f'{ref_path}/{item}')
+                        else:
+                            real_items['ALIA'] = {item : getBaselineMetadata(f'{ref_path}/{item}')}
 
         return None
 
@@ -806,9 +863,14 @@ class ChloeAI:
             chdir(f'{self.db_path}/Windows_MetaInfo')
             items = tuple(listdir(getcwd()))
             with ZipFile('Windows_MetaInfo.zip','w',ZIP_DEFLATED,True,9) as zf:
-                for item in items:
-                    if isfile(item):
-                        zf.write(item)
+                if tqdm_imported:
+                    for item in tqdm(items,disable = not terminal_progress_display_enabled, desc = f"Generating {self.db_path}/Windows_MetaInfo.zip"):
+                        if isfile(item):
+                            zf.write(item)
+                else:
+                    for item in items:
+                        if isfile(item):
+                            zf.write(item)
             chdir(current_dir)
         except Exception:
             chdir(current_dir)
@@ -824,13 +886,56 @@ class ChloeAI:
         return None
 
 
-    def checkWinSysChanges(self, terminal_progress_display_enabled : bool = False) -> None:
+    def checkWinSysChanges(self, output_file_type : str = 'txt', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = True, terminal_progress_display_enabled : bool = False) -> None:
+
+        import hashlib
+
+        def md5_checksum(fname : str):
+            hash_md5 = hashlib.md5()
+            with open(fname, 'rb') as f:
+                for chunk in iter(lambda : f.read(4096),b""):
+                    hash_md5.update(chunk)
+            return hash_md5.hexdigest()
+
+        if not exists(f'{self.db_path}/Windows_MetaInfo'):
+            mkdir(f'{self.db_path}/Windows_MetaInfo')
+
+        def getBasicInfo(file_path : str) -> tuple:
+
+            temp_list = []
+
+            try: temp_list.append(getModifiedDate(file_path))
+            except Exception: temp_list.append('UNKNOWN')
+
+            try: temp_list.append(getCreatedDate(file_path))
+            except Exception: temp_list.append('UNKNOWN')
+
+            try: temp_list.append(str(getSizeOfItem(file_path)))
+            except Exception: temp_list.append('UNKNOWN')
+
+            try: temp_list.append(md5_checksum(file_path))
+            except Exception:temp_list.append('UNKNOWN')
+
+            return tuple(temp_list)
 
         if not exists(f'{self.db_path}/Windows_MetaInfo.zip'):
             return None
 
-        if tqdm_imported:
+        if tqdm_imported and terminal_progress_display_enabled:
             sys_clear()
+
+        if not output_file_type in {'excel','xlsx','text','txt'}:
+            output_file_type = 'txt'
+
+        if output_location is None:
+            output_location = f'{self.user_path}/Documents'
+        elif not exists((output_location := output_location.replace('\\','/'))):
+            output_location = f'{self.user_path}/Documents'
+
+        if output_name is None:
+            output_name = "Windows_File_Changes"
+        elif not len((output_name := fileNameFixer(output_name))):
+            output_name = "Windows_File_Changes"
 
         winsys_folder_path = {}
 
@@ -846,34 +951,62 @@ class ChloeAI:
         try: del line
         except NameError: pass
 
-        missing_folders = []
-        additional_folders = []
-        missing_items = []
-        additional_items = []
-        modified_items = []
+        missing_folders = set()
 
         existing_paths = {winsys_folder_path[folder] for folder in tuple(winsys_folder_path.keys())}
 
-        for folder in tuple(winsys_folder_path.keys()):
-            if not exists(folder):
-                valid_new_folder = True
-                for missing_folder in tuple(missing_folders):
-                    if missing_folder.startswith(folder):
-                        valid_new_folder = False
-                        break
-                if valid_new_folder:
-                    missing_folders.append(folder)
+        if tqdm_imported:
+            if output_file_type in {'txt','text'}:
+                with ZipFile(f'{self.db_path}/Windows_MetaInfo.zip') as zf:
+                    with open(f'{output_location}/{output_name}.txt','w',encoding='utf-8') as tf_main:
+                        tf_main.write("Explicit Path | Type of Oddity Found")
+                        for folder in tqdm(tuple(winsys_folder_path.keys()), disable = not terminal_progress_display_enabled, desc = "Checking Windows Files"):
+                            if not exists((current_folder := winsys_folder_path[folder])):
+                                valid_new = True
+                                for missing_folder in tuple(missing_folders):
+                                    if missing_folder.startswith(current_folder):
+                                        valid_new = False
+                                        break
+                                if valid_new:
+                                    tf_main.write("\n%s | Directory Missing" % (current_folder.replace('/','\\')))
+                                    missing_folders.add(current_folder)
+                            else:
+                                file_items = []
+                                for item in tuple(listdir(current_folder)):
+                                    if isfile(f'{current_folder}/{item}'):
+                                        file_items.append(item)
+                                    elif not item in existing_paths:
+                                        tf_main.write('\n%s | New Directory' % (current_folder.replace('/','\\')))
+                                if len(file_items):
+                                    archived_file_info = {}
+                                    with zf.open(f'{folder}.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line).split('|')
+                                            archived_file_info[line[0]] = tuple(line[1:])
+                                    testing_set = set(archived_file_info.keys())
+                                    for item in tuple(file_items):
+                                        if not item in testing_set:
+                                            file_items.remove(item)
+                                            tf_main.write('\n%s\\%s | New File' % (current_folder.replace('/','\\'),item))
+                                    testing_set = set((file_items := tuple(file_items)))
+                                    archived_items = tuple(archived_file_info.keys())
+                                    for item in tuple(archived_items):
+                                        if not item in testing_set:
+                                            del archived_file_info[item]
+                                            tf_main.write('\n%s\\%s | Missing File' % (current_folder.replace('/','\\'),item))
+                                    del testing_set ; del archived_items
+                                    for item in file_items:
+                                        if archived_file_info[item] != getBasicInfo(f'{current_folder}/{item}'):
+                                            tf_main.write('\n%s\\%s | Modified File' % (current_folder.replace('/','\\'),item))
+                                else:
+                                    file_items = tuple(file_items)
+                                    for item in (file_items := tuple(file_items)):
+                                        tf_main.write('\n%s\\%s | Missing File' % (current_folder.replace('/','\\'),item))
             else:
-                file_items = []
-                for item in tuple(listdir((current_path := winsys_folder_path[folder]))):
-                    if isfile(f'{current_path}/{item}'):
-                        file_items.append(item)
-                    elif not item in existing_paths:
-                        additional_folders.append(item)
-                if not len((file_items := tuple(file_items))):
-                    pass
-                else:
-                    pass
+                pass
 
         return None
 
@@ -1881,10 +2014,26 @@ class ChloeAI:
         return True
 
 
-    def archive_alia_data(self, alia_path : str, archive_db_name : str) -> bool:
+    def archive_alia_data(self, alia_path : str, archive_db_name : str) -> None:
 
-        if (baseline_metadata := getBaselineMetadata(alia_path)) is None:
-            return False
+        baseline_metadata = []
+
+        try:
+            baseline_metadata.append(getModifiedDate(alia_path)[4:])
+        except Exception:
+            baseline_metadata.append('<NULL>')
+        try:
+            baseline_metadata.append(getCreatedDate(alia_path)[4:])
+        except Exception:
+            baseline_metadata.append('<NULL>')
+        try:
+            baseline_metadata.append(md5_checksum(alia_path))
+        except Exception:
+            baseline_metadata.append('<NULL>')
+        try:
+            baseline_metadata.append(str(getSizeOfItem(alia_path)))
+        except Exception:
+            baseline_metadata.append('<NULL>')
 
         baseline_metadata = '|'.join(baseline_metadata)
 
@@ -1895,7 +2044,7 @@ class ChloeAI:
             with open(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt','a',encoding='utf-8') as tf:
                 tf.write(f'\n{alia_path[alia_path.rfind("/")+1:]}|{baseline_metadata}')
 
-        return True
+        return None
 
 
     def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, entity_names_only : bool = False, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
@@ -1958,9 +2107,8 @@ class ChloeAI:
             else:
                 output_name = entry_string[:]
 
-        for n in ('.','/','\\'):
-            if n in output_name:
-                output_name = output_name.replace(n,'_')
+        if not len((output_name := fileNameFixer(output_name))):
+            output_name = randstr()
 
         output_file_type = output_file_type.lower().strip()
         output_file_type = output_file_type.replace(' ','')
@@ -2868,6 +3016,11 @@ class ChloeAI:
         if not output_file_type in {'excel','xlsx','csv','text','txt'}:
             output_file_type = 'excel'
 
+        if output_name is None:
+            output_name = randstr()
+        elif not len((output_name := fileNameFixer(output_name))):
+            output_name = randstr()
+
         checked = set() ; found_duplicates = []
         num_dbs = len((db_names := tuple(self.used_names)))
         if tqdm_imported:
@@ -3419,150 +3572,149 @@ class ChloeAI:
                 if item.startswith(f"{current_db_name}|"):
                     checked.remove(item)
 
+        try: del checked
+        except NameError: pass
+        try: del type_checker
+        except NameError: pass
+        try: del duplicate_match
+        except NameError: pass
+        try: del relevant_entities
+        except NameError: pass
+        try: del current_lines
+        except NameError: pass
+        try: del other_lines ; del other_line_count
+        except NameError: pass
+        try: del current_db_name
+        except NameError: pass
+        try: del other_db_name
+        except NameError: pass
+        try: del current_lines ; del current_line_count
+        except NameError: pass
+        try: del num_dbs
+        except NameError: pass
+        try: del line
+        except NameError: pass
+        try: del img_firstlines
+        except NameError: pass
+
         alia_found_duplicates = []
 
         if include_other_entities:
             checked = set()
             found_extensions = {}
-            no_extensions = set()
             for used_name in (aliaj := tuple([used_name for used_name in tuple(self.used_names) if '_alia_dosieroj.txt' in set(ZipFile(f'{self.db_path}/{used_name}.zip').namelist())])):
                 with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
                     with zf.open('_alia_dosieroj.txt') as tf:
-                        found_extensions[used_name] = set()
+                        found_extensions[used_name] = {}
                         while True:
                             entity = tf.readline()
                             if not entity:
                                 break
-                            entity = decodeZipTxtLine(line).split('|')[0]
-                            if not '.' in entity:
-                                no_extensions.add(used_name)
+                            entity = decodeZipTxtLine(entity).split('|')[0]
+                            if '.' in entity:
+                                if (extension := entity[entity.rfind('.')+1:]) in found_extensions[used_name].keys():
+                                    found_extensions[used_name][extension].append(entity)
+                                else:
+                                    found_extensions[used_name][extension] = [entity]
+                            elif '|' in found_extensions[used_name].keys():
+                                found_extensions[used_name]['|'].append(entity)
                             else:
-                                found_extensions[used_name].add(entity.lower()[entity.rfind('.')+1:])
-            num_dbs = len((aliaj := tuple(found_extensions.keys())))
-            if tqdm_imported:
-                if terminal_progress_display_enabled:
-                    sys_clear()
-                iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, desc = f"Checking for vague potential duplicates in {self.database_name}")
-            else:
-                iterator = range(num_dbs-1)
-            if num_dbs:
-                for a in iterator:
-                    del found_extensions[(current_db_name := aliaj[a])]
-                    with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
-                        extensions_item_date = {}
-                        with zf.open('_alia_dosieroj.txt') as tf:
-                            while True:
-                                line = tf.readline()
-                                if not line:
-                                    break
-                                line = decodeZipTxtLine(line).split('|')
-                                if not f"{current_db_name}|{line[0]}" in checked:
-                                    if '.' in line[0]:
-                                        if not (extension := line[0].lower()[line[0].rfind(".")+1:]) in extensions_item_date.keys():
-                                            extensions_item_date[extension] = [(line[0],line[1],line[3])]
-                                        else:
-                                            extensions_item_date[extension].append((line[0],line[1],line[3]))
-                                else:
-                                    checked.remove(f'{current_db_name}|{line[0]}')
-                    try: del line
-                    except NameError: pass
-                    if len(extensions_item_date.keys()):
-                        for extension in tuple(extensions_item_date.keys()):
-                            num_items = len((items := tuple(extensions_item_date[extension])))
-                            for b in range(num_items-1):
-                                if f'{current_db_name}|{items[b][0]}' in checked:
-                                    checked.remove(f'{current_db_name}|{items[b][0]}')
-                                    continue
-                                alia_found_duplicates.append([f'{current_db_name}|{items[b][0]}'])
-                                modified_date = items[b][1]
-                                size = items[b][2]
-                                for c in range(b+1,num_items):
-                                    if not f'{current_db_name}|{items[c][0]}' in checked:
-                                        if modified_date == items[c][1]:
-                                            if size == items[c][2]:
-                                                alia_found_duplicates[-1].append(f'{current_db_name}|{items[c][0]}')
-                                                checked.add(f'{current_db_name}|{items[c][0]}')
-                                current_extension = items[b][0].lower()[items[b][0].rfind('.')+1:]
-                                for c in range(a+1,num_dbs):
-                                    if current_extension in found_extensions[(other_db_name := aliaj[c])]:
-                                        with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf:
-                                            with zf.open('_alia_dosieroj.txt') as tf:
-                                                while True:
-                                                    line = tf.readline()
-                                                    if not line:
-                                                        break
-                                                    line = decodeZipTxtLine(line).split('|')
-                                                    if not f'{other_db_name}|{line[0]}' in checked:
-                                                        if line[0].lower().endswith(f'.{current_extension}'):
-                                                            if line[1] == modified_date:
-                                                                if line[3] == size:
-                                                                    alia_found_duplicates[-1].append(f'{other_db_name}|{line[0]}')
-                                                                    checked.add(f'{other_db_name}|{line[0]}')
-                                if len((alia_found_duplicates[-1])) == 1:
-                                    del alia_found_duplicates[-1]
-                                else:
-                                    alia_found_duplicates[-1] = tuple(alia_found_duplicates[-1])
-                try: del extensions_item_date
-                except NameError: pass
-            del found_extensions
-            num_dbs = len((aliaj := tuple(no_extensions)))
-            del no_extensions
-            if tqdm_imported:
-                if terminal_progress_display_enabled:
-                    sys_clear()
-                iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, desc = f"Checking for vague potential duplicates in {self.database_name}")
-            else:
-                iterator = range(num_dbs-1)
-            checked = set()
-            for a in iterator:
+                                found_extensions[used_name]['|'] = [entity]
+                for extension in tuple(found_extensions[used_name].keys()):
+                    found_extensions[used_name][extension] = tuple(found_extensions[used_name][extension])
+            num_dbs = len(aliaj)
+            for a in range(num_dbs):
                 current_db_name = aliaj[a]
+                current_alia_info = {}
                 with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
-                    item_date_size = {}
                     with zf.open('_alia_dosieroj.txt') as tf:
                         while True:
                             line = tf.readline()
                             if not line:
                                 break
                             line = decodeZipTxtLine(line).split('|')
-                            if not f"{current_db_name}|{line[0]}" in checked:
-                                if not '.' in line[0]:
-                                    item_date_size[line[0]] = (line[1],line[3])
+                            # modified date, size in bytes, md5 checksum
+                            current_alia_info[line[0]] = (line[1],line[3],line[4])
+                for extension in tuple(found_extensions[current_db_name].keys()):
+                    if extension != '|':
+                        num_items = len((items := tuple(found_extensions[current_db_name][extension])))
+                        for b in range(num_items-1):
+                            if f'{current_db_name}|{items[b]}' in checked:
+                                continue
+                            checked.add(f'{current_db_name}|{items[b]}')
+                            now_item = current_alia_info[items[b]]
+                            alia_found_duplicates.append([f'{current_db_name}|{items[b]}'])
+                            for c in range(b+1,num_items):
+                                if f'{current_db_name}|{items[c]}' in checked:
+                                    continue
+                                if now_item[0] == current_alia_info[items[c]][0]:
+                                    if now_item[1] == current_alia_info[items[c]][1]:
+                                        if now_item[2] == current_alia_info[items[c]][2]:
+                                            alia_found_duplicates[-1].append(f'{current_db_name}|{items[c]}')
+                                            checked.add(f'{current_db_name}|{items[c]}')
+                            for c in range(a+1,num_dbs):
+                                if extension in found_extensions[(other_db_name := aliaj[c])].keys():
+                                    other_alia_info = {}
+                                    with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf:
+                                        with zf.open('_alia_dosieroj.txt') as tf:
+                                            while True:
+                                                line = tf.readline()
+                                                if not line:
+                                                    break
+                                                line = decodeZipTxtLine(line).split('|')
+                                                if '.' in line[0] and not f'{other_db_name}|{line[0]}' in checked:
+                                                    other_alia_info[line[0]] = (line[1],line[3],line[4])
+                                    for other_item in tuple(other_alia_info.keys()):
+                                        if now_item[0] == other_alia_info[other_item][0]:
+                                            if now_item[1] == other_alia_info[other_item][1]:
+                                                if now_item[2] == other_alia_info[other_item][2]:
+                                                    alia_found_duplicates[-1].append(f'{other_db_name}|{other_item}')
+                                                    checked.add(f'{other_db_name}|{other_item}')
+                            if len(alia_found_duplicates[-1]) == 1:
+                                del alia_found_duplicates[-1]
                             else:
-                                checked.remove(f'{current_db_name}|{line[0]}')
-                try: del line
-                except NameError: pass
-                if (num_items := len((items := tuple(item_date_size.keys())))):
-                    for b in range(num_items-1):
-                        if f'{current_db_name}|{items[b]}' in checked:
-                            checked.remove(f'{current_db_name}|{items[b]}')
-                            continue
-                        alia_found_duplicates.append([f'{current_db_name}|{items[b]}'])
-                        modified_date = item_date_size[(current_item := items[b])][0]
-                        size = item_date_size[current_item][1]
-                        for c in range(b+1,num_items):
-                            if not f'{current_db_name}|{items[c]}' in checked:
-                                if modified_date == item_date_size[items[c]][0]:
-                                    if size == item_date_size[items[c]][1]:
-                                        alia_found_duplicates[-1].append(f'{current_db_name}|{items[c]}')
-                                        checked.add(f'{current_db_name}|{items[c]}')
-                        for c in range(a+1,num_dbs):
-                            other_db_name = aliaj[c]
-                            with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf:
-                                with zf.open('_alia_dosieroj.txt') as tf:
-                                    while True:
-                                        line = tf.readline()
-                                        if not line:
-                                            break
-                                        line = decodeZipTxtLine(line).split('|')
-                                        if not f'{other_db_name}|{line[0]}' in checked:
-                                            if modified_date == line[1]:
-                                                if size == line[3]:
-                                                    alia_found_duplicates[-1].append(f'{other_db_name}|{line[0]}')
-                                                    checked.add(f'{other_db_name}|{line[0]}')
-                        if len(alia_found_duplicates[-1]) == 1:
-                            del alia_found_duplicates[-1]
-                        else:
-                            alia_found_duplicates[-1] = tuple(alia_found_duplicates[-1])
+                                alia_found_duplicates[-1] = tuple(alia_found_duplicates[-1])
+                    else:
+                        num_items = len((items := tuple(found_extensions[current_db_name][extension])))
+                        for b in range(num_items-1):
+                            if f'{current_db_name}|{items[b]}' in checked:
+                                continue
+                            checked.add(f'{current_db_name}|{items[b]}')
+                            now_item = current_alia_info[items[b]]
+                            alia_found_duplicates.append([f'{current_db_name}|{items[b]}'])
+                            for c in range(b+1,num_items):
+                                if f'{current_db_name}|{items[c]}' in checked:
+                                    continue
+                                if now_item[0] == current_alia_info[items[c]][0]:
+                                    if now_item[1] == current_alia_info[items[c]][1]:
+                                        if now_item[2] == current_alia_info[items[c]][2]:
+                                            alia_found_duplicates[-1].append(f'{current_db_name}|{items[c]}')
+                                            checked.add(f'{current_db_name}|{items[c]}')
+                            for c in range(a+1,num_dbs):
+                                if extension in found_extensions[(other_db_name := aliaj[c])].keys():
+                                    other_alia_info = {}
+                                    with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf:
+                                        with zf.open('_alia_dosieroj.txt') as tf:
+                                            while True:
+                                                line = tf.readline()
+                                                if not line:
+                                                    break
+                                                line = decodeZipTxtLine(line).split('|')
+                                                if not '.' in line[0] and not f'{other_db_name}|{line[0]}' in checked:
+                                                    other_alia_info[line[0]] = (line[1],line[3],line[4])
+                                    for other_item in tuple(other_alia_info.keys()):
+                                        if now_item[0] == other_alia_info[other_item][0]:
+                                            if now_item[1] == other_alia_info[other_item][1]:
+                                                if now_item[2] == other_alia_info[other_item][2]:
+                                                    alia_found_duplicates[-1].append(f'{other_db_name}|{other_item}')
+                                                    checked.add(f'{other_db_name}|{other_item}')
+                            if len(alia_found_duplicates[-1]) == 1:
+                                del alia_found_duplicates[-1]
+                            else:
+                                alia_found_duplicates[-1] = tuple(alia_found_duplicates[-1])
+                for item in tuple(checked):
+                    if item.startswith(f"{current_db_name}|"):
+                        checked.remove(item)
             try: del aliaj
             except NameError: pass
             for n in range(len(alia_found_duplicates)):
@@ -3612,7 +3764,28 @@ class ChloeAI:
         return None
 
 
-    def compileAllEntities(self, terminal_progress_display_enabled : bool = False) -> None:
+    def compileAllEntities(self, output_location : str, output_name : str, terminal_progress_display_enabled : bool = False, output_file_type = 'excel') -> None:
+
+        output_file_type = output_file_type.replace(' ','')
+
+        if not exists((output_location := output_location.replace('\\','/'))):
+            output_location = f'{self.user_path}/Documents'
+
+        if not len((output_name := fileNameFixer(output_name))):
+            output_name = randstr()
+
+        if not (output_file_type := output_file_type.lower().strip()) in {'excel','xlsx','csv','text','txt'}:
+            output_file_type = 'excel'
+
+        if output_file_type == 'excel' and not openpyxl_imported:
+            output_file_type = 'txt'
+
+        if output_file_type == 'txt':
+            pass
+        elif output_file_type == 'csv':
+            pass
+        else:
+            pass
 
         return None
 
@@ -3640,11 +3813,11 @@ class ChloeAI:
                                 if '_alia_dosieroj.txt' in (items := tuple(zf.namelist())):
                                     with zf.open('_alia_dosieroj.txt') as tf:
                                         while True:
-                                            line = tf.readline()
-                                            if not line:
+                                            size = tf.readline()
+                                            if not size:
                                                 break
-                                            line = decodeZipTxtLine(line)
-                                            total_size += Decimal(line[line.rfind('|')+1:])
+                                            if (size := decodeZipTxtLine(size).split('|')[-1]) != '<NULL>':
+                                                total_size += Decimal(size)
                                 if '_metadata.txt' in (metadata_files :=  [item for item in items if not '/' in item and item.endswith('_metadata.txt')]):
                                     with zf.open('_metadata.txt') as tf:
                                         while True:
@@ -3661,6 +3834,7 @@ class ChloeAI:
                                             while True:
                                                 if not line:
                                                     break
+                                                line = decodeZipTxtLine(line)
                                                 total_size += Decimal(line[line.rfind('|')+1:])
                     else:
                         for used_name in iterator:
@@ -3681,6 +3855,7 @@ class ChloeAI:
                                             while True:
                                                 if not line:
                                                     break
+                                                line = decodeZipTxtLine(line)
                                                 total_size += Decimal(line[line.rfind('|')+1:])
                 case 'txt' | 'pdf' | 'shp' | 'doc' | 'img':
                     if include_other_entities:
@@ -3698,11 +3873,11 @@ class ChloeAI:
                                 if '_alia_dosieroj.txt' in items:
                                     with zf.open('_alia_dosieroj.txt') as tf:
                                         while True:
-                                            line = tf.readline()
-                                            if not line:
+                                            size = tf.readline()
+                                            if not size:
                                                 break
-                                            line = decodeZipTxtLine(line)
-                                            total_size += Decimal(line[line.rfind('|')+1:])
+                                            if (size := decodeZipTxtLine(size).split('|')[-1]) != '<NULL>':
+                                                total_size += Decimal(size)
                     else:
                         for used_name in iterator:
                             with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
@@ -3722,11 +3897,11 @@ class ChloeAI:
                                 if '_alia_dosieroj.txt' in (items := tuple(zf.namelist())):
                                     with zf.open('_alia_dosieroj.txt') as tf:
                                         while True:
-                                            line = tf.readline()
-                                            if not line:
+                                            size = tf.readline()
+                                            if not size:
                                                 break
-                                            line = decodeZipTxtLine(line)
-                                            total_size += Decimal(line[line.rfind('|')+1:])
+                                            if (size := decodeZipTxtLine(size).split('|')[-1]) != '<NULL>':
+                                                total_size += Decimal(size)
                                 if '_metadata.txt' in (metadata_files := [item for item in items if not '/' and item.endswith('_metadata.txt')]):
                                     metadata_files.remove('_metadata.txt')
                                 if len((metadata_files := tuple(metadata_files))):
@@ -3760,11 +3935,11 @@ class ChloeAI:
                                 if '_alia_dosieroj.txt' in set(zf.namelist()):
                                     with zf.open('_alia_dosieroj.txt') as tf:
                                         while True:
-                                            line = tf.readline()
-                                            if not line:
+                                            size = tf.readline()
+                                            if not size:
                                                 break
-                                            line = decodeZipTxtLine(line)
-                                            total_size += Decimal(line[line.rfind('|')+1:])
+                                            if (size := decodeZipTxtLine(size).split('|')[-1]) != '<NULL>':
+                                                total_size += Decimal(size)
                     else:
                         return 0
         elif isinstance(check_type,(tuple,list,set)):
@@ -3783,11 +3958,11 @@ class ChloeAI:
                             if '_alia_dosieroj.txt' in (items := tuple(zf.namelist())):
                                 with zf.open('_alia_dosieroj.txt') as tf:
                                     while True:
-                                        line = tf.readline()
-                                        if not line:
+                                        size = tf.readline()
+                                        if not size:
                                             break
-                                        line = decodeZipTxtLine(line)
-                                        total_size += Decimal(line[line.rfind('|')+1:])
+                                        if (size := decodeZipTxtLine(size).split('|')[-1]) != '<NULL>':
+                                            total_size += Decimal(size)
                             if '_metadata.txt' in (metadata_files := [item for item in items if not '/' in item and '_metadata.txt' in item]):
                                 with zf.open('_metadata.txt') as tf:
                                     while True:
@@ -3813,11 +3988,11 @@ class ChloeAI:
                             if '_alia_dosieroj.txt' in (items := tuple(zf.namelist())):
                                 with zf.open('_alia_dosieroj.txt') as tf:
                                     while True:
-                                        line = tf.readline()
-                                        if not line:
+                                        size = tf.readline()
+                                        if not size:
                                             break
-                                        line = decodeZipTxtLine(line)
-                                        total_size += Decimal(line[line.rfind('|')+1:])
+                                        if (size := decodeZipTxtLine(size).split('|')[-1]):
+                                            total_size += Decimal(size)
                             if '_metadata.txt' in items:
                                 with zf.open('_metadata.txt') as tf:
                                     while True:
