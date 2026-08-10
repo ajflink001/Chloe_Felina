@@ -160,8 +160,10 @@ class ChloeAI:
                     pass
             elif not 'crintum_pointer.txt' in items and len(items):
                 ignore_empty_line = True
+                original_name = database_name[:]
                 while database_name in listdir(database_location):
-                    database_name = f"{database_name}_{randstr()}"
+                    database_name = f"{original_name}_{randstr()}"
+                del original_name
                 self.db_path = f'{database_location}/{database_name}'
                 mkdir(f'{database_location}/{database_name}')
                 with open(f'{database_location}/{database_name}/crintum_pointer.txt','w',encoding='utf-8') as tf:
