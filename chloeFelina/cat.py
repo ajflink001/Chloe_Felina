@@ -555,7 +555,7 @@ class ChloeAI:
                     except Exception:
                         rmtree(test_path)
 
-        if len((items := tuple(listdir()))) <= 1:
+        if len((items := tuple(listdir()))) <= 1 and not '_alia_dosieroj.txt' in items:
             chdir(current_dir)
             return False
 
