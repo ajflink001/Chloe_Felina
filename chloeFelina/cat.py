@@ -363,6 +363,29 @@ class ChloeAI:
         if clear_terms_searched:
             self.clearSearchQueryMemory()
 
+        def getAliaBaselineMetadata(item_path : str) -> tuple:
+
+            alia_metadata = []
+
+            try:
+                alia_metadata.append(getModifiedDate(item_path)[4:])
+            except Exception:
+                alia_metadata.append('<NULL>')
+            try:
+                alia_metadata.append(getModifiedDate(item_path)[4:])
+            except Exception:
+                alia_metadata.append('<NULL>')
+            try:
+                alia_metadata.append(str(getSizeOfItem(item_path)))
+            except Exception:
+                alia_metadata.append('<NULL>')
+            try:
+                alia_metadata.append(md5_checksum(item_path))
+            except Exception:
+                alia_metadata.append('<NULL>')
+
+            return tuple(alia_metadata)
+
         # Remove redundant entries from crintum_pointer.txt and zip files not
         # referenced in crintum_pointer.txt
         existing_zips = listdir(self.db_path)
@@ -410,9 +433,14 @@ class ChloeAI:
             del redact_dbs
             try: del reference_directory
             except NameError: pass
-            for ref_path in tuple(self.paths_in_db):
+            if tqdm_imported:
+                iterator = tqdm(tuple(self.paths_in_db),disable = not terminal_progress_display_enabled, desc = "Comparing and Rectifying Referenced Data with Actual Data")
+            else:
+                iterator = tuple(self.paths_in_db)
+            for ref_path in iterator:
                 db_items = {}
-                with ZipFile(f'{self.db_path}/{self.crintum_pointer[ref_path]}') as zf:
+                current_db_name = self.crintum_pointer[ref_path]
+                with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
                     if '_alia_dosieroj.txt' in (zf_items := set(zf.namelist())):
                         db_items['ALIA'] = {}
                         with zf.open('_alia_dosieroj.txt') as tf:
@@ -438,23 +466,20 @@ class ChloeAI:
                     if len((gdb_metadata_files := tuple([item for item in tuple(zf_items) if not '/' in item and item.lower().endswith('gdb_metadata.txt')]))):
                         db_items['GDB'] = {}
                         for gdb_metadata_file in gdb_metadata_files:
+                            db_items['GDB'][(gdb_folder_name := gdb_metadata_file[:gdb_metadata_file.rfind('_')])] = {}
                             with zf.open(gdb_metadata_file) as tf:
-                                db_items['GDB'][gdb_metadata_file[:gdb_metadata_file.rfind('_')]] = decodeZipTxtLine(tf.readline())
+                                line = tf.readline()
+                                while True:
+                                    line = tf.readline()
+                                    if not line:
+                                        break
+                                    line = decodeZipTxtLine(line).split('|')
+                                    db_items['GDB'][gdb_folder_name][line[0]] = tuple(line[1:])
                 try: del zf_items
                 except NameError: pass
                 try: del gdb_metadata_files
                 except NameError: pass
-                real_items = {}
-                try:
-                    real_items_tuple = tuple([item for item in tuple(listdir(ref_path)) if isfile(f'{ref_path}/{item}') or (isdir(f'{ref_path}/{item}') and item.lower().endswith('.gdb'))])
-                except Exception:
-                    continue
-                for item in real_items_tuple:
-                    if not '.' in item:
-                        if 'ALIA' in real_items.keys():
-                            real_items['ALIA'][item] = getBaselineMetadata(f'{ref_path}/{item}')
-                        else:
-                            real_items['ALIA'] = {item : getBaselineMetadata(f'{ref_path}/{item}')}
+
 
         return None
 
@@ -3764,15 +3789,29 @@ class ChloeAI:
         return None
 
 
-    def compileAllEntities(self, output_location : str, output_name : str, terminal_progress_display_enabled : bool = False, output_file_type = 'excel') -> None:
+    def compileAllEntities(self, output_location : str | None = None, output_name : str | None = None, terminal_progress_display_enabled : bool = False, multiple_non_excel_files : bool = False, output_file_type = 'excel', organize_by_name_only : bool = False) -> None:
+        '''
+        This compiles an organized list as a text file, CSV file, or Excel file
+        of all files/entites that are referenced in the database.
+        '''
 
         output_file_type = output_file_type.replace(' ','')
 
-        if not exists((output_location := output_location.replace('\\','/'))):
+        if output_location is None:
+            output_location = f'{self.user_path}/Documents'
+        elif not exists((output_location := output_location.replace('\\','/'))):
             output_location = f'{self.user_path}/Documents'
 
-        if not len((output_name := fileNameFixer(output_name))):
-            output_name = randstr()
+        if output_name is None:
+            output_name = f"{self.database_name}_cf_extracted_refs"
+        elif not len((output_name := fileNameFixer(output_name))):
+            output_name = f"{self.database_name}_cf_extracted_refs"
+
+        original_output_name = output_name[:]
+        while output_name in listdir(output_location):
+            output_name = f'{original_output_name}_{randstr()}'
+
+        del original_output_name
 
         if not (output_file_type := output_file_type.lower().strip()) in {'excel','xlsx','csv','text','txt'}:
             output_file_type = 'excel'
@@ -3780,9 +3819,66 @@ class ChloeAI:
         if output_file_type == 'excel' and not openpyxl_imported:
             output_file_type = 'txt'
 
-        if output_file_type == 'txt':
+        types_found = {}
+        for used_name in tuple(self.used_names):
+            unique_types = 0
+            types_found[used_name] = []
+            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                if '_alia_dosieroj.txt' in (items := set(zf.namelist())):
+                    types_found[used_name].append('ALIA')
+                if '_firstline_image_files.txt' in items:
+                    types_found[used_name].append('IMG')
+                for item in items:
+                    if not '/' in item and item.lower().endswith('_gdb_metadata.txt'):
+                        types_found[used_name].append('GDB')
+                        break
+                if '_metadata.txt' in items:
+                    with zf.open('_metadata.txt') as tf:
+                        while True:
+                            if unique_types == 4:
+                                break
+                            line = tf.readline()
+                            if not line:
+                                break
+                            line = decodeZipTxtLine(line).split('|')[1]
+                            if not (line := decodeZipTxtLine(line).split('|')[1]) in types_found[used_name]:
+                                types_found[used_name].append(line)
+                                unique_types += 1
+            types_found[used_name] = tuple(types_found[used_name])
+
+        try: del items
+        except NameError: pass
+
+        # This is used to prevent severe overhead.
+        with open(f'{self.db_path}/_temp_data.txt','w',encoding='utf-8') as tf:
             pass
+
+        if output_file_type == 'txt':
+            if multiple_non_excel_files:
+                if organize_by_name_only:
+                    pass
+                else:
+                    pass
+            else:
+                if organize_by_name_only:
+                    with open(f'{output_location}/{output_name}.txt','w',encoding='utf-8') as tf:
+                        tf.write("File Name | File Location | Database Internal Classification | Creation Date | Modification Date | Size in Bytes")
+                else:
+                    with open(f'{output_location}/{output_name}.txt','w',encoding='utf-8') as tf:
+                        tf.write("File Name | File Location | Database Internal Classification | Creation Date | Modification Date | Size in Bytes")
+
         elif output_file_type == 'csv':
+            if multiple_non_excel_files:
+                if organize_by_name_only:
+                    pass
+                else:
+                    pass
+            else:
+                if organize_by_name_only:
+                    pass
+                else:
+                    pass
+        elif organize_by_name_only:
             pass
         else:
             pass
