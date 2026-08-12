@@ -3928,6 +3928,7 @@ class ChloeAI:
                                         with zf.open(metadata_file) as tf:
                                             line = tf.readline()
                                             while True:
+                                                line = tf.readline()
                                                 if not line:
                                                     break
                                                 line = decodeZipTxtLine(line)
@@ -3949,6 +3950,7 @@ class ChloeAI:
                                         with zf.open(metadata_file) as tf:
                                             line = tf.readline()
                                             while True:
+                                                line = tf.readline()
                                                 if not line:
                                                     break
                                                 line = decodeZipTxtLine(line)
