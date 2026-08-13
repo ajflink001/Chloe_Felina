@@ -435,11 +435,14 @@ class ChloeAI:
             except NameError: pass
             if tqdm_imported:
                 iterator = tqdm(tuple(self.paths_in_db),disable = not terminal_progress_display_enabled, desc = "Comparing and Rectifying Referenced Data with Actual Data")
+                if terminal_progress_display_enabled:
+                    sys_clear()
             else:
                 iterator = tuple(self.paths_in_db)
             for ref_path in iterator:
                 db_items = {}
                 current_db_name = self.crintum_pointer[ref_path]
+                uncompressed_zip_folder = False
                 with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
                     if '_alia_dosieroj.txt' in (zf_items := set(zf.namelist())):
                         db_items['ALIA'] = {}
@@ -479,6 +482,100 @@ class ChloeAI:
                 except NameError: pass
                 try: del gdb_metadata_files
                 except NameError: pass
+                metadata_deleted = set() ; alia_deleted = set()
+                actual_items = tuple([item for item in tuple(listdir(ref_path)) if all((isdir(f'{ref_path}/{item}'),item.lower().endswith('.gdb'))) or isfile(f'{ref_path}/{item}')])
+                for extension in tuple(db_items.keys()):
+                    for item in tuple(db_items[extension].keys()):
+                        if not f"{item[:item.rfind('_')]}.{item[item.rfind('_')+1:]}" in actual_items:
+                            if not exists(f'{self.db_path}/{current_db_name}'):
+                                uncompressed_zip_folder = True
+                                self.uncompressZIP(current_db_name)
+                            del db_items[extension][item]
+                            match extension:
+                                case 'TXT':
+                                    metadata_deleted.add(item)
+                                    remove(f'{self.db_path}/{current_db_name}/_txt_files/{item}.txt')
+                                case 'PDF' | 'DOC':
+                                    metadata_deleted.add(item)
+                                    rmtree(f'{self.db_path}/{current_db_name}/{item}')
+                                case 'IMG':
+                                    metadata_deleted.add(item)
+                                    remove(f'{self.db_path}/{current_db_name}/_images/{item}.txt')
+                                case 'SHP':
+                                    metadata_deleted.add(item)
+                                    remove(f'{self.db_path}/{current_db_name}/_shp_files/{item}.txt')
+                                case 'GDB':
+                                    rmtree(f'{self.db_path}/{current_db_name}/{item}')
+                                    remove(f'{self.db_path}/{current_db_name}/{item}.txt')
+                                case _:
+                                    # ALIA
+                                    alia_deleted.add(item)
+                if len(metadata_deleted):
+                    original_lines = [line.rstrip('\n') for line in tuple(open(f'{self.db_path}/{current_db_name}/_metadata.txt','r',encoding='utf-8').readlines())]
+                    for line in tuple(original_lines):
+                        if line[:line.find('|')] in metadata_deleted:
+                            original_lines.remove(line)
+                    if len((original_lines := tuple(original_lines))):
+                        with open(f'{self.db_path}/{current_db_name}/_metadata.txt','w',encoding='utf-8') as tf:
+                            tf.write(original_lines[0])
+                            for n in range(1,len(original_lines)):
+                                tf.write(f'\n{original_lines[n]}')
+                    else:
+                        remove(f'{self.db_path}/{current_db_name}/_metadata.txt')
+                del metadata_deleted
+                if len(alia_deleted):
+                    original_lines = [line.rstrip('\n') for line in tuple(open(f'{self.db_path}/{current_db_name}/_alia_dosieroj.txt','r',encoding='utf-8').readlines())]
+                    for line in tuple(original_lines):
+                        if line[:line.find('|')] in alia_deleted:
+                            original_lines.remove(line)
+                    if len((original_lines := tuple(original_lines))):
+                        with open(f'{self.db_path}/{current_db_name}/_alia_dosieroj.txt','w',encoding='utf-8') as tf:
+                            tf.write(original_lines[0])
+                            for n in range(1,len(original_lines)):
+                                tf.write(f'\n{original_lines[n]}')
+                    else:
+                        remove(f'{self.db_path}/{current_db_name}/_alia_dosieroj.txt')
+                del alia_deleted
+                try: del original_lines
+                except NameError: pass
+                if uncompressed_zip_folder:
+                    if 'TXT' in (testing_set := set(db_items.keys())):
+                        if not len(listdir(f'{self.db_path}/{current_db_name}/_txt_files')):
+                            del db_items['TXT']
+                            try:
+                                remove(f'{self.db_path}/{current_db_name}/_txt_files')
+                            except Exception:
+                                rmtree(f'{self.db_path}/{current_db_name}/_txt_files')
+                    if 'SHP' in testing_set:
+                        if not len(listdir(f'{self.db_path}/{current_db_name}/_shp_files')):
+                            del db_items['SHP']
+                            try:
+                                remove(f'{self.db_path}/{current_db_name}/_shp_files')
+                            except Exception:
+                                rmtree(f'{self.db_path}/{current_db_name}/_shp_files')
+                    if 'IMG' in testing_set:
+                        if not len(listdir(f'{self.db_path}/{current_db_name}/_images')):
+                            del db_items['IMG']
+                            try:
+                                remove(f'{self.db_path}/{current_db_name}/_images')
+                            except Exception:
+                                rmtree(f'{self.db_path}/{current_db_name}/_images')
+                    for extension in ('GDB','DOC','PDF','ALIA'):
+                        if extension in testing_set:
+                            if not len(db_items[extension].keys()):
+                                del db_items[extension]
+                    del testing_set
+                if uncompressed_zip_folder:
+                    if len(db_items.keys()):
+                        remove(f'{self.db_path}/{current_db_name}.zip')
+                        self.compressToZIP(current_db_name)
+                    else:
+                        try:
+                            remove(f'{self.db_path}/{current_db_name}')
+                        except Exception:
+                            rmtree(f'{self.db_path}/{current_db_name}')
+                        remove(f'{self.db_path}/{current_db_name}.zip')
+                        self.removeCrintumEntry(ref_path)
 
 
         return None
@@ -3888,7 +3985,7 @@ class ChloeAI:
 
     def getTotalSizeOfActualRefEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display_enabled : bool = False) -> int:
         '''
-        The total size of actual referenced entities themselves in bytes.
+        The total size of actual referenced entities themselves.
         '''
 
         total_size = Decimal(0)
