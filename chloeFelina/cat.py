@@ -137,6 +137,7 @@ class ChloeAI:
     def __init__(self, database_location : str | None = None, database_name : str = 'datumbazo', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, allow_truncating_images : bool = False, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, corrupted_zip_check : bool = True):
 
         self.valid_check_types = {'txt','pdf','doc','img','gdb','shp','alia'}
+        self.valid_extensions = ['txt']
 
         self.crintum_obfuscation = crintum_obfuscation
         self.database_name = database_name[:]
@@ -281,6 +282,7 @@ class ChloeAI:
             del backup_crintum
 
         if pypdf_imported:
+            self.valid_extensions.append('pdf')
             filters.MAX_DECLARED_STREAM_LENGTH = pdf_max_declared_stream_len
             # Set pdf_max_array_out_stream_len a higher value if an error is
             # produced due to it.
@@ -298,12 +300,15 @@ class ChloeAI:
             # More file types will be added after thorough testing.
             self.accepted_image_extensions = {'.jpg','.JPG','.jpeg','.JPEG','.png','.PNG','.tif','.TIF','.tiff','.TIFF','.webp','.WEBP','.bmp','.BMP','.dib','.DIB','.icns','.ICNS','.ico','.ICO','.jp2','.JP2','.j2k','.J2K','.jpx','.JPX','.pcx','.PCX','.tga','.TGA','.xbm','.XBM'}
             self.image_types = ('jpg','jpeg','png','tif','tiff','webp','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm')
+            self.valid_extensions = self.valid_extensions + list(self.image_types)
             # Maximum number of pixels that an image can have until the PIL module
             # throws an error.
             Image.MAX_IMAGE_PIXELS = maximum_pixels
             ImageFile.LOAD_TRUNCATED_IMAGES = allow_truncating_images
 
         if arcpy_imported:
+            self.valid_extensions.append('gdb')
+            self.valid_extensions.append('shp')
             arcpy.SetLogHistory(False)
             arcpy.SetLogMetadata(False)
             arcpy.env.autoCommit = 0
@@ -311,6 +316,11 @@ class ChloeAI:
             # of writing only utilizes Nvidia GPUs exclusively.
             arcpy.env.processorType = "CPU"
             arcpy.env.parallelProcessingFactor = "75%"
+
+        if docx_imported and docx2_imported:
+            self.valid_extensions.append('docx')
+
+        self.valid_extensions = set(self.valid_extensions)
 
         self.histogram_ratio_precision = histogram_ratio_precision
         # The following is required to heavily simplify and reduce storage space
@@ -363,28 +373,24 @@ class ChloeAI:
         if clear_terms_searched:
             self.clearSearchQueryMemory()
 
-        def getAliaBaselineMetadata(item_path : str) -> tuple:
+        def getTrueBaselineMetadata(item_path : str) -> tuple:
 
-            alia_metadata = []
+            metadata = []
 
             try:
-                alia_metadata.append(getModifiedDate(item_path)[4:])
+                metadata.append(getModifiedDate(item_path)[4:])
             except Exception:
-                alia_metadata.append('<NULL>')
+                metadata.append('<NULL>')
             try:
-                alia_metadata.append(getModifiedDate(item_path)[4:])
+                metadata.append(getModifiedDate(item_path)[4:])
             except Exception:
-                alia_metadata.append('<NULL>')
+                metadata.append('<NULL>')
             try:
-                alia_metadata.append(str(getSizeOfItem(item_path)))
+                metadata.append(str(getSizeOfItem(item_path)))
             except Exception:
-                alia_metadata.append('<NULL>')
-            try:
-                alia_metadata.append(md5_checksum(item_path))
-            except Exception:
-                alia_metadata.append('<NULL>')
+                metadata.append('<NULL>')
 
-            return tuple(alia_metadata)
+            return tuple(metadata)
 
         # Remove redundant entries from crintum_pointer.txt and zip files not
         # referenced in crintum_pointer.txt
@@ -439,6 +445,7 @@ class ChloeAI:
                     sys_clear()
             else:
                 iterator = tuple(self.paths_in_db)
+            no_dedicated_folders_types = ('GDB','DOC','PDF','ALIA')
             for ref_path in iterator:
                 db_items = {}
                 current_db_name = self.crintum_pointer[ref_path]
@@ -560,11 +567,152 @@ class ChloeAI:
                                 remove(f'{self.db_path}/{current_db_name}/_images')
                             except Exception:
                                 rmtree(f'{self.db_path}/{current_db_name}/_images')
-                    for extension in ('GDB','DOC','PDF','ALIA'):
+                    for extension in no_dedicated_folders_types:
                         if extension in testing_set:
                             if not len(db_items[extension].keys()):
                                 del db_items[extension]
                     del testing_set
+                testing_set = []
+                for extension in db_items.keys():
+                    testing_set += list(db_items[extension].keys())
+                testing_set = set(testing_set)
+                for item in tuple(actual_items):
+                    if not f"{item[:item.rfind('.')]}_{item[item.rfind('.')+1:]}" in testing_set:
+                        if not uncompressed_zip_folder:
+                            uncompressed_zip_folder = True
+                            self.uncompressZIP(current_db_name)
+                        actual_items.remove(item)
+                        if not '.' in item:
+                            self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                        else:
+                            match (extension := item.lower()[item.rfind(".")+1:]):
+                                case 'txt':
+                                    try:
+                                        if not self.archive_txt_data(f'{ref_path}/{item}',current_db_name):
+                                            if exists((temp_path := f'{self.db_path}/{current_db_name}/_txt_files')):
+                                                if not len(listdir(temp_path)):
+                                                    try:
+                                                        remove(temp_path)
+                                                    except Exception:
+                                                        rmtree(temp_path)
+                                            self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                    except Exception:
+                                        if exists((temp_path := f'{self.db_path}/{current_db_name}/_txt_files')):
+                                            if not len(listdir(temp_path)):
+                                                try:
+                                                    remove(temp_path)
+                                                except Exception:
+                                                    rmtree(temp_path)
+                                        self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                case 'pdf':
+                                    try:
+                                        if not self.archive_pdf_data(f'{ref_path}/{item}',current_db_name):
+                                            if exists(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
+                                                rmtree(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
+                                            self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                    except Exception:
+                                        if exists(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
+                                            rmtree(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
+                                        self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                case 'docx':
+                                    try:
+                                        if not self.archive_doc_data(f'{ref_path}/{item}',current_db_name):
+                                            if exists(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
+                                                rmtree(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
+                                            self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                    except Exception:
+                                        if exists(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
+                                            rmtree(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
+                                        self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                case 'shp':
+                                    try:
+                                        if not self.archive_shp_data(f'{ref_path}/{item}',current_db_name):
+                                            if exists((temp_path := f'{self.db_path}/{current_db_name}/_shp_files')):
+                                                if not len(listdir(temp_path)):
+                                                    try:
+                                                        remove(temp_path)
+                                                    except Exception:
+                                                        rmtree(temp_path)
+                                            self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                    except Exception:
+                                        if exists((temp_path := f'{self.db_path}/{current_db_name}/_shp_files')):
+                                            if not len(listdir(temp_path)):
+                                                try:
+                                                    remove(temp_path)
+                                                except Exception:
+                                                    rmtree(temp_path)
+                                        self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                case 'gdb':
+                                    try:
+                                        if not self.archive_gdb_data(f'{ref_path}/{item}',current_db_name):
+                                            if exists((temp_path := f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')):
+                                                rmtree(temp_path)
+                                            if exists(f'{temp_path}_metadata.txt'):
+                                                remove(f'{temp_path}_metadata.txt')
+                                    except Exception:
+                                        if exists((temp_path := f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')):
+                                            rmtree(temp_path)
+                                        if exists(f'{temp_path}_metadata.txt'):
+                                            remove(f'{temp_path}_metadata.txt')
+                                case _:
+                                    if extension in self.image_types:
+                                        try:
+                                            if not self.archive_img_data(f'{ref_path}/{item}',current_db_name):
+                                                if exists(f'{self.db_path}/{current_db_name}/_images'):
+                                                    if not len(listdir(f'{self.db_path}/{current_db_name}/_images')):
+                                                        try:
+                                                            remove(f'{self.db_path}/{current_db_name}/_images')
+                                                        except Exception:
+                                                            rmtree(f'{self.db_path}/{current_db_name}/_images')
+                                            else:
+                                                self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                        except Exception:
+                                            if exists(f'{self.db_path}/{current_db_name}/_images'):
+                                                if not len(listdir(f'{self.db_path}/{current_db_name}/_images')):
+                                                    try:
+                                                        remove(f'{self.db_path}/{current_db_name}/_images')
+                                                    except Exception:
+                                                        rmtree(f'{self.db_path}/{current_db_name}/_images')
+                                            self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                    else:
+                                        self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                try: del temp_path
+                except NameError: pass
+                actual_items = tuple(actual_items)
+                if 'GDB' in (extensions := list(db_items.keys())):
+                    extensions.remove('GDB')
+                extensions = tuple(extensions)
+                for item in actual_items:
+                    if item.lower().endswith(".gdb") and isdir(f'{ref_path}/{item}'):
+                        pass
+                    else:
+                        baseline_metadata = getTrueBaselineMetadata(f'{ref_path}/{item}')
+                        testing_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'
+                        for extension in extensions:
+                            if testing_name in db_items[extension].keys():
+                                if db_items[extension][testing_name][0] != baseline_metadata[0] or db_items[extension][testing_name][1] != baseline_metadata[1] or db_items[extension][testing_name][-1] != baseline_metadata[2]:
+                                    if not uncompressed_zip_folder:
+                                        uncompressed_zip_folder = True
+                                        self.uncompressZIP(current_db_name)
+                                    if extension == 'ALIA':
+                                        if not item[item.rfind(".")+1:] in valid_extensions:
+                                            pass
+                                        else:
+                                            pass
+                                    else:
+                                        match extension:
+                                            case 'TXT':
+                                                pass
+                                            case 'PDF':
+                                                pass
+                                            case 'DOC':
+                                                pass
+                                            case 'SHP':
+                                                pass
+                                            case 'IMG':
+                                                pass
+                                            case _:
+                                                pass
                 if uncompressed_zip_folder:
                     if len(db_items.keys()):
                         remove(f'{self.db_path}/{current_db_name}.zip')
