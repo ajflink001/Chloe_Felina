@@ -132,7 +132,11 @@ Parameters:
 
 
 
-Purpose: This is meant to check the data in the database against the actual data that said data is referencing and makes appropriate changes by removing references to directories that no longer exist, items being modified, items being added, and/or items being removed. In version 1 of Chloe Felina, **ChloeAI.updateAndRefreshDatabase** is retroactively considered an experimental feature that proved to be very unstable and not straightforward, especially when trying to implement changes for version 2 of Chloe Felina. As of writing, it only checks to see if referenced directories still exist and to remove them if they do not. In Chloe Felina 2.1.0, it is intended that this function will handle updating zip files to account for added, removed, and/or modified files from the directories they are referencing.
+NOT IMPLEMENTED YET (CONSIDER TO BE EXPERIMENTAL)
+
+
+
+Purpose: This is meant to check the data in the database against the actual data that said data is referencing and makes appropriate changes by removing references to directories that no longer exist, items being modified, items being added, and/or items being removed. In version 1 of Chloe Felina, **ChloeAI.updateAndRefreshDatabase** is retroactively considered an experimental feature that proved to be very unstable and not straightforward, especially when trying to implement changes for version 2 of Chloe Felina. As of writing, it only checks to see if referenced directories still exist and to remove them if they do not. It is intended that this function will handle updating zip files to account for added, removed, and/or modified files from the directories they are referencing.
 
 
 
@@ -438,7 +442,7 @@ Planned Purpose: This will compile and organized list of all files/entities refe
 
 
 
-**ChloeAI.getTotalBytesRefEntities**
+**ChloeAI.getTotalRefSize**
 
 
 
@@ -458,7 +462,7 @@ Purpose: This outputs the total size of the files that are being referenced in t
 
 
 
-**ChloeAI.getTotalNumRefEntities**
+**ChloeAI.getTotalRefNum**
 
 
 
