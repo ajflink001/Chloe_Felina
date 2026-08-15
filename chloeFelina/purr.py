@@ -1,5 +1,14 @@
 from typing import AnyStr
 
+forbidden_file_chars = ('\\','/','*','?','"',"<",">","|")
+
+def fileNameFixer(entry_string : str) -> str:
+
+    for char in forbidden_file_chars:
+        entry_string = entry_string.replace(char,'')
+
+    return entry_string
+
 def decodeZipTxtLine(entry_string) -> str:
 
     try:
