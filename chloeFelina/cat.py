@@ -3839,10 +3839,10 @@ class ChloeAI:
                                     if return_tuple:
                                         return ()
                                     return None
-                            # if len(found_duplicates[-1]) == 1:
-                            #     del found_duplicates[-1]
-                            # else:
-                            #     found_duplicates[-1] = tuple(found_duplicates[-1])
+                            if len(found_duplicates[-1]) == 1:
+                                del found_duplicates[-1]
+                            else:
+                                found_duplicates[-1] = tuple(found_duplicates[-1])
                             for type_shorthand in type_checker.keys():
                                 if current_db_name in type_checker[type_shorthand]:
                                     type_checker[type_shorthand].remove(current_db_name)
