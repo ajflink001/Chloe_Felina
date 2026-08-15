@@ -138,6 +138,7 @@ class ChloeAI:
 
         self.valid_check_types = {'txt','pdf','doc','img','gdb','shp','alia'}
         self.valid_extensions = ['txt']
+        self.known_image_types = {'art','avif','blp','bmp','bti','c4','cals','cit','cpt','clip','cpl','dds','dib','djvu','egt','exif','gif','flif','grf','icns','heif','heic','ico','iff','ilbm','lbm','jng','jbig','jpeg','jpg','jfif','jp2','jai','jaic','jar','jd','jfm','jls','jnft','jpp','jrf','jps','jsy','jxl','jxr','jxs','jxt','kra','lbm','max','miff','mng','msp','nef','nitf','otb','pbm','pc1','pc2','pc3','pcf','pcx','pdd','pdn','pgf','pgm','pi1','pi2','pi3','pict','pct','png','pnj','pnm','pns','ppm','psb','psd','psp','px','pxm','pxr','pxz','qfx','qoi','rle','sct','sgi','rgb','int','bw','tga','targa','icb','vda','vst','pix','tiff','tif','vtf','webp','xbm','xcf','xpm','zif','cr2','dng','raw'}
 
         self.crintum_obfuscation = crintum_obfuscation
         self.database_name = database_name[:]
@@ -2396,6 +2397,8 @@ class ChloeAI:
                     if isinstance(check_type,str):
                         if (check_type := check_type.lower()) == 'docx':
                             check_type = 'doc'
+                        elif check_type in self.image_types:
+                            check_type = 'img'
                         match check_type:
                             case 'txt':
                                 with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
@@ -3292,7 +3295,13 @@ class ChloeAI:
             output_name = randstr()
 
         checked = set() ; found_duplicates = []
-        num_dbs = len((db_names := tuple(self.used_names)))
+        db_names = list(self.used_names)
+        # exclude zip files that only contain '_alia_dosieroj.txt'
+        for db_name in tuple(db_names):
+            with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
+                if not len([item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]):
+                    db_names.remove(db_name)
+        num_dbs = len((db_names := tuple(db_names)))
         if tqdm_imported:
             if terminal_progress_display_enabled:
                 sys_clear()
@@ -3311,14 +3320,11 @@ class ChloeAI:
                                 break
                             line = decodeZipTxtLine(line).split('|')
                             type_checker[line[1]].add(db_name)
-                    try: del line
-                    except NameError: pass
                     metadata_files.remove('_metadata.txt')
-                if len((metadata_files := tuple(metadata_files))):
-                    for metadata_file in metadata_files:
-                        if metadata_file.lower().endswith('_gdb_metadata.txt'):
-                            type_checker['GDB'].add(db_name)
-                            break
+                for metadata_file in (metadata_files := tuple(metadata_files)):
+                    if metadata_file.endswith('_gdb_metadata.txt'):
+                        type_checker['GDB'].add(db_name)
+                        break
         try: del metadata_files
         except NameError: pass
         # This enables even greater redundancy reduction.
@@ -3351,6 +3357,11 @@ class ChloeAI:
                             line_num_checker[num_id].add(db_name)
                         else:
                             line_num_checker[num_id] = {db_name}
+
+        # for a in iterator:
+        #     current_db_name = db_names[a]
+        #
+
         for a in iterator:
             current_db_name = db_names[a]
             current_entities = {} ; img_firstlines = {}
@@ -3370,15 +3381,17 @@ class ChloeAI:
                                     if f'{entity[5]}|{entity[6]}' in current_entities[entity[1]].keys():
                                         current_entities[entity[1]][f'{entity[5]}|{entity[6]}'].append(entity[0])
                                     else:
-                                        current_entities[entity[1]] = {f'{entity[5]}|{entity[6]}':[entity[0]]}
-                                elif entity[5] in current_entities[entity[1]].keys():
-                                    current_entities[entity[1]][entity[5]].append(entity[0])
+                                        current_entities[entity[1]][entity[f'{entity[5]}|{entity[6]}']] = [entity[0]]
                                 else:
-                                    current_entities[entity[1]] = {entity[5]:[entity[0]]}
-                            elif entity[1] in ('PDF','DOC'):
-                                current_entities[entity[1]] = {f'{entity[5]}|{entity[6]}':[entity[0]]}
+                                    if entity[5] in current_entities[entity[1]].keys():
+                                        current_entities[entity[1]][entity[5]].append(entity[0])
+                                    else:
+                                        current_entities[entity[1]][entity[5]] = [entity[0]]
                             else:
-                                current_entities[entity[1]] = {entity[5]:[entity[0]]}
+                                if entity[1] in ('PDF','DOC'):
+                                    current_entities[entity[1]] = {f'{entity[5]}|{entity[6]}' : [entity[0]]}
+                                else:
+                                    current_entities[entity[1]] = {entity[5] : [entity[0]]}
                     metadata_files.remove('_metadata.txt')
                 if len((metadata_files := tuple(metadata_files))):
                     current_entities['GDB'] = {}
@@ -3527,7 +3540,6 @@ class ChloeAI:
                                         relevant_entities = []
                                         if not (other_db_name := db_names[d]) in type_checker['TXT'] or not other_db_name in line_num_checker[f'{current_line_count}|TXT']:
                                             continue
-                                        line_num_checker[f'{current_line_count}|TXT'].remove(other_db_name)
                                         with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
                                             if not '_metadata.txt' in set(zf2.namelist()):
                                                 continue
@@ -3573,7 +3585,6 @@ class ChloeAI:
                                         relevant_entities = []
                                         if not (other_db_name := db_names[d]) in type_checker['IMG'] or not other_db_name in line_num_checker[f'{current_line_count}|IMG']:
                                             continue
-                                        line_num_checker[f'{current_line_count}|IMG'].remove(other_db_name)
                                         other_img_firstlines = {}
                                         with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
                                             if not '_metadata.txt' in set(zf2.namelist()):
@@ -3630,7 +3641,6 @@ class ChloeAI:
                                             relevant_entities = []
                                             if not (other_db_name := db_names[e]) in type_checker['SHP'] or not other_db_name in line_num_checker[f'{current_line_count}|SHP']:
                                                 continue
-                                            line_num_checker[f'{current_line_count}|SHP'].remove(other_db_name)
                                             with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
                                                 if not '_metadata.txt' in set(zf2.namelist()):
                                                     continue
@@ -3707,7 +3717,6 @@ class ChloeAI:
                                         relevant_entities = []
                                         if not (other_db_name := db_names[d]) in type_checker['DOC'] or not other_db_name in line_num_checker[f'{current_line_count[0]}|{current_line_count[1]}|DOC']:
                                             continue
-                                        line_num_checker[f'{current_line_count[0]}|{current_line_count[1]}|DOC'].remove(other_db_name)
                                         with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
                                             if not '_metadata.txt' in set(zf2.namelist()):
                                                 continue
@@ -3792,7 +3801,6 @@ class ChloeAI:
                                         relevant_entities = []
                                         if not (other_db_name := db_names[d]) in type_checker['PDF'] or not other_db_name in line_num_checker[f'{current_line_count[0]}|{current_line_count[1]}|PDF']:
                                             continue
-                                        line_num_checker[f'{current_line_count[0]}|{current_line_count[1]}|PDF'].remove(other_db_name)
                                         with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
                                             if not '_metadata.txt' in set(zf2.namelist()):
                                                 continue
@@ -3831,10 +3839,10 @@ class ChloeAI:
                                     if return_tuple:
                                         return ()
                                     return None
-                            if len(found_duplicates[-1]) == 1:
-                                del found_duplicates[-1]
-                            else:
-                                found_duplicates[-1] = tuple(found_duplicates[-1])
+                            # if len(found_duplicates[-1]) == 1:
+                            #     del found_duplicates[-1]
+                            # else:
+                            #     found_duplicates[-1] = tuple(found_duplicates[-1])
                             for type_shorthand in type_checker.keys():
                                 if current_db_name in type_checker[type_shorthand]:
                                     type_checker[type_shorthand].remove(current_db_name)
@@ -4131,7 +4139,7 @@ class ChloeAI:
         return None
 
 
-    def getTotalSizeOfActualRefEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display_enabled : bool = False) -> int:
+    def getTotalRefSize(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display_enabled : bool = False) -> int:
         '''
         The total size of actual referenced entities themselves.
         '''
@@ -4146,7 +4154,11 @@ class ChloeAI:
             iterator = tuple(self.used_names)
 
         if isinstance(check_type,str):
-            match (check_type := check_type.lower().strip()):
+            if (check_type := check_type.lower().strip()) == 'docx':
+                check_type = 'doc'
+            elif check_type in self.image_types:
+                check_type = 'img'
+            match check_type:
                 case 'any' | 'all' | 'every':
                     if include_other_entities:
                         for used_name in iterator:
@@ -4165,8 +4177,12 @@ class ChloeAI:
                                             line = tf.readline()
                                             if not line:
                                                 break
-                                            line = decodeZipTxtLine(line)
-                                            total_size += Decimal(line[line.rfind('|')+1:])
+                                            line = decodeZipTxtLine(line).split('|')
+                                            match line[1]:
+                                                case 'TXT' | 'IMG' | 'SHP':
+                                                    total_size += Decimal(line[-2])
+                                                case _:
+                                                    total_size += Decimal(line[-3])
                                     metadata_files.remove('_metadata.txt')
                                 if len((metadata_files := tuple(metadata_files))):
                                     for metadata_file in metadata_files:
@@ -4187,9 +4203,12 @@ class ChloeAI:
                                             line = tf.readline()
                                             if not line:
                                                 break
-                                            line = decodeZipTxtLine(line)
-                                            total_size += Decimal(line[line.rfind('|')+1:])
-                                    metadata_files.remove('_metadata.txt')
+                                            line = decodeZipTxtLine(line).split('|')
+                                            match line[1]:
+                                                case 'TXT' | 'IMG' | 'SHP':
+                                                    total_size += Decimal(line[-2])
+                                                case _:
+                                                    total_size += Decimal(line[-3])
                                 if len((metadata_files := tuple(metadata_files))):
                                     for metadata_file in metadata_files:
                                         with zf.open(metadata_file) as tf:
@@ -4200,7 +4219,7 @@ class ChloeAI:
                                                     break
                                                 line = decodeZipTxtLine(line)
                                                 total_size += Decimal(line[line.rfind('|')+1:])
-                case 'txt' | 'pdf' | 'shp' | 'doc' | 'img':
+                case 'txt' | 'shp':
                     if include_other_entities:
                         for used_name in iterator:
                             with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
@@ -4212,19 +4231,20 @@ class ChloeAI:
                                                 break
                                             line = decodeZipTxtLine(line).lower().split('|')
                                             if check_type == line[1]:
-                                                total_size += Decimal(line[-1])
+                                                total_size += Decimal(line[-2])
                                 if '_alia_dosieroj.txt' in items:
                                     with zf.open('_alia_dosieroj.txt') as tf:
                                         while True:
-                                            size = tf.readline()
-                                            if not size:
+                                            line = tf.readline()
+                                            if not line:
                                                 break
-                                            if (size := decodeZipTxtLine(size).split('|')[-1]) != '<NULL>':
-                                                total_size += Decimal(size)
+                                            line = decodeZipTxtLine(line).lower().split('|')
+                                            if line[0].endswith(check_type):
+                                                total_size += Decimal(line[-1])
                     else:
                         for used_name in iterator:
                             with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                                if '_metadata.txt' in set(zf.namelist()):
+                                if '_metadata.txt' in (items := set(zf.namelist())):
                                     with zf.open('_metadata.txt') as tf:
                                         while True:
                                             line = tf.readline()
@@ -4232,37 +4252,83 @@ class ChloeAI:
                                                 break
                                             line = decodeZipTxtLine(line).lower().split('|')
                                             if check_type == line[1]:
-                                                total_size += Decimal(line[-1])
-                case 'gdb':
+                                                total_size += Decimal(line[-2])
+                case 'img':
+                    if include_other_entities:
+                        for used_name in iterator:
+                            with Zipfile(f'{self.db_path}/{used_name}.zip') as tf:
+                                if '_alia_dosieroj.txt' in (items := set(zf.namelist())):
+                                    with zf.open('_alia_dosieroj.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line).split('|')
+                                            if '.' in line[0]:
+                                                if line[0][line[0].rfind('.')+1:] in self.known_image_types:
+                                                    total_size += Decimal(line[-1])
+                                if '_metadata.txt' in items:
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line).lower().split('|')
+                                            if line[1] == check_type:
+                                                total_size += Decimal(line[-2])
+                    else:
+                        for used_name in iterator:
+                            with Zipfile(f'{self.db_path}/{used_name}.zip') as tf:
+                                if '_metadata.txt' in set(zf.namelist()):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line).lower().split('|')
+                                            if line[1] == check_type:
+                                                total_size += Decimal(line[-2])
+                case 'doc' | 'pdf':
                     if include_other_entities:
                         for used_name in iterator:
                             with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                                if '_alia_dosieroj.txt' in (items := tuple(zf.namelist())):
+                                if '_metadata.txt' in (items := set(zf.namelist())):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line).lower().split('|')
+                                            if check_type == line[1]:
+                                                total_size += Decimal(line[-3])
+                                if '_alia_dosieroj.txt' in items:
                                     with zf.open('_alia_dosieroj.txt') as tf:
                                         while True:
-                                            size = tf.readline()
-                                            if not size:
-                                                break
-                                            if (size := decodeZipTxtLine(size).split('|')[-1]) != '<NULL>':
-                                                total_size += Decimal(size)
-                                if '_metadata.txt' in (metadata_files := [item for item in items if not '/' and item.endswith('_metadata.txt')]):
-                                    metadata_files.remove('_metadata.txt')
-                                if len((metadata_files := tuple(metadata_files))):
-                                    for metadata_file in metadata_files:
-                                        with zf.open(metadata_file) as tf:
                                             line = tf.readline()
-                                            while True:
-                                                line = tf.readline()
-                                                if not line:
-                                                    break
-                                                line = decodeZipTxtLine(line)
-                                                total_size += Decimal(line[line.rfind('|')+1:])
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line).lower().split('|')
+                                            if line[0].endswith(check_type):
+                                                total_size += Decimal(line[-1])
                     else:
                         for used_name in iterator:
                             with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                                if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' and item.endswith('_metadata.txt')]):
-                                    metadata_files.remove('_metadata.txt')
-                                if len((metadata_files := tuple(metadata_files))):
+                                if '_metadata.txt' in (items := set(zf.namelist())):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line).lower().split('|')
+                                            if check_type == line[1]:
+                                                total_size += Decimal(line[-3])
+                case 'gdb':
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' and item.endswith('_metadata.txt')]):
+                                metadata_files.remove('_metadata.txt')
+                            if len((metadata_files := tuple(metadata_files))):
+                                for metadata_file in metadata_files:
                                     with zf.open(metadata_file) as tf:
                                         line = tf.readline()
                                         while True:
@@ -4287,10 +4353,12 @@ class ChloeAI:
                         return 0
         elif isinstance(check_type,(tuple,list,set)):
             check_type = {item.lower().replace(' ','') for item in tuple(check_type)}
-            if 'img' in check_type:
-                for img_type in self.image_types:
-                    check_type.add(img_type)
-                check_type.remove('img')
+            img_type_found = False
+            for type_item in tuple(check_type):
+                if type_item in self.image_types:
+                    img_type_found = True
+                    check_type.remove(type_item)
+            check_type.add('img')
             if include_other_entities or 'alia' in check_type:
                 if 'alia' in check_type:
                     check_type.remove('alia')
@@ -4314,7 +4382,11 @@ class ChloeAI:
                                             break
                                         line = decodeZipTxtLine(line).lower().split('|')
                                         if line[1] in check_type:
-                                            total_size += Decimal(line[-1])
+                                            match line[1]:
+                                                case 'txt' | 'img' | 'shp':
+                                                    total_size += Decimal(line[-2])
+                                                case _:
+                                                    total_size += Decimal(line[-3])
                                 metadata_files.remove('_metadata.txt')
                             for metadata_file in (metadata_files := tuple(metadata_files)):
                                 with zf.open(metadata_file) as tf:
@@ -4344,7 +4416,11 @@ class ChloeAI:
                                             break
                                         line = decodeZipTxtLine(line).lower().split('|')
                                         if line[1] in check_type:
-                                            total_size += Decimal(line[-1])
+                                            match line[1]:
+                                                case 'txt' | 'shp' | 'img':
+                                                    total_size += Decimal(line[-2])
+                                                case _:
+                                                    total_size += Decimal(line[-3])
             else:
                 if 'gdb' in check_type:
                     check_type.remove('gdb')
@@ -4358,7 +4434,11 @@ class ChloeAI:
                                             break
                                         line = decodeZipTxtLine(line).lower().split('|')
                                         if line[1] == check_type:
-                                            total_size += Decimal(line[-1])
+                                            match line[1]:
+                                                case 'txt' | 'shp' | 'img':
+                                                    total_size += Decimal(line[-2])
+                                                case _:
+                                                    total_size += Decimal(line[-3])
                                 metadata_files.remove('_metadata.txt')
                             for metadata_file in (metadata_files := tuple(metadata_files)):
                                 with zf.open(metadata_file) as tf:
@@ -4380,7 +4460,11 @@ class ChloeAI:
                                             break
                                         line = decodeZipTxtLine(line).lower().split('|')
                                         if line[1] == check_type:
-                                            total_size += Decimal(line[-1])
+                                            match line[1]:
+                                                case 'txt' | 'img' | 'shp':
+                                                    total_size += Decimal(line[-2])
+                                                case _:
+                                                    total_size += Decimal(line[-3])
         else:
             # invalid input.
             return 0
@@ -4391,7 +4475,7 @@ class ChloeAI:
         return int(total_size)
 
 
-    def getTotalNumRefEntities(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display_enabled : bool = False) -> int:
+    def getTotalRefNum(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display_enabled : bool = False) -> int:
         '''
         Number of entities in database.
         '''
@@ -4408,7 +4492,9 @@ class ChloeAI:
         if isinstance(check_type,str):
             if (check_type := check_type.lower().strip()) == 'doc':
                 check_type = 'docx'
-            match (checking_type := check_type.lower().strip()):
+            elif check_type in self.image_types:
+                check_type = 'img'
+            match check_type:
                 case 'any' | 'all' | 'every':
                     if include_other_entities:
                         for used_name in iterator:
