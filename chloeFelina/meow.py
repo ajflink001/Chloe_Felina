@@ -1,4 +1,4 @@
-import csv,logging
+import csv,logging,warnings
 from string import ascii_letters,digits,ascii_uppercase
 from shutil import copy2,copy,copyfile
 from pathlib import Path
@@ -50,6 +50,8 @@ if logging.root.manager.disable != 50:
             logging.disable(logging.FATAL)
         except Exception:
             pass
+
+warnings.simplefilter("ignore")
 
 alnums = f'{ascii_letters}{digits}'
 
