@@ -62,48 +62,6 @@ def isQueryMatchKether(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
     return False
 
 
-def isQueryMatchBinah(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
-
-    if not (len_txt_lines := len(txt_lines)):
-        return False
-    elif len_txt_lines == 1:
-        current_line = decodeZipTxtLine(txt_lines[0])
-        current_line = current_line.lower()
-        while entry_string in current_line:
-            # prevents index-related error.
-            max_index = len(current_line)-1
-            if (temp_num := current_line.find(entry_string)+len(entry_string)) > max_index:
-                return True
-            elif not current_line[temp_num].isalnum():
-                return True
-    else:
-        checked_index = -1
-        for n in range(len_txt_lines-1):
-            if n == checked_index:
-                continue
-            current_line = decodeZipTxtLine(txt_lines[n])
-            next_line = decodeZipTxtLine(txt_lines[n+1])
-            current_line_lower = current_line.lower() ; next_line_lower = next_line.lower()
-            if entry_string in (temp_str := f'{current_line_lower}{next_line_lower}'):
-                while entry_string in temp_str:
-                    max_index = len(temp_str)-1
-                    if (temp_num := temp_str.find(entry_string)+len(entry_string)) > max_index:
-                        return True
-                    elif not temp_str[temp_num].isalnum():
-                        return True
-                    temp_str = temp_str[temp_num:]
-            elif entry_string in (temp_str := f'{current_line_lower} {next_line_lower}'):
-                while entry_string in temp_str:
-                    max_index = len(temp_str)-1
-                    if (temp_num := temp_str.find(entry_string)+len(entry_string)) > max_index:
-                        return True
-                    elif not temp_str[temp_str].isalnum():
-                        return True
-                    temp_str = temp_str[temp_num:]
-            checked_index = n+1
-
-    return False
-
 def isQueryMatchDaath(entry_string: str, entity_path : str, zf) -> bool:
 
     with zf.open(entity_path) as tf:
