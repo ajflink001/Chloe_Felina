@@ -82,7 +82,7 @@ from winsound import PlaySound,SND_FILENAME
 from secrets import choice
 
 # Custom Python Modules
-from chloeFelina.purr import isQueryMatchKether,isQueryMatchBinah,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName,decodeZipTxtLine,getTxtFileLines,fileNameFixer
+from chloeFelina.purr import isQueryMatchKether,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName,decodeZipTxtLine,getTxtFileLines,fileNameFixer
 from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,genSearchQueryResultFile,forbidden_dirs,backupGen,genDuplicateFinderResultFile
 from chloeFelina.paxium import encrypt as pax_encrypt
 from chloeFelina.paxium import decrypt as pax_decrypt
