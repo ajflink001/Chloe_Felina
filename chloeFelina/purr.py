@@ -89,7 +89,7 @@ def isQueryMatchBinah(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
                     max_index = len(temp_str)-1
                     if (temp_num := temp_str.find(entry_string)+len(entry_string)) > max_index:
                         return True
-                    elif not temp_str[temp_str].isalnum():
+                    elif not temp_str[temp_num].isalnum():
                         return True
                     temp_str = temp_str[temp_num:]
             elif entry_string in (temp_str := f'{current_line_lower} {next_line_lower}'):
