@@ -1,3 +1,4 @@
+import re
 from typing import AnyStr
 
 forbidden_file_chars = ('\\','/','*','?','"',"<",">","|")
@@ -46,7 +47,7 @@ def isQueryMatchKether(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
     elif len_txt_lines == 1:
         current_line = decodeZipTxtLine(txt_lines[0])
         for word in tuple(current_line.lower().split(' ')):
-            if entry_string in word:
+            if entry_string == "".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]):
                 return True
     else:
         checked_index = -1
@@ -55,8 +56,9 @@ def isQueryMatchKether(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
                 continue
             current_line = decodeZipTxtLine(txt_lines[n]) ; current_line_lower = current_line.lower()
             next_line = decodeZipTxtLine(txt_lines[n+1]) ; next_line_lower = next_line.lower()
-            if entry_string in set((current_line_lower+' '+next_line_lower).split(' ') + (current_line_lower+next_line_lower).split() + (current_line_lower.rstrip('-')+next_line_lower).split(' ')):
-                return True
+            for item in tuple(set((current_line_lower+' '+next_line_lower).split(' ') + (current_line_lower+next_line_lower).split() + (current_line_lower.rstrip('-')+next_line_lower).split(' '))):
+                if entry_string == "".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',item)) if segment]):
+                    return True
             checked_index = n+1
 
     return False
@@ -71,8 +73,9 @@ def isQueryMatchDaath(entry_string: str, entity_path : str, zf) -> bool:
                 break
             current_line = decodeZipTxtLine(current_line)
             for item in tuple(current_line.lower().split('|')):
-                if entry_string in set(item.split(' ') + item.replace('-','').split(' ') + item.replace('_','').split(' ')):
-                    return True
+                for word in tuple(set(item.split(' ') + item.replace('-','').split(' ') + item.replace('_','').split(' '))):
+                    if entry_string == "".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]):
+                        return True
 
     return False
 
@@ -85,15 +88,9 @@ def isQueryMatchChochmah(entry_string : str, entity_path : str, zf) -> bool:
             if not current_line:
                 break
             current_line = decodeZipTxtLine(current_line)
-            if entry_string in (current_line := current_line.lower()):
-                while entry_string in current_line:
-                    # Prevents index-related error.
-                    max_index = len(current_line)-1
-                    if (temp_num := current_line.find(entry_string)+len(entry_string)) > max_index:
-                        return True
-                    elif not current_line[temp_num].isalnum():
-                        return True
-                    current_line = current_line[temp_num:]
+            for group in tuple(current_line.lower().split('|')):
+                if entry_string in ' '.join(["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]) for word in tuple(group.split(' '))]):
+                    return True
 
     return False
 
@@ -103,19 +100,25 @@ def isQueryMatchGewurah(entry_string : str, txt_lines : tuple[AnyStr], max_line_
     if not (len_txt_lines := len(txt_lines)):
         return False
     elif len_txt_lines == 1:
-        if entry_string in decodeZipTxtLine(txt_lines[0]).lower():
+        txt_line = decodeZipTxtLine(txt_lines[0]).lower()
+        if entry_string in " ".join(["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]) for word in txt_line.split(' ')]):
             return True
     elif len_txt_lines < max_line_concat:
         for n in range(len((txt_lines := list(txt_lines)))):
-            txt_lines[n] = decodeZipTxtLine(txt_lines[n])
-        if entry_string in "".join((txt_lines := tuple(txt_lines))).lower() or " ".join(txt_lines).lower():
+            txt_lines[n] = decodeZipTxtLine(txt_lines[n]).lower()
+        pass
+    elif len_txt_lines < max_line_concat:
+        for n in range(len((txt_lines := list(txt_lines)))):
+            txt_lines[n] = decodeZipTxtLine(txt_lines[n]).lower()
+        txt_lines = tuple(txt_lines)
+        if entry_string in " ".join(["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]) for word in tuple("".join(txt_lines).split(' '))]):
             return True
     else:
         for n in range(len_txt_lines-max_line_concat+1):
-            current_lines = []
-            for k in range(max_line_concat):
-                current_lines.append(decodeZipTxtLine(txt_lines[n+k]))
-            if entry_string in ''.join((current_lines := tuple(current_lines))).lower() or entry_string in ' '.join(current_lines).lower() or entry_string in ''.join(current_lines).lower().replace('-','') or ' '.join(current_lines).lower().replace('-',''):
+            current_lines = [decodeZipTxtLine(txt_lines[n+k]).lower() for k in range(max_line_concat)]
+            if entry_string in " ".join([["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment])] for word in tuple("".join(current_lines).split(' '))]):
+                return True
+            if entry_string in " ".join([["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment])] for word in tuple(" ".join(current_lines).split(' '))]):
                 return True
 
     return False

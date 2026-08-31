@@ -66,7 +66,7 @@ except ImportError: openpyxl_imported = False
 except ModuleNotFoundError: openpyxl_imported = False
 
 # Built-In Python Modules
-import csv,logging,warnings,hashlib
+import csv,logging,warnings,hashlib,re
 from os import walk as walker
 from os import listdir,mkdir,chdir,getcwd,remove,chmod,rename
 from os.path import exists,isfile,isdir
@@ -131,6 +131,16 @@ def playChloeHappy(use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer :
     return None
 
 setlocale(LC_ALL,'')
+
+
+def genZipFileLoc(input_directory : str, output_directory : str, output_name : str | None = None, overwrite_existing_zipfile : bool = False, only_surface_folder : bool = False) -> None:
+
+    if not exists((input_directory := input_directory.replace('\\','/'))) or not exists((output_directory := output_directory.replace('\\','/'))):
+        return None
+
+
+    return None
+
 
 class ChloeAI:
 
@@ -349,7 +359,10 @@ class ChloeAI:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
 
 
-    def autoUpdateDatabase(self, keep_db_if_no_connection : bool = True, clear_terms_searched : bool = True, keep_stored_if_module_missing : bool = False, terminal_progress_display_enabled : bool = False) -> None:
+    def autoUpdateDatabase(self, keep_db_if_no_connection : bool = True, clear_terms_searched : bool = True, terminal_progress_display_enabled : bool = False) -> None:
+        '''
+        WIP
+        '''
 
         if terminal_progress_display_enabled and tqdm_imported:
             sys_clear()
@@ -433,218 +446,296 @@ class ChloeAI:
                         redact_dbs.append(db_name)
             for redact_db in (redact_dbs := tuple(redact_dbs)):
                 self.removeCrintumEntry(self.path_pointer[redact_db])
-                remove(f'{self.db_path}/{redact_db}.zip')
+                remove(f'{self.db_path}/{redact_db}')
             del redact_dbs
             try: del reference_directory
             except NameError: pass
-            for db_name in tuple(self.used_names):
-                ref_path = self.path_pointer[db_name]
-                stored_items = {}
-                with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
-                    if '_alia_dosieroj.txt' in (items := set(zf.namelist())):
+            if tqdm_imported:
+                iterator = tqdm(tuple(self.paths_in_db),disable = not terminal_progress_display_enabled, desc = "Comparing and Rectifying Referenced Data with Actual Data")
+                if terminal_progress_display_enabled:
+                    sys_clear()
+            else:
+                iterator = tuple(self.paths_in_db)
+            no_dedicated_folders_types = ('GDB','DOC','PDF','ALIA')
+            for ref_path in iterator:
+                db_items = {}
+                current_db_name = self.crintum_pointer[ref_path]
+                uncompressed_zip_folder = False
+                with ZipFile(f'{self.db_path}/{current_db_name}.zip') as zf:
+                    if '_alia_dosieroj.txt' in (zf_items := set(zf.namelist())):
+                        db_items['ALIA'] = {}
                         with zf.open('_alia_dosieroj.txt') as tf:
                             while True:
                                 line = tf.readline()
                                 if not line:
                                     break
                                 line = decodeZipTxtLine(line).split('|')
-                                stored_items[line[0]] = 'ALIA'
-                        items.remove('_alia_dosieroj.txt')
-                    if '_metadata.txt' in items:
+                                db_items['ALIA'][line[0]] = tuple(line[1:])
+                        zf_items.remove('_alia_dosieroj.txt')
+                    if '_metadata.txt' in zf_items:
                         with zf.open('_metadata.txt') as tf:
                             while True:
                                 line = tf.readline()
                                 if not line:
                                     break
                                 line = decodeZipTxtLine(line).split('|')
-                                stored_items[f"{line[0][:line[0].rfind('_')]}.{line[0][line[0].rfind('_')+1:]}"] = line[1]
-                        items.remove('_metadata.txt')
-                    for item in tuple(items):
-                        if item.lower().endswith('_gdb_metadata.txt'):
-                            stored_items[f"{item[:item.rfind('_')]}.{item[item.rfind('_')+1:]}"] = 'GDB'
-                try: del items
+                                if line[1] in db_items.keys():
+                                    db_items[line[1]][line[0]] = tuple(line[2:])
+                                else:
+                                    db_items[line[1]] = {line[0] : tuple(line[2:])}
+                        zf_items.remove('_metadata.txt')
+                    if len((gdb_metadata_files := tuple([item for item in tuple(zf_items) if not '/' in item and item.lower().endswith('gdb_metadata.txt')]))):
+                        db_items['GDB'] = {}
+                        for gdb_metadata_file in gdb_metadata_files:
+                            db_items['GDB'][(gdb_folder_name := gdb_metadata_file[:gdb_metadata_file.rfind('_')])] = {}
+                            with zf.open(gdb_metadata_file) as tf:
+                                line = tf.readline()
+                                while True:
+                                    line = tf.readline()
+                                    if not line:
+                                        break
+                                    line = decodeZipTxtLine(line).split('|')
+                                    db_items['GDB'][gdb_folder_name][line[0]] = tuple(line[1:])
+                try: del zf_items
                 except NameError: pass
-                real_items = []
-                try:
-                    for item in tuple([item for item in tuple(listdir(ref_path))]):
-                        if isfile(f'{ref_path}/{item}'):
-                            real_items.append(item)
-                        elif isdir(f'{ref_path}/{item}') and item.lower().endswith('.gdb'):
-                            real_items.append(item)
-                except Exception:
-                    if keep_db_if_no_connection:
-                        continue
+                try: del gdb_metadata_files
+                except NameError: pass
+                metadata_deleted = set() ; alia_deleted = set()
+                actual_items = tuple([item for item in tuple(listdir(ref_path)) if all((isdir(f'{ref_path}/{item}'),item.lower().endswith('.gdb'))) or isfile(f'{ref_path}/{item}')])
+                for extension in tuple(db_items.keys()):
+                    for item in tuple(db_items[extension].keys()):
+                        if not f"{item[:item.rfind('_')]}.{item[item.rfind('_')+1:]}" in actual_items:
+                            if not exists(f'{self.db_path}/{current_db_name}'):
+                                uncompressed_zip_folder = True
+                                self.uncompressZIP(current_db_name)
+                            del db_items[extension][item]
+                            match extension:
+                                case 'TXT':
+                                    metadata_deleted.add(item)
+                                    remove(f'{self.db_path}/{current_db_name}/_txt_files/{item}.txt')
+                                case 'PDF' | 'DOC':
+                                    metadata_deleted.add(item)
+                                    rmtree(f'{self.db_path}/{current_db_name}/{item}')
+                                case 'IMG':
+                                    metadata_deleted.add(item)
+                                    remove(f'{self.db_path}/{current_db_name}/_images/{item}.txt')
+                                case 'SHP':
+                                    metadata_deleted.add(item)
+                                    remove(f'{self.db_path}/{current_db_name}/_shp_files/{item}.txt')
+                                case 'GDB':
+                                    rmtree(f'{self.db_path}/{current_db_name}/{item}')
+                                    remove(f'{self.db_path}/{current_db_name}/{item}.txt')
+                                case _:
+                                    # ALIA
+                                    alia_deleted.add(item)
+                if len(metadata_deleted):
+                    original_lines = [line.rstrip('\n') for line in tuple(open(f'{self.db_path}/{current_db_name}/_metadata.txt','r',encoding='utf-8').readlines())]
+                    for line in tuple(original_lines):
+                        if line[:line.find('|')] in metadata_deleted:
+                            original_lines.remove(line)
+                    if len((original_lines := tuple(original_lines))):
+                        with open(f'{self.db_path}/{current_db_name}/_metadata.txt','w',encoding='utf-8') as tf:
+                            tf.write(original_lines[0])
+                            for n in range(1,len(original_lines)):
+                                tf.write(f'\n{original_lines[n]}')
                     else:
-                        self.removeCrintumEntry(ref_path)
-                        remove(f'{self.db_path}/{db_name}.zip')
-                        continue
-                testing_set = set(stored_items.keys())
-                for item in tuple(real_items):
-                    if not item in testing_set:
-                        real_items.remove(item)
-                        if not exists(f'{self.db_path}/{db_name}'):
-                            self.uncompressZIP(db_name)
+                        remove(f'{self.db_path}/{current_db_name}/_metadata.txt')
+                del metadata_deleted
+                if len(alia_deleted):
+                    original_lines = [line.rstrip('\n') for line in tuple(open(f'{self.db_path}/{current_db_name}/_alia_dosieroj.txt','r',encoding='utf-8').readlines())]
+                    for line in tuple(original_lines):
+                        if line[:line.find('|')] in alia_deleted:
+                            original_lines.remove(line)
+                    if len((original_lines := tuple(original_lines))):
+                        with open(f'{self.db_path}/{current_db_name}/_alia_dosieroj.txt','w',encoding='utf-8') as tf:
+                            tf.write(original_lines[0])
+                            for n in range(1,len(original_lines)):
+                                tf.write(f'\n{original_lines[n]}')
+                    else:
+                        remove(f'{self.db_path}/{current_db_name}/_alia_dosieroj.txt')
+                del alia_deleted
+                try: del original_lines
+                except NameError: pass
+                if uncompressed_zip_folder:
+                    if 'TXT' in (testing_set := set(db_items.keys())):
+                        if not len(listdir(f'{self.db_path}/{current_db_name}/_txt_files')):
+                            del db_items['TXT']
+                            try:
+                                remove(f'{self.db_path}/{current_db_name}/_txt_files')
+                            except Exception:
+                                rmtree(f'{self.db_path}/{current_db_name}/_txt_files')
+                    if 'SHP' in testing_set:
+                        if not len(listdir(f'{self.db_path}/{current_db_name}/_shp_files')):
+                            del db_items['SHP']
+                            try:
+                                remove(f'{self.db_path}/{current_db_name}/_shp_files')
+                            except Exception:
+                                rmtree(f'{self.db_path}/{current_db_name}/_shp_files')
+                    if 'IMG' in testing_set:
+                        if not len(listdir(f'{self.db_path}/{current_db_name}/_images')):
+                            del db_items['IMG']
+                            try:
+                                remove(f'{self.db_path}/{current_db_name}/_images')
+                            except Exception:
+                                rmtree(f'{self.db_path}/{current_db_name}/_images')
+                    for extension in no_dedicated_folders_types:
+                        if extension in testing_set:
+                            if not len(db_items[extension].keys()):
+                                del db_items[extension]
+                    del testing_set
+                testing_set = []
+                for extension in db_items.keys():
+                    testing_set += list(db_items[extension].keys())
+                testing_set = set(testing_set)
+                for item in tuple(actual_items):
+                    if not f"{item[:item.rfind('.')]}_{item[item.rfind('.')+1:]}" in testing_set:
+                        if not uncompressed_zip_folder:
+                            uncompressed_zip_folder = True
+                            self.uncompressZIP(current_db_name)
+                        actual_items.remove(item)
                         if not '.' in item:
-                            self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                            self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
                         else:
-                            match (extension := item[item.rfind('.')+1:]):
+                            match (extension := item.lower()[item.rfind(".")+1:]):
                                 case 'txt':
                                     try:
-                                        if not self.archive_txt_data(f'{ref_path}/{item}',db_name):
-                                            self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                    except Exception:
-                                        self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                case 'docx':
-                                    if not docx_imported or not docx2_imported or not pil_imported:
-                                        self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                    else:
-                                        try:
-                                            pass
-                                        except Exception:
-                                            if exists(f'{self.db_path}/{db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
-                                                rmtree(f'{self.db_path}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
-                                            self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                case 'pdf':
-                                    if not pypdf_imported or not pil_imported:
-                                        self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                    else:
-                                        try:
-                                            if not self.archive_pdf_data(f'{ref_path}/{item}',db_name):
-                                                self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                        except Exception:
-                                            if exists(f'{self.db_path}/{db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
-                                                rmtree(f'{self.db_path}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
-                                            self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                case 'shp':
-                                    if not arcpy_imported:
-                                        self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                    else:
-                                        try:
-                                            if not self.archive_shp_data(f'{ref_path}/{item}',db_name):
-                                                self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                        except Exception:
-                                            if exists(f'{self.db_path}/{db_name}/_shp_files'):
-                                                if not len(listdir(f'{self.db_path}/{db_name}/_shp_files')):
+                                        if not self.archive_txt_data(f'{ref_path}/{item}',current_db_name):
+                                            if exists((temp_path := f'{self.db_path}/{current_db_name}/_txt_files')):
+                                                if not len(listdir(temp_path)):
                                                     try:
-                                                        remove(f'{self.db_path}/{db_name}/_shp_files')
+                                                        remove(temp_path)
                                                     except Exception:
-                                                        rmtree(f'{self.db_path}/{db_name}/_shp_files')
-                                            self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                                                        rmtree(temp_path)
+                                            self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                    except Exception:
+                                        if exists((temp_path := f'{self.db_path}/{current_db_name}/_txt_files')):
+                                            if not len(listdir(temp_path)):
+                                                try:
+                                                    remove(temp_path)
+                                                except Exception:
+                                                    rmtree(temp_path)
+                                        self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                case 'pdf':
+                                    try:
+                                        if not self.archive_pdf_data(f'{ref_path}/{item}',current_db_name):
+                                            if exists(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
+                                                rmtree(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
+                                            self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                    except Exception:
+                                        if exists(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
+                                            rmtree(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
+                                        self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                case 'docx':
+                                    try:
+                                        if not self.archive_doc_data(f'{ref_path}/{item}',current_db_name):
+                                            if exists(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
+                                                rmtree(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
+                                            self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                    except Exception:
+                                        if exists(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
+                                            rmtree(f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
+                                        self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                case 'shp':
+                                    try:
+                                        if not self.archive_shp_data(f'{ref_path}/{item}',current_db_name):
+                                            if exists((temp_path := f'{self.db_path}/{current_db_name}/_shp_files')):
+                                                if not len(listdir(temp_path)):
+                                                    try:
+                                                        remove(temp_path)
+                                                    except Exception:
+                                                        rmtree(temp_path)
+                                            self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                    except Exception:
+                                        if exists((temp_path := f'{self.db_path}/{current_db_name}/_shp_files')):
+                                            if not len(listdir(temp_path)):
+                                                try:
+                                                    remove(temp_path)
+                                                except Exception:
+                                                    rmtree(temp_path)
+                                        self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
                                 case 'gdb':
-                                    if not arcpy_imported:
-                                        # placeholder
-                                        pass
-                                    else:
-                                        try:
-                                            if not self.archive_gdb_data(f'{ref_path}/{item}',db_name):
-                                                if exists(f'{self.db_path}/{db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
-                                                    rmtree(f'{self.db_path}/{db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
-                                                if exists(f'{self.db_path}/{db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10_123456790.gdb'):
-                                                    rmtree(f'{self.db_path}/{db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10_123456790.gdb')
-                                                if exists(f'{self.db_path}/{db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}_metadata.txt'):
-                                                    remove(f'{self.db_path}/{db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}_metadata.txt')
-                                        except Exception:
-                                            if exists(f'{self.db_path}/{db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
-                                                rmtree(f'{self.db_path}/{db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
-                                            if exists(f'{self.db_path}/{db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10_123456790.gdb'):
-                                                rmtree(f'{self.db_path}/{db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10_123456790.gdb')
-                                            if exists(f'{self.db_path}/{db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}_metadata.txt'):
-                                                remove(f'{self.db_path}/{db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}_metadata.txt')
+                                    try:
+                                        if not self.archive_gdb_data(f'{ref_path}/{item}',current_db_name):
+                                            if exists((temp_path := f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')):
+                                                rmtree(temp_path)
+                                            if exists(f'{temp_path}_metadata.txt'):
+                                                remove(f'{temp_path}_metadata.txt')
+                                    except Exception:
+                                        if exists((temp_path := f'{self.db_path}/{current_db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')):
+                                            rmtree(temp_path)
+                                        if exists(f'{temp_path}_metadata.txt'):
+                                            remove(f'{temp_path}_metadata.txt')
                                 case _:
                                     if extension in self.image_types:
-                                        if not pil_imported:
-                                            self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                        else:
-                                            try:
-                                                if not self.archive_img_data(f'{ref_path}/{item}',db_name):
-                                                    self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                            except Exception:
-                                                if exists(f'{self.db_path}/{db_name}/_images'):
-                                                    if not len(listdir(f'{self.db_path}/{db_name}/_images')):
+                                        try:
+                                            if not self.archive_img_data(f'{ref_path}/{item}',current_db_name):
+                                                if exists(f'{self.db_path}/{current_db_name}/_images'):
+                                                    if not len(listdir(f'{self.db_path}/{current_db_name}/_images')):
                                                         try:
-                                                            remove(f'{self.db_path}/{db_name}/_images')
+                                                            remove(f'{self.db_path}/{current_db_name}/_images')
                                                         except Exception:
-                                                            rmtree(f'{self.db_path}/{db_name}/_images')
-                                            self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                                                            rmtree(f'{self.db_path}/{current_db_name}/_images')
+                                            else:
+                                                self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                                        except Exception:
+                                            if exists(f'{self.db_path}/{current_db_name}/_images'):
+                                                if not len(listdir(f'{self.db_path}/{current_db_name}/_images')):
+                                                    try:
+                                                        remove(f'{self.db_path}/{current_db_name}/_images')
+                                                    except Exception:
+                                                        rmtree(f'{self.db_path}/{current_db_name}/_images')
+                                            self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
                                     else:
-                                        self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                testing_set = set(real_items)
-                redacted_metadata_items = set()
-                redacted_image_items = set()
-                redacted_alia_items = set()
-                for item in tuple(stored_items.keys()):
-                    if not item in testing_set:
-                        if not exists(f'{self.db_path}/{db_name}'):
-                            self.uncompressZIP(db_name)
-                        match stored_items[item]:
-                            case 'TXT':
-                                redacted_metadata_items.add((item_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'))
-                                remove(f'{self.db_path}/{db_name}/_txt_files/{item_name}.txt')
-                            case 'DOC' | 'PDF':
-                                redacted_metadata_items.add((item_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'))
-                                rmtree(f'{self.db_path}/{db_name}/{item_name}')
-                            case 'SHP':
-                                redacted_metadata_items.add((item_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'))
-                                remove(f'{self.db_path}/{db_name}/_shp_files/{item_name}.txt')
-                            case 'IMG':
-                                redacted_metadata_items.add((item_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'))
-                                redacted_image_items.add(item_name)
-                                remove(f'{self.db_path}/{db_name}/_images/{item_name}.txt')
-                            case 'GDB':
-                                item_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'
-                                rmtree(f'{self.db_path}/{db_name}/{item_name}')
-                                remove(f'{self.db_path}/{db_name}/{item_name}_metadata.txt')
-                            case _:
-                                # ALIA
-                                redacted_alia_items.add(item)
-                        del stored_items[item]
-                if len(redacted_metadata_items):
-                    if len(redacted_image_items):
-                        if len((firstlines := tuple([line.rstrip('\n') for line in tuple(open(f'{self.db_path}/{db_name}/_firstline_image_files.txt',encoding='utf-8').readlines()) if not line[:line.rfind(' ')] in redacted_image_items]))):
-                            with open(f'{self.db_path}/{db_name}/_firstline_image_files.txt','w',encoding='utf-8') as tf:
-                                tf.write(firstlines[0])
-                                for n in range(1,len(firstlines)):
-                                    tf.write(f'\n{firstlines[n]}')
-                        else:
-                            remove(f'{self.db_path}/{db_name}/_firstline_image_files.txt')
-                            rmtree(f'{self.db_path}/{db_name}/_images')
-                        del firstlines
-                    if len((new_lines := tuple([line.rstrip('\n') for line in tuple(open(f'{self.db_path}/{db_name}/_metadata.txt',encoding='utf-8').readlines()) if not line[:line.find('|')] in redacted_metadata_items]))):
-                        with open(f'{self.db_path}/{db_name}/_metadata.txt','w',encoding='utf-8') as tf:
-                            tf.write(new_lines[0])
-                            for n in range(1,len(new_lines)):
-                                tf.write(f'\n{new_lines[n]}')
-                    else:
-                        remove(f'{self.db_path}/{db_name}/_metadata.txt')
-                    if exists(f'{self.db_path}/{db_name}/_txt_files'):
-                        if not len(listdir(f'{self.db_path}/{db_name}/_txt_files')):
-                            rmtree(f'{self.db_path}/{db_name}/_txt_files')
-                    if exists(f'{self.db_path}/_{db_name}/_shp_files'):
-                        if not len(listdir(f'{self.db_path}/_{db_name}/_shp_files')):
-                            rmtree(f'{self.db_path}/_{db_name}/_shp_files')
-                    del new_lines
-                if len(redacted_alia_items):
-                    if len((new_lines := tuple([line.rstrip('\n') for line in tuple(open(f'{self.db_path}/{db_name}/_alia_dosieroj.txt',encoding='utf-8').readlines()) if not line[:line.find('|')] in redacted_alia_items]))):
-                        with open(f'{self.db_path}/{db_name}/_alia_dosieroj.txt','w',encoding='utf-8') as tf:
-                            tf.write(new_lines[0])
-                            for n in range(1,len(new_lines)):
-                                tf.write(f'\n{new_lines[n]}')
-                    else:
-                        remove(f'{self.db_path}/{db_name}/_alia_dosieroj.txt')
-
-                try: del new_lines
+                                        self.archive_alia_data(f'{ref_path}/{item}',current_db_name)
+                try: del temp_path
                 except NameError: pass
-                if exists(f'{self.db_path}/{db_name}'):
-                    if not len(listdir(f'{self.db_path}/{db_name}')):
-                        try:
-                            remove(f'{self.db_path}/{db_name}')
-                        except Exception:
-                            rmtree(f'{self.db_path}/{db_name}')
-                        self.removeCrintumEntry(ref_path)
-                        remove(f'{self.db_path}/{db_name}.zip')
+                actual_items = tuple(actual_items)
+                if 'GDB' in (extensions := list(db_items.keys())):
+                    extensions.remove('GDB')
+                extensions = tuple(extensions)
+                for item in actual_items:
+                    if item.lower().endswith(".gdb") and isdir(f'{ref_path}/{item}'):
+                        pass
                     else:
-                        remove(f'{self.db_path}/{db_name}.zip')
-                        self.compressToZIP(db_name)
+                        baseline_metadata = getTrueBaselineMetadata(f'{ref_path}/{item}')
+                        testing_name = f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'
+                        for extension in extensions:
+                            if testing_name in db_items[extension].keys():
+                                if db_items[extension][testing_name][0] != baseline_metadata[0] or db_items[extension][testing_name][1] != baseline_metadata[1] or db_items[extension][testing_name][-1] != baseline_metadata[2]:
+                                    if not uncompressed_zip_folder:
+                                        uncompressed_zip_folder = True
+                                        self.uncompressZIP(current_db_name)
+                                    if extension == 'ALIA':
+                                        if not item[item.rfind(".")+1:] in valid_extensions:
+                                            pass
+                                        else:
+                                            pass
+                                    else:
+                                        match extension:
+                                            case 'TXT':
+                                                pass
+                                            case 'PDF':
+                                                pass
+                                            case 'DOC':
+                                                pass
+                                            case 'SHP':
+                                                pass
+                                            case 'IMG':
+                                                pass
+                                            case _:
+                                                pass
+                if uncompressed_zip_folder:
+                    if len(db_items.keys()):
+                        remove(f'{self.db_path}/{current_db_name}.zip')
+                        self.compressToZIP(current_db_name)
+                    else:
+                        try:
+                            remove(f'{self.db_path}/{current_db_name}')
+                        except Exception:
+                            rmtree(f'{self.db_path}/{current_db_name}')
+                        remove(f'{self.db_path}/{current_db_name}.zip')
+                        self.removeCrintumEntry(ref_path)
+
 
         return None
 
@@ -891,17 +982,312 @@ class ChloeAI:
                                 self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case _:
                             self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
-                if exists(f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10_123456790.gdb'):
+                if exists(f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10.gdb'):
                     try:
-                        arcpy.management.Delete(f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10_123456790.gdb')
+                        arcpy.management.Delete(f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10.gdb')
                     except Exception:
-                        rmtree(f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10_123456790.gdb')
+                        rmtree(f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10.gdb')
                 if self.compressToZIP(archive_db_name):
                     self.appendCrintumEntry(reference_directory,archive_db_name)
                     if clear_terms_searched:
                         self.clearSearchQueryMemory()
                 if exists(f'{self.db_path}/{archive_db_name}'):
                     rmtree(f'{self.db_path}/{archive_db_name}')
+
+        return None
+
+
+    def compWinSysInfo(self, replace_existing_info : bool = False, terminal_progress_display_enabled : bool = False) -> None:
+
+        if not replace_existing_info and exists(f'{self.db_path}/Windows_MetaInfo.zip'):
+            return None
+
+        if tqdm_imported and terminal_progress_display_enabled:
+            sys_clear()
+
+        import hashlib
+
+        def md5_checksum(fname : str):
+            hash_md5 = hashlib.md5()
+            with open(fname, 'rb') as f:
+                for chunk in iter(lambda : f.read(4096),b""):
+                    hash_md5.update(chunk)
+            return hash_md5.hexdigest()
+
+        if not exists(f'{self.db_path}/Windows_MetaInfo'):
+            mkdir(f'{self.db_path}/Windows_MetaInfo')
+
+        def getBasicInfo(file_path : str) -> tuple:
+
+            temp_list = []
+
+            try: temp_list.append(getModifiedDate(file_path))
+            except Exception: temp_list.append('UNKNOWN')
+
+            try: temp_list.append(getCreatedDate(file_path))
+            except Exception: temp_list.append('UNKNOWN')
+
+            try: temp_list.append(str(getSizeOfItem(file_path)))
+            except Exception: temp_list.append('UNKNOWN')
+
+            try: temp_list.append(md5_checksum(file_path))
+            except Exception:temp_list.append('UNKNOWN')
+
+            return tuple(temp_list)
+
+        path_index = {}
+
+        if tqdm_imported:
+            for prime_dir in ('C:/Windows','C:/Program Files','C:/Program Files (x86)','C:/ProgramData'):
+                for root,dirs,files in walker(prime_dir):
+                    if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
+                        file_info = {}
+                        for file in tqdm(tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]), disable = not terminal_progress_display_enabled, desc = root[root.rfind('/')+1:]):
+                            file_info[file] = getBasicInfo(f'{root}/{file}')
+                        if len((files := tuple(file_info.keys()))):
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                tf.write("%s|%s" % (files[0],'|'.join(file_info[files[0]])))
+                                for n in range(1,len(files)):
+                                    tf.write(f"\n%s|%s" % (files[n],'|'.join(file_info[files[n]])))
+                        else:
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                pass
+                if terminal_progress_display_enabled:
+                    sys_clear()
+            for user in tuple(listdir('C:/Users')):
+                for root,dirs,files in walker(f'C:/Users/{user}/AppData'):
+                    if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
+                        file_info = {}
+                        for file in tqdm(tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]), disable = not terminal_progress_display_enabled, desc = root[root.rfind('/')+1:]):
+                            file_info[file] = getBasicInfo(f'{root}/{file}')
+                        if len((files := tuple(file_info.keys()))):
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                tf.write("%s|%s" % (files[0],'|'.join(file_info[files[0]])))
+                                for n in range(1,len(files)):
+                                    tf.write(f"\n%s|%s" % (files[n],'|'.join(file_info[files[n]])))
+                        else:
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                pass
+            if terminal_progress_display_enabled:
+                sys_clear()
+        else:
+            for prime_dir in ('C:/Windows','C:/Program Files','C:/Program Files (x86)','C:/ProgramData'):
+                for root,dirs,files in walker(prime_dir):
+                    if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
+                        file_info = {}
+                        for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
+                            file_info[file] = getBasicInfo(f'{root}/{file}')
+                        if len((files := tuple(file_info.keys()))):
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                tf.write("%s|%s" % (files[0],'|'.join(file_info[files[0]])))
+                                for n in range(1,len(files)):
+                                    tf.write(f"\n%s|%s" % (files[n],'|'.join(file_info[files[n]])))
+                        else:
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                pass
+            for user in tuple(listdir('C:/Users')):
+                for root,dirs,files in walker(f'C:/Users/{user}/AppData'):
+                    if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
+                        file_info = {}
+                        for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
+                            file_info[file] = getBasicInfo(f'{root}/{file}')
+                        if len((files := tuple(file_info.keys()))):
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                tf.write("%s|%s" % (files[0],'|'.join(file_info[files[0]])))
+                                for n in range(1,len(files)):
+                                    tf.write(f"\n%s|%s" % (files[n],'|'.join(file_info[files[n]])))
+                        else:
+                            directory_name = randstr(12)
+                            while directory_name in path_index.keys():
+                                directory_name = randstr(12)
+                            path_index[root] = directory_name
+                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
+                                pass
+
+        path_index_paths = tuple(path_index.keys())
+
+        with open(f'{self.db_path}/Windows_MetaInfo/_directory_reference.txt','w',encoding='utf-8') as tf:
+            tf.write(f"{path_index_paths[0]}|{path_index[path_index_paths[0]]}")
+            for n in range(1,len(path_index_paths)):
+                tf.write(f'\n{path_index_paths[n]}|{path_index[path_index_paths[n]]}')
+
+        current_dir = getcwd()
+        try:
+            chdir(f'{self.db_path}/Windows_MetaInfo')
+            items = tuple(listdir(getcwd()))
+            with ZipFile('Windows_MetaInfo.zip','w',ZIP_DEFLATED,True,9) as zf:
+                if tqdm_imported:
+                    for item in tqdm(items,disable = not terminal_progress_display_enabled, desc = f"Generating {self.db_path}/Windows_MetaInfo.zip"):
+                        if isfile(item):
+                            zf.write(item)
+                else:
+                    for item in items:
+                        if isfile(item):
+                            zf.write(item)
+            chdir(current_dir)
+        except Exception:
+            chdir(current_dir)
+
+        if exists(f'{self.db_path}/Windows_MetaInfo.zip'):
+            remove(f'{self.db_path}/Windows_MetaInfo.zip')
+
+        createCopy(f'{self.db_path}/Windows_MetaInfo/Windows_MetaInfo.zip',f'{self.db_path}/Windows_MetaInfo.zip')
+        rmtree(f'{self.db_path}/Windows_MetaInfo')
+        if exists(f'{self.db_path}/Windows_MetaInfo'):
+            remove(f'{self.db_path}/Windows_MetaInfo')
+
+        return None
+
+
+    def checkWinSysChanges(self, output_file_type : str = 'txt', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = True, terminal_progress_display_enabled : bool = False) -> None:
+
+        import hashlib
+
+        def md5_checksum(fname : str):
+            hash_md5 = hashlib.md5()
+            with open(fname, 'rb') as f:
+                for chunk in iter(lambda : f.read(4096),b""):
+                    hash_md5.update(chunk)
+            return hash_md5.hexdigest()
+
+        if not exists(f'{self.db_path}/Windows_MetaInfo'):
+            mkdir(f'{self.db_path}/Windows_MetaInfo')
+
+        def getBasicInfo(file_path : str) -> tuple:
+
+            temp_list = []
+
+            try: temp_list.append(getModifiedDate(file_path))
+            except Exception: temp_list.append('UNKNOWN')
+
+            try: temp_list.append(getCreatedDate(file_path))
+            except Exception: temp_list.append('UNKNOWN')
+
+            try: temp_list.append(str(getSizeOfItem(file_path)))
+            except Exception: temp_list.append('UNKNOWN')
+
+            try: temp_list.append(md5_checksum(file_path))
+            except Exception:temp_list.append('UNKNOWN')
+
+            return tuple(temp_list)
+
+        if not exists(f'{self.db_path}/Windows_MetaInfo.zip'):
+            return None
+
+        if tqdm_imported and terminal_progress_display_enabled:
+            sys_clear()
+
+        if not output_file_type in {'excel','xlsx','text','txt'}:
+            output_file_type = 'txt'
+
+        if output_location is None:
+            output_location = f'{self.user_path}/Documents'
+        elif not exists((output_location := output_location.replace('\\','/'))):
+            output_location = f'{self.user_path}/Documents'
+
+        if output_name is None:
+            output_name = "Windows_File_Changes"
+        elif not len((output_name := fileNameFixer(output_name))):
+            output_name = "Windows_File_Changes"
+
+        winsys_folder_path = {}
+
+        with ZipFile(f'{self.db_path}/Windows_MetaInfo.zip') as zf:
+            with zf.open('_directory_reference.txt') as tf:
+                while True:
+                    line = tf.readline()
+                    if not line:
+                        break
+                    line = decodeZipTxtLine(line).split('|')
+                    winsys_folder_path[line[1]] = line[0]
+
+        try: del line
+        except NameError: pass
+
+        missing_folders = set()
+
+        existing_paths = {winsys_folder_path[folder] for folder in tuple(winsys_folder_path.keys())}
+
+        if tqdm_imported:
+            if output_file_type in {'txt','text'}:
+                with ZipFile(f'{self.db_path}/Windows_MetaInfo.zip') as zf:
+                    with open(f'{output_location}/{output_name}.txt','w',encoding='utf-8') as tf_main:
+                        tf_main.write("Explicit Path | Type of Oddity Found")
+                        for folder in tqdm(tuple(winsys_folder_path.keys()), disable = not terminal_progress_display_enabled, desc = "Checking Windows Files"):
+                            if not exists((current_folder := winsys_folder_path[folder])):
+                                valid_new = True
+                                for missing_folder in tuple(missing_folders):
+                                    if missing_folder.startswith(current_folder):
+                                        valid_new = False
+                                        break
+                                if valid_new:
+                                    tf_main.write("\n%s | Directory Missing" % (current_folder.replace('/','\\')))
+                                    missing_folders.add(current_folder)
+                            else:
+                                file_items = []
+                                for item in tuple(listdir(current_folder)):
+                                    if isfile(f'{current_folder}/{item}'):
+                                        file_items.append(item)
+                                    elif not item in existing_paths:
+                                        tf_main.write('\n%s | New Directory' % (current_folder.replace('/','\\')))
+                                if len(file_items):
+                                    archived_file_info = {}
+                                    with zf.open(f'{folder}.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = decodeZipTxtLine(line).split('|')
+                                            archived_file_info[line[0]] = tuple(line[1:])
+                                    testing_set = set(archived_file_info.keys())
+                                    for item in tuple(file_items):
+                                        if not item in testing_set:
+                                            file_items.remove(item)
+                                            tf_main.write('\n%s\\%s | New File' % (current_folder.replace('/','\\'),item))
+                                    testing_set = set((file_items := tuple(file_items)))
+                                    archived_items = tuple(archived_file_info.keys())
+                                    for item in tuple(archived_items):
+                                        if not item in testing_set:
+                                            del archived_file_info[item]
+                                            tf_main.write('\n%s\\%s | Missing File' % (current_folder.replace('/','\\'),item))
+                                    del testing_set ; del archived_items
+                                    for item in file_items:
+                                        if archived_file_info[item] != getBasicInfo(f'{current_folder}/{item}'):
+                                            tf_main.write('\n%s\\%s | Modified File' % (current_folder.replace('/','\\'),item))
+                                else:
+                                    file_items = tuple(file_items)
+                                    for item in (file_items := tuple(file_items)):
+                                        tf_main.write('\n%s\\%s | Missing File' % (current_folder.replace('/','\\'),item))
+            else:
+                pass
 
         return None
 
@@ -1062,7 +1448,6 @@ class ChloeAI:
 
 
     def archive_txt_data(self, txt_path : str, archive_db_name : str) -> bool:
-        '''TXT'''
 
         if (baseline_metadata := getBaselineMetadata(txt_path)) is None:
             return False
@@ -1128,50 +1513,7 @@ class ChloeAI:
         return True
 
 
-    def archive_bin_data(self, bin_path : str, archive_db_name : str) -> bool:
-        '''BIN'''
-
-        if (baseline_metadata := getBaselineMetadata(bin_path)) is None:
-            return False
-
-        baseline_metadata = '|'.join(baseline_metadata)
-
-        if not exists((bin_folder := f"{self.db_path}/{archive_db_name}/_bin_files")):
-            mkdir(bin_folder)
-
-        return True
-
-
-    def archive_log_data(self, log_path : str, archive_db_name : str) -> bool:
-        '''LOG'''
-
-        if (baseline_metadata := getBaselineMetadata(log_path)) is None:
-            return False
-
-        baseline_metadata = '|'.join(baseline_metadata)
-
-        if not exists((log_folder := f"{self.db_path}/{archive_db_name}/_log_files")):
-            mkdir(log_folder)
-
-        return True
-
-
-    def archive_ini_data(self, ini_path : str, archive_db_name : str) -> bool:
-        '''INI'''
-
-        if (baseline_metadata := getBaselineMetadata(ini_path)) is None:
-            return False
-
-        baseline_metadata = '|'.join(baseline_metadata)
-
-        if not exists((ini_folder := f"{self.db_path}/{archive_db_name}/_ini_files")):
-            mkdir(ini_folder)
-
-        return True
-
-
     def archive_doc_data(self, doc_path : str, archive_db_name : str) -> bool:
-        '''DOC'''
 
         nulls = {"",0,None}
 
@@ -1436,7 +1778,6 @@ class ChloeAI:
 
 
     def archive_shp_data(self, shp_path : str, archive_db_name : str) -> bool:
-        '''SHP'''
 
         if (baseline_metadata := getBaselineMetadata(shp_path)) is None:
             return False
@@ -1555,7 +1896,6 @@ class ChloeAI:
 
 
     def archive_gdb_data(self, gdb_path : str, archive_db_name : str) -> bool:
-        '''GDB'''
 
         # Views, Relationship Classes, Mosaic Datasets, Raster Datasets,
         # Trajectory Datasets, Catalog Datasets, and Oriented Imagery Datasets
@@ -1641,8 +1981,8 @@ class ChloeAI:
                     item_info[row[0]] = '|'.join(tuple(temp_list))
                     # item_info[row[0]] = '|'.join(tuple(["<Null>" if item is None else '"<Null>"' if item == '<Null>' else str(item).replace("\n"," ") for item in [row[n] for n in ranger]]))
             else:
-                if not exists((temp_gdb := f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10_123456790.gdb')):
-                    arcpy.management.CreateFileGDB(f'{self.db_path}/{archive_db_name}','TeMp_FiLeGeOdAtAbAsE_6789_10_123456790_123456790','CURRENT')
+                if not exists((temp_gdb := f'{self.db_path}/{archive_db_name}/TeMp_FiLeGeOdAtAbAsE_6789_10.gdb')):
+                    arcpy.management.CreateFileGDB(f'{self.db_path}/{archive_db_name}','TeMp_FiLeGeOdAtAbAsE_6789_10','CURRENT')
                 arcpy.env.overwriteOutput = True
                 arcpy.management.Copy(f'{arcpy.env.workspace}/{entity_name}',f'{temp_gdb}/{entity_name}')
                 arcpy.env.overwriteOutput = False
@@ -1722,7 +2062,6 @@ class ChloeAI:
 
 
     def archive_img_data(self, image_path : str, archive_db_name : str) -> bool:
-        '''IMG'''
 
         if (baseline_metadata := getBaselineMetadata(image_path)) is None:
             return False
@@ -1771,7 +2110,6 @@ class ChloeAI:
 
 
     def archive_pdf_data(self, pdf_path : str, archive_db_name : str) -> bool:
-        '''PDF'''
 
         nulls = {"",0,None}
 
@@ -1958,7 +2296,6 @@ class ChloeAI:
 
 
     def archive_alia_data(self, alia_path : str, archive_db_name : str) -> None:
-        '''ALIA'''
 
         baseline_metadata = []
 
@@ -2008,7 +2345,7 @@ class ChloeAI:
             while '  ' in test_name:
                 test_name = test_name.replace('  ',' ')
 
-            for n in "[]+=@#!$%^&;{}(),":
+            for n in '[]+=@#!$%^&;{}(),':
                 test_name = test_name.replace(n,' ')
 
             return test_name
@@ -2022,9 +2359,18 @@ class ChloeAI:
 
         entry_string = entry_string.lower().strip()
 
+        temp_str = tuple(entry_string.split(' '))
+
+        entry_string = ""
+
+        for item in temp_str:
+            entry_string = "%s%s" % (entry_string,"".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',item)) if segment]))
+
+        del temp_str
+
         temp_entry_string = entry_string[:]
 
-        for n in "[]+=@#!$%^&;{}(),":
+        for n in '[]+=@#!$%^&;{}(),':
             temp_entry_string = temp_entry_string.replace(n,' ')
 
         if not len((temp_entry_string := temp_entry_string.strip())):
