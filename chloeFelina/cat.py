@@ -2219,7 +2219,7 @@ class ChloeAI:
         elif overwrite_saved_found_matches:
             pass
         elif entity_names_only:
-            test_str = f'{temp_entry_string}$names'
+            test_str = f'{entry_string}$names'
             for previous_search in tuple([txt_file[:txt_file.rfind(".")] for txt_file in tuple(listdir(f'{self.db_path}/_terms_searched')) if txt_file.endswith('$names.txt')]):
                 if test_str == previous_search:
                     if isinstance(check_type,str):
@@ -2234,14 +2234,14 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        found_name_matches.append(entity.split('|')[0])
+                                        found_name_matches.append(entity.rstrip('\n'))
                             case 'txt':
                                 with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                     while True:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.txt'):
                                             found_name_matches.append(entity)
                             case 'pdf':
@@ -2250,7 +2250,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.pdf'):
                                             found_name_matches.append(entity)
                             case 'doc':
@@ -2259,7 +2259,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.docx'):
                                             found_name_matches.append(entity)
                             case 'shp':
@@ -2268,7 +2268,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.shp'):
                                             found_name_matches.append(entity)
                             case 'gdb':
@@ -2277,7 +2277,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.gdb'):
                                             found_name_matches.append(entity)
                             case 'img':
@@ -2287,7 +2287,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         for extension in temp_extensions:
                                             if entity.lower().endswith(extension):
                                                 found_name_matches.append(entity)
@@ -2300,7 +2300,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         for extension in temp_extensions:
                                             if not entity.lower()[entity.rfind(".")+1:].endswith(extension) or not '.' in entity:
                                                 found_name_matches.append(entity)
@@ -2326,7 +2326,7 @@ class ChloeAI:
                                 entity = tf.readline()
                                 if not entity:
                                     break
-                                entity = entity.split('|')[0]
+                                entity = entity.rstrip('\n')
                                 if (extension := entity[entity.rfind('.')+1:].lower()) in check_type:
                                     match extension:
                                         case 'txt':
@@ -2360,10 +2360,11 @@ class ChloeAI:
                         return None
         else:
             contents_found = False ; names_found = False
-            test_contents_str = f'{temp_entry_string}$contents' ; test_name_str = f'{temp_entry_string}$names'
+            test_contents_str = f'{entry_string}$contents' ; test_name_str = f'{entry_string}$names'
             found_matches = [] ; found_name_matches = []
             for previous_search in tuple([txt_file[:txt_file.rfind(".")] for txt_file in tuple(listdir(f'{self.db_path}/_terms_searched'))]):
                 if test_contents_str == previous_search:
+                    contents_found = True
                     if isinstance(check_type,str):
                         if (check_type := check_type.lower()) == 'docx':
                             check_type = 'doc'
@@ -2374,14 +2375,14 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        found_matches.append(entity.split('|')[0])
+                                        found_matches.append(entity.rstrip('\n'))
                             case 'txt':
                                 with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                     while True:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.txt'):
                                             found_matches.append(entity)
                             case 'pdf':
@@ -2390,7 +2391,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.pdf'):
                                             found_matches.append(entity)
                             case 'doc':
@@ -2399,7 +2400,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.docx'):
                                             found_matches.append(entity)
                             case 'shp':
@@ -2408,7 +2409,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.shp'):
                                             found_matches.append(entity)
                             case 'gdb':
@@ -2417,7 +2418,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.gdb'):
                                             found_matches.append(entity)
                             case 'img':
@@ -2427,7 +2428,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         for extension in temp_extensions:
                                             if entity.lower().endswith(extension):
                                                 found_matches.append(entity)
@@ -2440,7 +2441,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         for extension in temp_extensions:
                                             if not entity.lower()[entity.rfind(".")+1:].endswith(extension) or not '.' in entity:
                                                 found_matches.append(entity)
@@ -2466,7 +2467,7 @@ class ChloeAI:
                                 entity = tf.readline()
                                 if not entity:
                                     break
-                                entity = decodeZipTxtLine(entity).split('|')[0]
+                                entity = entity.rstrip('\n')
                                 if (extension := entity[entity.rfind('.')+1:].lower()) in check_type:
                                     match extension:
                                         case 'txt':
@@ -2488,7 +2489,8 @@ class ChloeAI:
                         return ()
                     else:
                         return None
-                if test_name_str == previous_search:
+                elif test_name_str == previous_search:
+                    names_found = True
                     if isinstance(check_type,str):
                         if (check_type := check_type.lower()) == 'docx':
                             check_type = 'doc'
@@ -2499,14 +2501,14 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        found_name_matches.append(entity.split('|')[0])
+                                        found_name_matches.append(entity.rstrip('\n'))
                             case 'txt':
                                 with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                     while True:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.txt'):
                                             found_name_matches.append(entity)
                             case 'pdf':
@@ -2515,7 +2517,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.pdf'):
                                             found_name_matches.append(entity)
                             case 'doc':
@@ -2524,7 +2526,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.docx'):
                                             found_name_matches.append(entity)
                             case 'shp':
@@ -2533,7 +2535,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.shp'):
                                             found_name_matches.append(entity)
                             case 'gdb':
@@ -2542,7 +2544,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         if entity.lower().endswith('.gdb'):
                                             found_name_matches.append(entity)
                             case 'img':
@@ -2552,7 +2554,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         for extension in temp_extensions:
                                             if entity.lower().endswith(extension):
                                                 found_name_matches.append(entity)
@@ -2565,7 +2567,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = entity.split('|')[0]
+                                        entity = entity.rstrip('\n')
                                         for extension in temp_extensions:
                                             if not entity.lower()[entity.rfind(".")+1:].endswith(extension):
                                                 found_name_matches.append(entity)
@@ -2591,7 +2593,7 @@ class ChloeAI:
                                 entity = tf.readline()
                                 if not entity:
                                     break
-                                entity = entity.split('|')[0]
+                                entity = entity.rstrip('\n')
                                 if (extension := entity[entity.rfind('.')+1:].lower()) in check_type:
                                     match extension:
                                         case 'txt':
@@ -2614,13 +2616,12 @@ class ChloeAI:
                     else:
                         return None
                 if contents_found and names_found:
-                    break
-            if len(found_matches := tuple(set(list(found_matches)+list(found_name_matches)))) and any((contents_found,names_found)):
-                if save_results_to_file:
-                    genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
-                if return_tuple:
-                    return found_matches
-                return None
+                    if len(found_matches := tuple(set(list(found_matches)+list(found_name_matches)))) and any((contents_found,names_found)):
+                        if save_results_to_file:
+                            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
+                        if return_tuple:
+                            return found_matches
+                    return None
 
         found_matches = []
         found_name_matches = []
