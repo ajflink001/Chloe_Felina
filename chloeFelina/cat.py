@@ -2794,7 +2794,7 @@ class ChloeAI:
                                         for txt_file in extracted_data[classify]:
                                             if term.replace('_',' ') in getTestName(txt_file):
                                                 term_name_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
-                                            if isQueryMatchKether(term,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
+                                            if isQueryMatchYesod(term,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
                                                 term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
                             elif classify.lower().endswith('_docx'):
                                 if temp_entry_string in getTestName(classify):
@@ -2810,7 +2810,7 @@ class ChloeAI:
                                         for txt_file in extracted_data[classify]:
                                             if term.replace('_',' ') in getTestName(txt_file):
                                                 term_name_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
-                                            if isQueryMatchKether(term,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
+                                            if isQueryMatchYesod(term,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
                                                 term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
                             elif classify == '_images':
                                 for txt_file in extracted_data[classify]:
