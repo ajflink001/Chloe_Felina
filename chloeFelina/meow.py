@@ -1,4 +1,4 @@
-import csv,logging,warnings
+import csv,logging
 from string import ascii_letters,digits,ascii_uppercase
 from shutil import copy2,copy,copyfile
 from pathlib import Path
@@ -50,8 +50,6 @@ if logging.root.manager.disable != 50:
             logging.disable(logging.FATAL)
         except Exception:
             pass
-
-warnings.simplefilter("ignore")
 
 alnums = f'{ascii_letters}{digits}'
 
@@ -431,7 +429,7 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
 
     return None
 
-def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, overwriteOutput : bool, valid_image_types : set) -> None:
+def genSearchQueryResultFile(found_matches : tuple[str], output_file_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, overwriteOutput : bool, valid_image_types : set) -> None:
 
     csv.field_size_limit(csv_field_size_limit)
 
@@ -447,9 +445,9 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_type : str, outp
     elif '\\' in output_location:
         output_location = output_location.replace('\\','/')
 
-    if output_type in ('excel','xlsx'):
+    if output_file_type in ('excel','xlsx'):
         output_suffix = '.xlsx'
-    elif output_type == 'csv':
+    elif output_file_type == 'csv':
         output_suffix = '.csv'
     else:
         output_suffix = '.txt'

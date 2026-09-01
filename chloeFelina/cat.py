@@ -133,18 +133,9 @@ def playChloeHappy(use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer :
 setlocale(LC_ALL,'')
 
 
-def genZipFileLoc(input_directory : str, output_directory : str, output_name : str | None = None, overwrite_existing_zipfile : bool = False, only_surface_folder : bool = False) -> None:
-
-    if not exists((input_directory := input_directory.replace('\\','/'))) or not exists((output_directory := output_directory.replace('\\','/'))):
-        return None
-
-
-    return None
-
-
 class ChloeAI:
 
-    def __init__(self, database_location : str | None = None, database_name : str = 'datumbazo', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, allow_truncating_images : bool = False, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, auto_update_database : bool = True, keep_db_if_no_connection : bool = True, clear_search_update : bool = False, updateCFB_progress_display : bool = False, corrupted_zip_check : bool = True):
+    def __init__(self, database_location : str | None = None, database_name : str = 'datumbazo', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, allow_truncating_images : bool = False, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, auto_update_database : bool = False, keep_db_if_no_connection : bool = True, clear_search_update : bool = False, updateCFB_progress_display : bool = False, corrupted_zip_check : bool = True):
 
         self.valid_check_types = {'txt','pdf','doc','img','gdb','shp','alia'}
         self.valid_extensions = ['txt']
@@ -381,8 +372,7 @@ class ChloeAI:
             elif not item.endswith('.zip') and not item in ignored_items:
                 remove(f'{self.db_path}/{item}')
 
-        if clear_search_update:
-            self.clearSearchQueryMemory()
+        change_done = False
 
         def getBasicInfo(item_path : str) -> tuple:
 
@@ -462,13 +452,21 @@ class ChloeAI:
                 for db_name in iterator:
                     if not exists(self.path_pointer[db_name]):
                         redact_dbs.append(db_name)
-            for redact_db in (redact_dbs := tuple(redact_dbs)):
+            if len((redact_dbs := tuple(redact_dbs))):
+                change_done = True
+            for redact_db in redact_dbs:
                 self.removeCrintumEntry(self.path_pointer[redact_db])
                 remove(f'{self.db_path}/{redact_db}.zip')
             del redact_dbs
             try: del reference_directory
             except NameError: pass
-            for db_name in tuple(self.used_names):
+            if terminal_progress_display_enabled:
+                sys_clear()
+            if tqdm_imported:
+                iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display_enabled, desc = "Finding and Removing Redundant References")
+            else:
+                iterator = tuple(self.used_names)
+            for db_name in iterator:
                 ref_path = self.path_pointer[db_name]
                 stored_items = {}
                 with ZipFile(f'{self.db_path}/{db_name}.zip') as zf:
@@ -512,6 +510,7 @@ class ChloeAI:
                 testing_set = set(stored_items.keys())
                 for item in tuple(real_items):
                     if not item in testing_set:
+                        change_done = True
                         real_items.remove(item)
                         if not exists(f'{self.db_path}/{db_name}'):
                             self.uncompressZIP(db_name)
@@ -605,6 +604,7 @@ class ChloeAI:
                 redacted_alia_items = set()
                 for item in tuple(stored_items.keys()):
                     if not item in testing_set:
+                        change_done = True
                         if not exists(f'{self.db_path}/{db_name}'):
                             self.uncompressZIP(db_name)
                         match stored_items[item]:
@@ -666,147 +666,163 @@ class ChloeAI:
                 except NameError: pass
                 try: del new_lines
                 except NameError: pass
-                if len((real_items := tuple(real_items))):
-                    redacted_metadata_items = []
-                    types_redacted = set()
-                    for item in tuple(real_items):
-                        match stored_items[item][0]:
-                            case 'TXT':
-                                if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                    removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
-                                    remove(f'{self.db_path}/{db_name}/_txt_files/{ref_name}.txt')
-                                    try:
-                                        if not self.archive_txt_data(f'{ref_path}/{item}',db_name):
-                                            if exists((stored_item_path := f'{self.db_path}/{db_name}/_txt_files/{ref_name}.txt')):
-                                                try:
-                                                    remove(stored_item_path)
-                                                except Exception:
-                                                    chmod(stored_item_path,S_IRWXU)
-                                                    remove(stored_item_path)
-                                            redacted_metadata_items.append(ref_name)
-                                            types_redacted.add('TXT')
-                                            self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                    except Exception:
-                                        if exists((stored_item_path := f'{self.db_path}/{db_name}/_txt_files/{ref_name}.txt')):
-                                            try:
-                                                remove(stored_item_path)
-                                            except Exception:
-                                                chmod(stored_item_path,S_IRWXU)
-                                                remove(stored_item_path)
-                                        redacted_metadata_items.append(ref_name)
-                                        types_redacted.add('TXT')
-                                        self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                            case 'PDF':
-                                if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                elif not pypdf_imported or not pil_imported:
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                            case 'DOC':
-                                if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                elif not docx_imported or not docx2_imported or not pil_imported:
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                            case 'SHP':
-                                if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                    removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
-                                    remove(f'{self.db_path}/{db_name}/_shp_files/{ref_name}.txt')
-                                    if arcpy_imported:
-                                        try:
-                                            if not self.archive_shp_data(f'{ref_path}/{item}',db_name):
-                                                try: remove(f'{self.db_path}/{db_name}/_shp_files/{ref_name}.txt')
-                                                except Exception: pass
-                                                redacted_metadata_items.append(ref_name)
-                                                types_redacted.add('SHP')
-                                                self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                        except Exception:
-                                            try: remove(f'{self.db_path}/{db_name}/_shp_files/{ref_name}.txt')
-                                            except Exception: pass
-                                            redacted_metadata_items.append(ref_name)
-                                            types_redacted.add('SHP')
-                                            self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                    else:
-                                        types_redacted.add('SHP')
-                                        self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                elif not arcpy_imported:
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                    types_redacted.add('SHP')
-                                    removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
-                                    remove(f'{self.db_path}/{db_name}/_shp_files/{ref_name}.txt')
-                                    self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                            case 'IMG':
-                                if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                    removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
-                                    remove(f'{self.db_path}/{db_name}/_images/{ref_name}.txt')
-                                    if pil_imported:
-                                        try:
-                                            if not self.archive_img_data(f'{ref_path}/{item}',db_name):
-                                                try: remove(f'{self.db_path}/{db_name}/_images/{ref_name}.txt')
-                                                except Exception: pass
-                                                redacted_metadata_items.append(ref_name)
-                                                types_redacted.add('IMG')
-                                                self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                        except Exception:
-                                            try: remove(f'{self.db_path}/{db_name}/_images/{ref_name}.txt')
-                                            except Exception: pass
-                                            redacted_metadata_items.append(ref_name)
-                                            types_redacted.add('IMG')
-                                            self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                    else:
-                                        types_redacted.add('IMG')
-                                        self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                                elif not pil_imported:
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                    types_redacted.add('IMG')
-                                    removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
-                                    remove(f'{self.db_path}/{db_name}/_images/{ref_name}.txt')
-                                    self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                            case 'GDB':
-                                pass
-                            case _:
-                                # ALIA
-                                if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                                elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
-                                    if not exists(f'{self.db_path}/{db_name}'):
-                                        self.uncompressZIP(db_name)
-                    if len(types_redacted):
-                        if 'TXT' in types_redacted:
-                            if not len(listdir(f'{self.db_path}/{db_name}/_txt_files')):
-                                rmtree(f'{self.db_path}/{db_name}/_txt_files')
-                        if 'SHP' in types_redacted:
-                            if not len(listdir(f'{self.db_path}/{db_name}/_shp_files')):
-                                rmtree(f'{self.db_path}/{db_name}/_shp_files')
-                        if 'IMG' in types_redacted:
-                            if not len(listdir(f'{self.db_path}/{db_name}/_images')):
-                                rmtree(f'{self.db_path}/{db_name}/_images')
+                # if len((real_items := tuple(real_items))):
+                #     redacted_metadata_items = []
+                #     types_redacted = set()
+                #     for item in tuple(real_items):
+                #         match stored_items[item][0]:
+                #             case 'TXT':
+                #                 if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                 elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                     removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
+                #                     remove(f'{self.db_path}/{db_name}/_txt_files/{ref_name}.txt')
+                #                     try:
+                #                         if not self.archive_txt_data(f'{ref_path}/{item}',db_name):
+                #                             if exists((stored_item_path := f'{self.db_path}/{db_name}/_txt_files/{ref_name}.txt')):
+                #                                 try:
+                #                                     remove(stored_item_path)
+                #                                 except Exception:
+                #                                     chmod(stored_item_path,S_IRWXU)
+                #                                     remove(stored_item_path)
+                #                             redacted_metadata_items.append(ref_name)
+                #                             types_redacted.add('TXT')
+                #                             self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                #                     except Exception:
+                #                         if exists((stored_item_path := f'{self.db_path}/{db_name}/_txt_files/{ref_name}.txt')):
+                #                             try:
+                #                                 remove(stored_item_path)
+                #                             except Exception:
+                #                                 chmod(stored_item_path,S_IRWXU)
+                #                                 remove(stored_item_path)
+                #                         redacted_metadata_items.append(ref_name)
+                #                         types_redacted.add('TXT')
+                #                         self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                #             case 'PDF':
+                #                 if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                 elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                 elif not pypdf_imported or not pil_imported:
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #             case 'DOC':
+                #                 if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                 elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                 elif not docx_imported or not docx2_imported or not pil_imported:
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #             case 'SHP':
+                #                 if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                 elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                     removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
+                #                     remove(f'{self.db_path}/{db_name}/_shp_files/{ref_name}.txt')
+                #                     if arcpy_imported:
+                #                         try:
+                #                             if not self.archive_shp_data(f'{ref_path}/{item}',db_name):
+                #                                 try: remove(f'{self.db_path}/{db_name}/_shp_files/{ref_name}.txt')
+                #                                 except Exception: pass
+                #                                 redacted_metadata_items.append(ref_name)
+                #                                 types_redacted.add('SHP')
+                #                                 self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                #                         except Exception:
+                #                             try: remove(f'{self.db_path}/{db_name}/_shp_files/{ref_name}.txt')
+                #                             except Exception: pass
+                #                             redacted_metadata_items.append(ref_name)
+                #                             types_redacted.add('SHP')
+                #                             self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                #                     else:
+                #                         types_redacted.add('SHP')
+                #                         self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                #                 elif not arcpy_imported:
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                     types_redacted.add('SHP')
+                #                     removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
+                #                     remove(f'{self.db_path}/{db_name}/_shp_files/{ref_name}.txt')
+                #                     self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                #             case 'IMG':
+                #                 if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                 elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                     removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
+                #                     remove(f'{self.db_path}/{db_name}/_images/{ref_name}.txt')
+                #                     if pil_imported:
+                #                         try:
+                #                             if not self.archive_img_data(f'{ref_path}/{item}',db_name):
+                #                                 try: remove(f'{self.db_path}/{db_name}/_images/{ref_name}.txt')
+                #                                 except Exception: pass
+                #                                 redacted_metadata_items.append(ref_name)
+                #                                 types_redacted.add('IMG')
+                #                                 self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                #                         except Exception:
+                #                             try: remove(f'{self.db_path}/{db_name}/_images/{ref_name}.txt')
+                #                             except Exception: pass
+                #                             redacted_metadata_items.append(ref_name)
+                #                             types_redacted.add('IMG')
+                #                             self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                #                     else:
+                #                         types_redacted.add('IMG')
+                #                         self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                #                 elif not pil_imported:
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                     types_redacted.add('IMG')
+                #                     removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
+                #                     remove(f'{self.db_path}/{db_name}/_images/{ref_name}.txt')
+                #                     self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                #             case 'GDB':
+                #                 pass
+                #             case _:
+                #                 # ALIA
+                #                 if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #                 elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
+                #                     change_done = True
+                #                     if not exists(f'{self.db_path}/{db_name}'):
+                #                         self.uncompressZIP(db_name)
+                #     if len(types_redacted):
+                #         if 'TXT' in types_redacted:
+                #             if not len(listdir(f'{self.db_path}/{db_name}/_txt_files')):
+                #                 rmtree(f'{self.db_path}/{db_name}/_txt_files')
+                #         if 'SHP' in types_redacted:
+                #             if not len(listdir(f'{self.db_path}/{db_name}/_shp_files')):
+                #                 rmtree(f'{self.db_path}/{db_name}/_shp_files')
+                #         if 'IMG' in types_redacted:
+                #             if not len(listdir(f'{self.db_path}/{db_name}/_images')):
+                #                 rmtree(f'{self.db_path}/{db_name}/_images')
                 if exists(f'{self.db_path}/{db_name}'):
                     if not len(listdir(f'{self.db_path}/{db_name}')):
                         try:
@@ -818,6 +834,12 @@ class ChloeAI:
                     else:
                         remove(f'{self.db_path}/{db_name}.zip')
                         self.compressToZIP(db_name)
+
+        if change_done and clear_search_update:
+            self.clearSearchQueryMemory()
+
+        if terminal_progress_display_enabled:
+            sys_clear()
 
         return None
 
@@ -1075,301 +1097,6 @@ class ChloeAI:
                         self.clearSearchQueryMemory()
                 if exists(f'{self.db_path}/{archive_db_name}'):
                     rmtree(f'{self.db_path}/{archive_db_name}')
-
-        return None
-
-
-    def compWinSysInfo(self, replace_existing_info : bool = False, terminal_progress_display_enabled : bool = False) -> None:
-
-        if not replace_existing_info and exists(f'{self.db_path}/Windows_MetaInfo.zip'):
-            return None
-
-        if tqdm_imported and terminal_progress_display_enabled:
-            sys_clear()
-
-        import hashlib
-
-        def md5_checksum(fname : str):
-            hash_md5 = hashlib.md5()
-            with open(fname, 'rb') as f:
-                for chunk in iter(lambda : f.read(4096),b""):
-                    hash_md5.update(chunk)
-            return hash_md5.hexdigest()
-
-        if not exists(f'{self.db_path}/Windows_MetaInfo'):
-            mkdir(f'{self.db_path}/Windows_MetaInfo')
-
-        def getBasicInfo(file_path : str) -> tuple:
-
-            temp_list = []
-
-            try: temp_list.append(getModifiedDate(file_path))
-            except Exception: temp_list.append('UNKNOWN')
-
-            try: temp_list.append(getCreatedDate(file_path))
-            except Exception: temp_list.append('UNKNOWN')
-
-            try: temp_list.append(str(getSizeOfItem(file_path)))
-            except Exception: temp_list.append('UNKNOWN')
-
-            try: temp_list.append(md5_checksum(file_path))
-            except Exception:temp_list.append('UNKNOWN')
-
-            return tuple(temp_list)
-
-        path_index = {}
-
-        if tqdm_imported:
-            for prime_dir in ('C:/Windows','C:/Program Files','C:/Program Files (x86)','C:/ProgramData'):
-                for root,dirs,files in walker(prime_dir):
-                    if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
-                        file_info = {}
-                        for file in tqdm(tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]), disable = not terminal_progress_display_enabled, desc = root[root.rfind('/')+1:]):
-                            file_info[file] = getBasicInfo(f'{root}/{file}')
-                        if len((files := tuple(file_info.keys()))):
-                            directory_name = randstr(12)
-                            while directory_name in path_index.keys():
-                                directory_name = randstr(12)
-                            path_index[root] = directory_name
-                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                                tf.write("%s|%s" % (files[0],'|'.join(file_info[files[0]])))
-                                for n in range(1,len(files)):
-                                    tf.write(f"\n%s|%s" % (files[n],'|'.join(file_info[files[n]])))
-                        else:
-                            directory_name = randstr(12)
-                            while directory_name in path_index.keys():
-                                directory_name = randstr(12)
-                            path_index[root] = directory_name
-                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                                pass
-                if terminal_progress_display_enabled:
-                    sys_clear()
-            for user in tuple(listdir('C:/Users')):
-                for root,dirs,files in walker(f'C:/Users/{user}/AppData'):
-                    if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
-                        file_info = {}
-                        for file in tqdm(tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]), disable = not terminal_progress_display_enabled, desc = root[root.rfind('/')+1:]):
-                            file_info[file] = getBasicInfo(f'{root}/{file}')
-                        if len((files := tuple(file_info.keys()))):
-                            directory_name = randstr(12)
-                            while directory_name in path_index.keys():
-                                directory_name = randstr(12)
-                            path_index[root] = directory_name
-                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                                tf.write("%s|%s" % (files[0],'|'.join(file_info[files[0]])))
-                                for n in range(1,len(files)):
-                                    tf.write(f"\n%s|%s" % (files[n],'|'.join(file_info[files[n]])))
-                        else:
-                            directory_name = randstr(12)
-                            while directory_name in path_index.keys():
-                                directory_name = randstr(12)
-                            path_index[root] = directory_name
-                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                                pass
-            if terminal_progress_display_enabled:
-                sys_clear()
-        else:
-            for prime_dir in ('C:/Windows','C:/Program Files','C:/Program Files (x86)','C:/ProgramData'):
-                for root,dirs,files in walker(prime_dir):
-                    if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
-                        file_info = {}
-                        for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
-                            file_info[file] = getBasicInfo(f'{root}/{file}')
-                        if len((files := tuple(file_info.keys()))):
-                            directory_name = randstr(12)
-                            while directory_name in path_index.keys():
-                                directory_name = randstr(12)
-                            path_index[root] = directory_name
-                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                                tf.write("%s|%s" % (files[0],'|'.join(file_info[files[0]])))
-                                for n in range(1,len(files)):
-                                    tf.write(f"\n%s|%s" % (files[n],'|'.join(file_info[files[n]])))
-                        else:
-                            directory_name = randstr(12)
-                            while directory_name in path_index.keys():
-                                directory_name = randstr(12)
-                            path_index[root] = directory_name
-                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                                pass
-            for user in tuple(listdir('C:/Users')):
-                for root,dirs,files in walker(f'C:/Users/{user}/AppData'):
-                    if not "$RECYCLE.BIN" in (root := root.replace('\\','/')):
-                        file_info = {}
-                        for file in tuple([item for item in tuple(listdir(root)) if isfile(f'{root}/{item}')]):
-                            file_info[file] = getBasicInfo(f'{root}/{file}')
-                        if len((files := tuple(file_info.keys()))):
-                            directory_name = randstr(12)
-                            while directory_name in path_index.keys():
-                                directory_name = randstr(12)
-                            path_index[root] = directory_name
-                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                                tf.write("%s|%s" % (files[0],'|'.join(file_info[files[0]])))
-                                for n in range(1,len(files)):
-                                    tf.write(f"\n%s|%s" % (files[n],'|'.join(file_info[files[n]])))
-                        else:
-                            directory_name = randstr(12)
-                            while directory_name in path_index.keys():
-                                directory_name = randstr(12)
-                            path_index[root] = directory_name
-                            with open(f'{self.db_path}/Windows_MetaInfo/{directory_name}.txt','w',encoding='utf-8') as tf:
-                                pass
-
-        path_index_paths = tuple(path_index.keys())
-
-        with open(f'{self.db_path}/Windows_MetaInfo/_directory_reference.txt','w',encoding='utf-8') as tf:
-            tf.write(f"{path_index_paths[0]}|{path_index[path_index_paths[0]]}")
-            for n in range(1,len(path_index_paths)):
-                tf.write(f'\n{path_index_paths[n]}|{path_index[path_index_paths[n]]}')
-
-        current_dir = getcwd()
-        try:
-            chdir(f'{self.db_path}/Windows_MetaInfo')
-            items = tuple(listdir(getcwd()))
-            with ZipFile('Windows_MetaInfo.zip','w',ZIP_DEFLATED,True,9) as zf:
-                if tqdm_imported:
-                    for item in tqdm(items,disable = not terminal_progress_display_enabled, desc = f"Generating {self.db_path}/Windows_MetaInfo.zip"):
-                        if isfile(item):
-                            zf.write(item)
-                else:
-                    for item in items:
-                        if isfile(item):
-                            zf.write(item)
-            chdir(current_dir)
-        except Exception:
-            chdir(current_dir)
-
-        if exists(f'{self.db_path}/Windows_MetaInfo.zip'):
-            remove(f'{self.db_path}/Windows_MetaInfo.zip')
-
-        createCopy(f'{self.db_path}/Windows_MetaInfo/Windows_MetaInfo.zip',f'{self.db_path}/Windows_MetaInfo.zip')
-        rmtree(f'{self.db_path}/Windows_MetaInfo')
-        if exists(f'{self.db_path}/Windows_MetaInfo'):
-            remove(f'{self.db_path}/Windows_MetaInfo')
-
-        return None
-
-
-    def checkWinSysChanges(self, output_file_type : str = 'txt', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = True, terminal_progress_display_enabled : bool = False) -> None:
-
-        import hashlib
-
-        def md5_checksum(fname : str):
-            hash_md5 = hashlib.md5()
-            with open(fname, 'rb') as f:
-                for chunk in iter(lambda : f.read(4096),b""):
-                    hash_md5.update(chunk)
-            return hash_md5.hexdigest()
-
-        if not exists(f'{self.db_path}/Windows_MetaInfo'):
-            mkdir(f'{self.db_path}/Windows_MetaInfo')
-
-        def getBasicInfo(file_path : str) -> tuple:
-
-            temp_list = []
-
-            try: temp_list.append(getModifiedDate(file_path))
-            except Exception: temp_list.append('UNKNOWN')
-
-            try: temp_list.append(getCreatedDate(file_path))
-            except Exception: temp_list.append('UNKNOWN')
-
-            try: temp_list.append(str(getSizeOfItem(file_path)))
-            except Exception: temp_list.append('UNKNOWN')
-
-            try: temp_list.append(md5_checksum(file_path))
-            except Exception:temp_list.append('UNKNOWN')
-
-            return tuple(temp_list)
-
-        if not exists(f'{self.db_path}/Windows_MetaInfo.zip'):
-            return None
-
-        if tqdm_imported and terminal_progress_display_enabled:
-            sys_clear()
-
-        if not output_file_type in {'excel','xlsx','text','txt'}:
-            output_file_type = 'txt'
-
-        if output_location is None:
-            output_location = f'{self.user_path}/Documents'
-        elif not exists((output_location := output_location.replace('\\','/'))):
-            output_location = f'{self.user_path}/Documents'
-
-        if output_name is None:
-            output_name = "Windows_File_Changes"
-        elif not len((output_name := fileNameFixer(output_name))):
-            output_name = "Windows_File_Changes"
-
-        winsys_folder_path = {}
-
-        with ZipFile(f'{self.db_path}/Windows_MetaInfo.zip') as zf:
-            with zf.open('_directory_reference.txt') as tf:
-                while True:
-                    line = tf.readline()
-                    if not line:
-                        break
-                    line = decodeZipTxtLine(line).split('|')
-                    winsys_folder_path[line[1]] = line[0]
-
-        try: del line
-        except NameError: pass
-
-        missing_folders = set()
-
-        existing_paths = {winsys_folder_path[folder] for folder in tuple(winsys_folder_path.keys())}
-
-        if tqdm_imported:
-            if output_file_type in {'txt','text'}:
-                with ZipFile(f'{self.db_path}/Windows_MetaInfo.zip') as zf:
-                    with open(f'{output_location}/{output_name}.txt','w',encoding='utf-8') as tf_main:
-                        tf_main.write("Explicit Path | Type of Oddity Found")
-                        for folder in tqdm(tuple(winsys_folder_path.keys()), disable = not terminal_progress_display_enabled, desc = "Checking Windows Files"):
-                            if not exists((current_folder := winsys_folder_path[folder])):
-                                valid_new = True
-                                for missing_folder in tuple(missing_folders):
-                                    if missing_folder.startswith(current_folder):
-                                        valid_new = False
-                                        break
-                                if valid_new:
-                                    tf_main.write("\n%s | Directory Missing" % (current_folder.replace('/','\\')))
-                                    missing_folders.add(current_folder)
-                            else:
-                                file_items = []
-                                for item in tuple(listdir(current_folder)):
-                                    if isfile(f'{current_folder}/{item}'):
-                                        file_items.append(item)
-                                    elif not item in existing_paths:
-                                        tf_main.write('\n%s | New Directory' % (current_folder.replace('/','\\')))
-                                if len(file_items):
-                                    archived_file_info = {}
-                                    with zf.open(f'{folder}.txt') as tf:
-                                        while True:
-                                            line = tf.readline()
-                                            if not line:
-                                                break
-                                            line = decodeZipTxtLine(line).split('|')
-                                            archived_file_info[line[0]] = tuple(line[1:])
-                                    testing_set = set(archived_file_info.keys())
-                                    for item in tuple(file_items):
-                                        if not item in testing_set:
-                                            file_items.remove(item)
-                                            tf_main.write('\n%s\\%s | New File' % (current_folder.replace('/','\\'),item))
-                                    testing_set = set((file_items := tuple(file_items)))
-                                    archived_items = tuple(archived_file_info.keys())
-                                    for item in tuple(archived_items):
-                                        if not item in testing_set:
-                                            del archived_file_info[item]
-                                            tf_main.write('\n%s\\%s | Missing File' % (current_folder.replace('/','\\'),item))
-                                    del testing_set ; del archived_items
-                                    for item in file_items:
-                                        if archived_file_info[item] != getBasicInfo(f'{current_folder}/{item}'):
-                                            tf_main.write('\n%s\\%s | Modified File' % (current_folder.replace('/','\\'),item))
-                                else:
-                                    file_items = tuple(file_items)
-                                    for item in (file_items := tuple(file_items)):
-                                        tf_main.write('\n%s\\%s | Missing File' % (current_folder.replace('/','\\'),item))
-            else:
-                pass
 
         return None
 
@@ -2501,13 +2228,20 @@ class ChloeAI:
                         elif check_type in self.image_types:
                             check_type = 'img'
                         match check_type:
+                            case 'all' | 'every' | 'any':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        found_name_matches.append(entity.split('|')[0])
                             case 'txt':
                                 with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                     while True:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.txt'):
                                             found_name_matches.append(entity)
                             case 'pdf':
@@ -2516,7 +2250,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.pdf'):
                                             found_name_matches.append(entity)
                             case 'doc':
@@ -2525,7 +2259,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.docx'):
                                             found_name_matches.append(entity)
                             case 'shp':
@@ -2534,7 +2268,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.shp'):
                                             found_name_matches.append(entity)
                             case 'gdb':
@@ -2543,7 +2277,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.gdb'):
                                             found_name_matches.append(entity)
                             case 'img':
@@ -2553,7 +2287,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         for extension in temp_extensions:
                                             if entity.lower().endswith(extension):
                                                 found_name_matches.append(entity)
@@ -2592,7 +2326,7 @@ class ChloeAI:
                                 entity = tf.readline()
                                 if not entity:
                                     break
-                                entity = decodeZipTxtLine(entity).split('|')[0]
+                                entity = entity.split('|')[0]
                                 if (extension := entity[entity.rfind('.')+1:].lower()) in check_type:
                                     match extension:
                                         case 'txt':
@@ -2616,7 +2350,7 @@ class ChloeAI:
                         return None
                     if len((found_matches := tuple(found_name_matches))):
                         if save_results_to_file:
-                            genSearchQueryResultFile(found_matches,output_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwriteOutput,set(self.image_types))
+                            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                         if return_tuple:
                             return found_matches
                         return None
@@ -2634,13 +2368,20 @@ class ChloeAI:
                         if (check_type := check_type.lower()) == 'docx':
                             check_type = 'doc'
                         match check_type:
+                            case 'all' | 'every' | 'any':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        found_matches.append(entity.split('|')[0])
                             case 'txt':
                                 with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                     while True:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.txt'):
                                             found_matches.append(entity)
                             case 'pdf':
@@ -2649,7 +2390,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.pdf'):
                                             found_matches.append(entity)
                             case 'doc':
@@ -2658,7 +2399,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.docx'):
                                             found_matches.append(entity)
                             case 'shp':
@@ -2667,7 +2408,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.shp'):
                                             found_matches.append(entity)
                             case 'gdb':
@@ -2676,7 +2417,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.gdb'):
                                             found_matches.append(entity)
                             case 'img':
@@ -2686,7 +2427,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         for extension in temp_extensions:
                                             if entity.lower().endswith(extension):
                                                 found_matches.append(entity)
@@ -2699,7 +2440,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         for extension in temp_extensions:
                                             if not entity.lower()[entity.rfind(".")+1:].endswith(extension) or not '.' in entity:
                                                 found_matches.append(entity)
@@ -2752,13 +2493,20 @@ class ChloeAI:
                         if (check_type := check_type.lower()) == 'docx':
                             check_type = 'doc'
                         match check_type:
+                            case 'all' | 'every' | 'any':
+                                with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        found_name_matches.append(entity.split('|')[0])
                             case 'txt':
                                 with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                     while True:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.txt'):
                                             found_name_matches.append(entity)
                             case 'pdf':
@@ -2767,7 +2515,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.pdf'):
                                             found_name_matches.append(entity)
                             case 'doc':
@@ -2776,7 +2524,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.docx'):
                                             found_name_matches.append(entity)
                             case 'shp':
@@ -2785,7 +2533,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.shp'):
                                             found_name_matches.append(entity)
                             case 'gdb':
@@ -2794,7 +2542,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         if entity.lower().endswith('.gdb'):
                                             found_name_matches.append(entity)
                             case 'img':
@@ -2804,7 +2552,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         for extension in temp_extensions:
                                             if entity.lower().endswith(extension):
                                                 found_name_matches.append(entity)
@@ -2817,7 +2565,7 @@ class ChloeAI:
                                         entity = tf.readline()
                                         if not entity:
                                             break
-                                        entity = decodeZipTxtLine(entity).split('|')[0]
+                                        entity = entity.split('|')[0]
                                         for extension in temp_extensions:
                                             if not entity.lower()[entity.rfind(".")+1:].endswith(extension):
                                                 found_name_matches.append(entity)
@@ -2843,7 +2591,7 @@ class ChloeAI:
                                 entity = tf.readline()
                                 if not entity:
                                     break
-                                entity = decodeZipTxtLine(entity).split('|')[0]
+                                entity = entity.split('|')[0]
                                 if (extension := entity[entity.rfind('.')+1:].lower()) in check_type:
                                     match extension:
                                         case 'txt':
@@ -2869,7 +2617,7 @@ class ChloeAI:
                     break
             if len(found_matches := tuple(set(list(found_matches)+list(found_name_matches)))) and any((contents_found,names_found)):
                 if save_results_to_file:
-                    genSearchQueryResultFile(found_matches,output_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwriteOutput,set(self.image_types))
+                    genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                 if return_tuple:
                     return found_matches
                 return None
