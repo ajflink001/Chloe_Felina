@@ -66,7 +66,7 @@ Note 3: "alia" means "other" in Esperanto.
 
 
 
-**ChloeAI**
+**ChloeAI** (i.e., **ChloeAI.\_\_init\_\_**)
 
 
 
@@ -114,11 +114,23 @@ Parameters:
 
 
 
-**audio\_wakeup\_buffer** (*Integer*) - This parameter only comes into effect if both **chloe\_vocalization** and **use\_audio\_wakeup\_buffer** are True. The value represents milliseconds of playing a silent dummy audio file that is used to "wake up" the audio device from "sleep mode". By default, the value is 10 (i.e., 10 milliseconds.). If the audio is still "muted" or it seems like only part of the audio is being played, try using a higher value.
+**audio\_wakeup\_buffer** (*Integer*) - This parameter only comes into effect if both **chloe\_vocalization** and **use\_audio\_wakeup\_buffer** are True. The value represents milliseconds of playing a silent dummy audio file that is used to "wake up" the audio device(s) from "sleep mode". By default, the value is 10 (i.e., 10 milliseconds.). If the audio is still "muted" or it seems like only part of the audio is being played, try using a higher value.
 
 
 
-**allow\_autoclear\_terms** (*Boolean*) - **ChloeAI.clearSearchQueryMemory** will be called to remove the contents of "\_terms\_searched" in the Chloe Felina database if it exists. By default, this is False.
+**allow\_autoclear\_terms** (*Boolean*) - **ChloeAI.clearSearchQueryMemory** will be called to remove the contents of "\_terms\_searched" in the Chloe Felina database if it exists upon initializing a pre-existing Chloe Felina database. By default, this is False.
+
+
+
+**keep\_db\_if\_no\_connection** (*Boolean*) - This requires the win32api (i.e., pywin32) module to be installed for this parameter to come into effect. If while getting data for the directory that a zip file in the database is referencing that the directory cannot be found or connection to it (i.e., the non-local drive) cannot be established, checks for that zip file are skipped and are assumed to be correct due to being unable to be verified. If this parameter is False, being unable to find the referenced directory or connect to the drive that the directory is located within will result in the zip file being deleted and its references removed from the database. By default, this is True. This parameter applies exclusively to referenced directories in the Chloe Felina database that are not the main drive (i.e., C Drive in the vast majority of case). This parameter only pertains to **ChloeAI.updateCFB**, not **ChloeAI.\_\_init\_\_** directly.
+
+
+
+**clear\_search\_update** (*Boolean*) - This will clear all data cached pertaining **ChloeAI.searchQuery** if the Chloe Felina database has any zip files removed or the data in said zip files was changed in any way after running the main portion of **ChloeAI.updateCFB**. By default, this is False.
+
+
+
+**updateCFB\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False. This does not pertain to any processes that happen within **ChloeAI.\_\_init\_\_** directly, only **ChloeAI.updateCFB**.
 
 
 
@@ -128,15 +140,11 @@ Parameters:
 
 
 
-**ChloeAI.autoUpdateDatabase**
+**ChloeAI.updateCFB**
 
 
 
-NOT IMPLEMENTED YET (CONSIDER TO BE EXPERIMENTAL)
-
-
-
-Purpose: This is meant to check the data in the database against the actual data that said data is referencing and makes appropriate changes by removing references to directories that no longer exist, items being modified, items being added, and/or items being removed. In version 1 of Chloe Felina, **ChloeAI.updateAndRefreshDatabase** is retroactively considered an experimental feature that proved to be very unstable and not straightforward, especially when trying to implement changes for version 2 of Chloe Felina. As of writing, it only checks to see if referenced directories still exist and to remove them if they do not. It is intended that this function will handle updating zip files to account for added, removed, and/or modified files from the directories they are referencing.
+Purpose: This dynamically checks and updates all zip files stored in the Chloe Felina database against the data they reference to determine if things need to be added, removed, and/or updated and/or if a directory being referenced no longer exists meaning that a zip file and related data are deleted. This is to ensure that ChloeAI.searchQuery and ChloeAI.findAllDuplicates do not produce redundant or inaccurate results or point to files/entities that no longer exist or have had their contents modified.
 
 
 
@@ -148,7 +156,7 @@ Parameters:
 
 
 
-**clear\_terms\_searched** (*Boolean*) - If the "\_terms\_searched" folder has been generated or exists within the Chloe Felina database, it will be deleted. This is done since keeping the cached search results from **ChloeAI.searchQuery** may result in an error due to being unable to find a referenced entity or potentially untested behavior from **ChloeAI.searchQuery**. By default, this is True.
+**clear\_search\_update** (*Boolean*) - This will clear all data cached pertaining **ChloeAI.searchQuery** if the Chloe Felina database has any zip files removed or the data in said zip files was changed in any way during the execution of this function. By default, this is False.
 
 
 
@@ -395,48 +403,6 @@ Parameters:
 
 
 **terminal\_progress\_display\_enabled** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
-
-
-
-
-
-**ChloeAI.findEntityDuplicates**
-
-
-
-Planned Purpose: This will output an organized list of files/entities that are determined to be potentially identical to the given input file.
-
-
-
-
-
-ChloeAI.compileEntitiesOnTime
-
-
-
-Planned Purpose: This will output an organized list of files/entities of a specified creation date and/or modified date.
-
-
-
-
-
-**ChloeAI.compileEntitiesOnSize**
-
-
-
-Planned Purpose: This will compile an organized list of files/entities that are of a certain byte size.
-
-
-
-
-
-**ChloeAI.compileAllEntities**
-
-
-
-Planned Purpose: This will compile and organized list of all files/entities referenced by the database.
-
-
 
 
 
