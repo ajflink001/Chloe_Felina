@@ -122,6 +122,10 @@ Parameters:
 
 
 
+**auto\_update\_database** (*Boolean*) - This runs **ChloeAI.updateCFB** upon initializing a Chloe Felina database. By default, this is False.
+
+
+
 **keep\_db\_if\_no\_connection** (*Boolean*) - This requires the win32api (i.e., pywin32) module to be installed for this parameter to come into effect. If while getting data for the directory that a zip file in the database is referencing that the directory cannot be found or connection to it (i.e., the non-local drive) cannot be established, checks for that zip file are skipped and are assumed to be correct due to being unable to be verified. If this parameter is False, being unable to find the referenced directory or connect to the drive that the directory is located within will result in the zip file being deleted and its references removed from the database. By default, this is True. This parameter applies exclusively to referenced directories in the Chloe Felina database that are not the main drive (i.e., C Drive in the vast majority of case). This parameter only pertains to **ChloeAI.updateCFB**, not **ChloeAI.\_\_init\_\_** directly.
 
 
@@ -144,7 +148,7 @@ Parameters:
 
 
 
-Purpose: This dynamically checks and updates all zip files stored in the Chloe Felina database against the data they reference to determine if things need to be added, removed, and/or updated and/or if a directory being referenced no longer exists meaning that a zip file and related data are deleted. This is to ensure that ChloeAI.searchQuery and ChloeAI.findAllDuplicates do not produce redundant or inaccurate results or point to files/entities that no longer exist or have had their contents modified.
+Purpose: This dynamically checks and updates all zip files stored in the Chloe Felina database against the data they reference to determine if things need to be added, removed, and/or updated and/or if a directory being referenced no longer exists meaning that a zip file and related data are deleted. This is to ensure that ChloeAI.searchQuery and ChloeAI.findAllDuplicates do not produce redundant or inaccurate results or point to files/entities that no longer exist or have had their contents modified. As of right now, it can only add newly found data and remove redundant data. The portion of the algorithm governing updating zip files if the referenced data has been modified/updated has been commented out due to being incomplete.
 
 
 
@@ -213,38 +217,6 @@ Parameters:
 
 
 **terminal\_progress\_display\_enabled** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
-
-
-
-
-
-**ChloeAI.compWinSysInfo**
-
-
-
-Purpose: This compiles baseline metadata as well as (attempting) to calculate an md5 checksum of all files found within C:\\Windows, C:\\Program Files, C:\\Program Files (x86), C:\\ProgramData, and the AppData directory located within the C:\\Users\\\[GIVEN USER] into a zip file for the purpose of being used with **ChloeAI.checkWinSysChanges** to attempt to generate an Excel document of all files that have been added, removed, and/or modified since the generated zip file (called "Windows\_MetaInfo") has been created and added to the Chloe Felina database. As of writing, **ChloeAI.checkWinSysChanges** is incomplete making this function not useful until it is completed. It is optimal to run this and its companion function **ChloeAI.checkWinSysChanges** with an Administrator account.
-
-
-
-Parameters:
-
-
-
-**replace\_existing\_info** (*Boolean*) - If True and "Windows\_MetaInfo.zip" exists within the Chloe Felina database, "Windows\_MetaInfo.zip" will be deleted and replaced with a new iteration of a file of the same name. By default, this is False.
-
-
-
-**terminal\_progress\_display\_enabled** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
-
-
-
-
-
-**ChloeAI.checkWinSysChanges**
-
-
-
-Planned Purpose: This is a companion function to **ChloeAI.compWinSysInfo**. This checks the stored information on files located within C:\\Windows, C:\\Program Files, C:\\Program Files (x86), C:\\ProgramData, and the AppData directory located within the C:\\Users\\\[GIVEN USER] in "Windows\_MetaInfo.zip" against actual files stored there to determine any modifications, additions, and/or removals have been done. This is meant as an alternative to security software as instead of checking for specific activities and/or changes this checks for any changes.
 
 
 
