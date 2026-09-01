@@ -64,6 +64,23 @@ def isQueryMatchKether(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
     return False
 
 
+def isQueryMatchYesod(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
+
+    if not (len_txt_lines := len(txt_lines)):
+        return False
+    elif len_txt_lines == 1:
+        for word in tuple(decodeZipTxtLine(txt_lines[0]).lower().split(' ')):
+            if entry_string == "".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]):
+                return True
+    else:
+        for n in range(len_txt_lines):
+            for word in tuple(decodeZipTxtLine(txt_lines[n]).lower().split(' ')):
+                if entry_string == "".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]):
+                    return True
+
+    return False
+
+
 def isQueryMatchDaath(entry_string: str, entity_path : str, zf) -> bool:
 
     with zf.open(entity_path) as tf:

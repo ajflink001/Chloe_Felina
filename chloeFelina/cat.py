@@ -82,7 +82,7 @@ from winsound import PlaySound,SND_FILENAME
 from secrets import choice
 
 # Custom Python Modules
-from chloeFelina.purr import isQueryMatchKether,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName,decodeZipTxtLine,getTxtFileLines,fileNameFixer
+from chloeFelina.purr import isQueryMatchKether,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchYesod,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName,decodeZipTxtLine,getTxtFileLines,fileNameFixer
 from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,genSearchQueryResultFile,forbidden_dirs,backupGen,genDuplicateFinderResultFile
 from chloeFelina.paxium import encrypt as pax_encrypt
 from chloeFelina.paxium import decrypt as pax_decrypt
@@ -2679,7 +2679,7 @@ class ChloeAI:
                                 if 'image_histogram_data.txt' in extracted_data[classify]:
                                     extracted_data[classify].remove('image_histogram_data.txt')
                                 for txt_file in extracted_data[classify]:
-                                    if isQueryMatchKether(entry_string,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
+                                    if isQueryMatchYesod(entry_string,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
                                         found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
                                         break
                             elif classify.lower().endswith('_docx'):
@@ -2688,7 +2688,7 @@ class ChloeAI:
                                 if 'image_histogram_data.txt' in extracted_data[classify]:
                                     extracted_data[classify].remove('image_histogram_data.txt')
                                 for txt_file in extracted_data[classify]:
-                                    if isQueryMatchKether(entry_string,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
+                                    if isQueryMatchYesod(entry_string,tuple(zf.open(f'{classify}/{txt_file}').readlines())):
                                         found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
                                         break
                             elif classify == '_images':
