@@ -118,24 +118,15 @@ def isQueryMatchGewurah(entry_string : str, txt_lines : tuple[AnyStr], max_line_
         return False
     elif len_txt_lines == 1:
         txt_line = decodeZipTxtLine(txt_lines[0]).lower()
-        if entry_string in " ".join(["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]) for word in txt_line.split(' ')]):
+        if entry_string in " ".join(["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',item)) if segment]) for item in tuple(txt_line.split(' '))]):
             return True
     elif len_txt_lines < max_line_concat:
-        for n in range(len((txt_lines := list(txt_lines)))):
-            txt_lines[n] = decodeZipTxtLine(txt_lines[n]).lower()
-        pass
-    elif len_txt_lines < max_line_concat:
-        for n in range(len((txt_lines := list(txt_lines)))):
-            txt_lines[n] = decodeZipTxtLine(txt_lines[n]).lower()
-        txt_lines = tuple(txt_lines)
-        if entry_string in " ".join(["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]) for word in tuple("".join(txt_lines).split(' '))]):
+        concat_lines = " ".join([decodeZipTxtLine(txt_line).lower() for txt_line in txt_lines])
+        if entry_string in " ".join(["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word))]) for word in tuple(concat_lines.split(' '))]):
             return True
     else:
         for n in range(len_txt_lines-max_line_concat+1):
-            current_lines = [decodeZipTxtLine(txt_lines[n+k]).lower() for k in range(max_line_concat)]
-            if entry_string in " ".join([["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment])] for word in tuple("".join(current_lines).split(' '))]):
-                return True
-            if entry_string in " ".join([["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment])] for word in tuple(" ".join(current_lines).split(' '))]):
+            if entry_string in " ".join(["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]) for word in tuple(" ".join([decodeZipTxtLine(txt_lines[n+k]).lower() for k in range(max_line_concat)]).split(' '))]):
                 return True
 
     return False

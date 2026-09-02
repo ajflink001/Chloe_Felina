@@ -2170,10 +2170,7 @@ class ChloeAI:
 
         temp_str = tuple(entry_string.split(' '))
 
-        entry_string = ""
-
-        for item in temp_str:
-            entry_string = "%s%s" % (entry_string,"".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',item)) if segment]))
+        entry_string = " ".join(["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',item)) if segment]) for item in temp_str])
 
         del temp_str
 
