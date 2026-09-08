@@ -2551,7 +2551,7 @@ class ChloeAI:
                             elif check_type in self.image_types:
                                 check_type = 'img'
                             counter_presence = {}
-                            max_num = 0
+                            max_num = 1
                             anything = {'any','every','all'}
                             for found_word in found_words:
                                 if words[found_word][1]:
@@ -2612,13 +2612,7 @@ class ChloeAI:
                                                             else:
                                                                 counter_presence[entity] = 1
                                                     case _:
-                                                        if file_name[file_name.rfind('.')+1:] in self.image_types:
-                                                            if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                                counter_presence[entity] += 1
-                                                                if max_num < counter_presence[entity]:
-                                                                    max_num = counter_presence[entity]
-                                                            else:
-                                                                counter_presence[entity] = 1
+                                                        pass
                                 if words[found_word][2]:
                                     with open(f'{self.db_path}/_terms_searched/{found_word}$names.txt',encoding='utf-8') as tf:
                                         while True:
@@ -2660,21 +2654,94 @@ class ChloeAI:
                                                         if return_tuple:
                                                             return ()
                                                         return None
+                            if not max_num in (0,1):
                                 grouped_entities = {}
-                                for relevant_entity in relevant_entities:
-                                    if (temp_location := relevant_entity[:relevant_entity.rfind('\\')]) in grouped_entities.keys():
-                                        grouped_entities[temp_location].append(relevant_entity[relevant_entity.rfind('\\')+1:])
+                                for found_match in tuple((found_matches := [entity for entity in tuple(counter_presence.keys()) if counter_presence[entity] == max_num])):
+                                    if (zip_name := self.crintum_pointer[found_match[:found_match.rfind('\\')].replace('\\','/')]) in grouped_entities.keys():
+                                        grouped_entities[zip_name].append(found_match[found_match.rfind('\\')+1:])
                                     else:
-                                        grouped_entities[temp_location] = [relevant_entity[relevant_entity.rfind('\\')+1:]]
-                                for location in tuple(grouped_entities.keys()):
-                                    with ZipFile("%s/%s.zip" % (self.db_path,self.crintum_pointer[location.replace('\\','/')])) as zf:
-                                        pass
-                                    for entity in tuple(grouped_entities[location]):
-                                        pass
+                                        grouped_entities[zip_name] = [found_match[found_match.rfind('\\')+1:]]
+                                for zip_name in tuple(grouped_entities.keys()):
+                                    with ZipFile(f'{self.db_path}/{zip_name}.zip') as zf:
+                                        items = {item for item in tuple(zf.namelist()) if '/' in item}
+                                        for entity in tuple(grouped_entities[zip_name]):
+                                            file_name = "%s_%s" % (entity[:entity.rfind('.')],entity[entity.rfind('.')+1:])
+                                            match entity[entity.rfind('.')+1:].lower():
+                                                case 'txt':
+                                                    if not isQueryMatchGewurah(entry_string,tuple(zf.open(f'_txt_files/{file_name}.txt').readlines()),max_line_concat):
+                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
+                                                case 'pdf':
+                                                    if (txt_file := f'{file_name}/pdf_metadata.txt') in items:
+                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
+                                                            continue
+                                                    if (txt_file := f'{file_name}/pdf_extracted_text.txt') in items:
+                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
+                                                            continue
+                                                case 'doc':
+                                                    if (txt_file := f'{file_name}/doc_metadata.txt') in items:
+                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
+                                                            continue
+                                                    if (txt_file := f'{file_name}/doc_extracted_text.txt') in items:
+                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
+                                                            continue
+                                                    found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
+                                                case 'shp':
+                                                    if not isQueryMatchChochmah(entry_string,f'_shp_files/{file_name}.txt',zf):
+                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
+                                                case 'gdb':
+                                                    for item in tuple(items):
+                                                        if item.startswith(f'{file_name}/'):
+                                                            if isQueryMatchChochmah(entry_string,f'_shp_files/{file_name}.txt',zf):
+                                                                continue
+                                                    found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
+                                                case _:
+                                                    pass
                             if len(found_matches) or len(found_name_matches):
-                                pass
+                                found_matches = tuple(sorted(set(found_matches + found_name_matches)))
+                                if save_results_to_file:
+                                    genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
+                                elif return_tuple:
+                                    return found_matches
+                                return None
                         elif isinstance(check_type,(tuple,list,set)):
-                            pass
+                            check_type = list(check_type)
+                            check_type = {check_type[n].lower().strip() for n in range(len(check_type))}
+                            if 'doc' in check_type:
+                                check_type.remove('doc')
+                                check_type.add('docx')
+                            if 'img' in check_type:
+                                check_type.remove('img')
+                                for image_type in self.image_types:
+                                    check_type.add(image_type)
+                            max_num = 0
+                            counter_presence = {}
+                            for found_word in found_words:
+                                if words[found_word][1]:
+                                    with open(f'{self.db_path}/_terms_searched/{found_word}$contents.txt',encoding='utf-8') as tf:
+                                        while True:
+                                            entity = tf.readline()
+                                            if not entity:
+                                                break
+                                            entity = entity.rstrip('\n')
+                                            if entity[entity.rfind('.')+1:].lower() in check_type:
+                                                if entity in counter_presence.keys():
+                                                    counter_presence[entity] += 1
+                                                    if max_num < counter_presence[entity]:
+                                                        max_num = counter_presence[entity]
+                                                else:
+                                                    counter_presence[entity] = 1
+                                if words[found_word][2]:
+                                    with open(f'{self.db_path}/_terms_searched/{found_word}$names.txt',encoding='utf-8') as tf:
+                                        while True:
+                                            entity = tf.readline()
+                                            if not entity:
+                                                break
+                                            entity = entity.rstrip('\n')
+                                            pass
+                                    if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
+                                        pass
+                            if not max_num in (0,1):
+                                pass
                         elif return_tuple:
                             return ()
                         else:
