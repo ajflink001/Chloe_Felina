@@ -378,9 +378,9 @@ class ChloeAI:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
 
 
-    def updateCFB(self, keep_db_if_no_connection : bool = True, clear_search_update : bool = False, terminal_progress_display_enabled : bool = False) -> None:
+    def updateCFB(self, keep_db_if_no_connection : bool = True, clear_search_update : bool = False, terminal_progress_display : bool = False) -> None:
 
-        if terminal_progress_display_enabled and tqdm_imported:
+        if terminal_progress_display and tqdm_imported:
             sys_clear()
 
         # Note: Local drive refers to just the C drive. Any external or network
@@ -434,7 +434,7 @@ class ChloeAI:
             nonlocal_drives = tuple([unc_path(drive) for drive in nonlocal_drives])
             redact_dbs = []
             if tqdm_imported:
-                iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display_enabled, desc = "Finding and Removing Redundant References")
+                iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display, desc = "Finding and Removing Redundant References")
             else:
                 iterator = tuple(self.used_names)
             if keep_db_if_no_connection:
@@ -461,10 +461,10 @@ class ChloeAI:
             del redact_dbs
             try: del reference_directory
             except NameError: pass
-            if terminal_progress_display_enabled:
+            if terminal_progress_display:
                 sys_clear()
             if tqdm_imported:
-                iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display_enabled, desc = "Finding and Removing Redundant References")
+                iterator = tqdm(tuple(self.used_names),disable = not terminal_progress_display, desc = "Finding and Removing Redundant References")
             else:
                 iterator = tuple(self.used_names)
             for db_name in iterator:
@@ -667,163 +667,6 @@ class ChloeAI:
                 except NameError: pass
                 try: del new_lines
                 except NameError: pass
-                # if len((real_items := tuple(real_items))):
-                #     redacted_metadata_items = []
-                #     types_redacted = set()
-                #     for item in tuple(real_items):
-                #         match stored_items[item][0]:
-                #             case 'TXT':
-                #                 if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                 elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                     removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
-                #                     remove(f'{self.db_path}/{db_name}/_txt_files/{ref_name}.txt')
-                #                     try:
-                #                         if not self.archive_txt_data(f'{ref_path}/{item}',db_name):
-                #                             if exists((stored_item_path := f'{self.db_path}/{db_name}/_txt_files/{ref_name}.txt')):
-                #                                 try:
-                #                                     remove(stored_item_path)
-                #                                 except Exception:
-                #                                     chmod(stored_item_path,S_IRWXU)
-                #                                     remove(stored_item_path)
-                #                             redacted_metadata_items.append(ref_name)
-                #                             types_redacted.add('TXT')
-                #                             self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                #                     except Exception:
-                #                         if exists((stored_item_path := f'{self.db_path}/{db_name}/_txt_files/{ref_name}.txt')):
-                #                             try:
-                #                                 remove(stored_item_path)
-                #                             except Exception:
-                #                                 chmod(stored_item_path,S_IRWXU)
-                #                                 remove(stored_item_path)
-                #                         redacted_metadata_items.append(ref_name)
-                #                         types_redacted.add('TXT')
-                #                         self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                #             case 'PDF':
-                #                 if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                 elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                 elif not pypdf_imported or not pil_imported:
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #             case 'DOC':
-                #                 if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                 elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                 elif not docx_imported or not docx2_imported or not pil_imported:
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #             case 'SHP':
-                #                 if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                 elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                     removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
-                #                     remove(f'{self.db_path}/{db_name}/_shp_files/{ref_name}.txt')
-                #                     if arcpy_imported:
-                #                         try:
-                #                             if not self.archive_shp_data(f'{ref_path}/{item}',db_name):
-                #                                 try: remove(f'{self.db_path}/{db_name}/_shp_files/{ref_name}.txt')
-                #                                 except Exception: pass
-                #                                 redacted_metadata_items.append(ref_name)
-                #                                 types_redacted.add('SHP')
-                #                                 self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                #                         except Exception:
-                #                             try: remove(f'{self.db_path}/{db_name}/_shp_files/{ref_name}.txt')
-                #                             except Exception: pass
-                #                             redacted_metadata_items.append(ref_name)
-                #                             types_redacted.add('SHP')
-                #                             self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                #                     else:
-                #                         types_redacted.add('SHP')
-                #                         self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                #                 elif not arcpy_imported:
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                     types_redacted.add('SHP')
-                #                     removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
-                #                     remove(f'{self.db_path}/{db_name}/_shp_files/{ref_name}.txt')
-                #                     self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                #             case 'IMG':
-                #                 if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                 elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                     removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
-                #                     remove(f'{self.db_path}/{db_name}/_images/{ref_name}.txt')
-                #                     if pil_imported:
-                #                         try:
-                #                             if not self.archive_img_data(f'{ref_path}/{item}',db_name):
-                #                                 try: remove(f'{self.db_path}/{db_name}/_images/{ref_name}.txt')
-                #                                 except Exception: pass
-                #                                 redacted_metadata_items.append(ref_name)
-                #                                 types_redacted.add('IMG')
-                #                                 self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                #                         except Exception:
-                #                             try: remove(f'{self.db_path}/{db_name}/_images/{ref_name}.txt')
-                #                             except Exception: pass
-                #                             redacted_metadata_items.append(ref_name)
-                #                             types_redacted.add('IMG')
-                #                             self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                #                     else:
-                #                         types_redacted.add('IMG')
-                #                         self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                #                 elif not pil_imported:
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                     types_redacted.add('IMG')
-                #                     removeInvalidMetadataRef((ref_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'),f'{self.db_path}/{db_name}/_metadata.txt')
-                #                     remove(f'{self.db_path}/{db_name}/_images/{ref_name}.txt')
-                #                     self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                #             case 'GDB':
-                #                 pass
-                #             case _:
-                #                 # ALIA
-                #                 if None in (temp_info := getBasicInfo(f'{ref_path}/{item}')):
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #                 elif temp_info[0] != stored_items[item][1] or temp_info[1] != stored_items[item][2] or temp_info[2] != stored_items[items][3]:
-                #                     change_done = True
-                #                     if not exists(f'{self.db_path}/{db_name}'):
-                #                         self.uncompressZIP(db_name)
-                #     if len(types_redacted):
-                #         if 'TXT' in types_redacted:
-                #             if not len(listdir(f'{self.db_path}/{db_name}/_txt_files')):
-                #                 rmtree(f'{self.db_path}/{db_name}/_txt_files')
-                #         if 'SHP' in types_redacted:
-                #             if not len(listdir(f'{self.db_path}/{db_name}/_shp_files')):
-                #                 rmtree(f'{self.db_path}/{db_name}/_shp_files')
-                #         if 'IMG' in types_redacted:
-                #             if not len(listdir(f'{self.db_path}/{db_name}/_images')):
-                #                 rmtree(f'{self.db_path}/{db_name}/_images')
                 if exists(f'{self.db_path}/{db_name}'):
                     if not len(listdir(f'{self.db_path}/{db_name}')):
                         try:
@@ -839,7 +682,7 @@ class ChloeAI:
         if change_done and clear_search_update:
             self.clearSearchQueryMemory()
 
-        if terminal_progress_display_enabled:
+        if terminal_progress_display:
             sys_clear()
 
         return None
@@ -901,14 +744,14 @@ class ChloeAI:
         return None
 
 
-    def getNestedDirectoryData(self, top_directory_path : str, clear_terms_searched : bool = True, terminal_progress_display_enabled : bool = False) -> None:
+    def getNestedDirectoryData(self, top_directory_path : str, clear_terms_searched : bool = True, terminal_progress_display : bool = False) -> None:
 
         if not exists(top_directory_path):
             return None
 
         for root,dirs,files in walker(top_directory_path):
             if not "$RECYCLE.BIN" in (root := root.replace('\\','/')) and not self.db_path in root:
-                self.getDirectoryData(root,clear_terms_searched,terminal_progress_display_enabled)
+                self.getDirectoryData(root,clear_terms_searched,terminal_progress_display)
 
         if self.chloe_vocalization:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
@@ -981,9 +824,9 @@ class ChloeAI:
         return None
 
 
-    def getDirectoryData(self, reference_directory : str, clear_terms_searched : bool = True, terminal_progress_display_enabled : bool = False) -> None:
+    def getDirectoryData(self, reference_directory : str, clear_terms_searched : bool = True, terminal_progress_display : bool = False) -> None:
 
-        if terminal_progress_display_enabled and tqdm_imported:
+        if terminal_progress_display and tqdm_imported:
             sys_clear()
 
         reference_directory = reference_directory.replace('\\','/').rstrip("/")
@@ -1019,7 +862,7 @@ class ChloeAI:
                     archive_db_name = randstr(12)
                 mkdir(f'{self.db_path}/{archive_db_name}')
                 if tqdm_imported:
-                    names = tqdm(tuple(items.keys()), disable = not terminal_progress_display_enabled, desc = reference_directory[reference_directory.rfind('/')+1:])
+                    names = tqdm(tuple(items.keys()), disable = not terminal_progress_display, desc = reference_directory[reference_directory.rfind('/')+1:])
                 else:
                     names = tuple(items.keys())
                 for name in names:
@@ -2143,7 +1986,7 @@ class ChloeAI:
         return None
 
 
-    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, entity_names_only : bool = False, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display_enabled : bool = False) -> tuple[str] | None:
+    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, entity_names_only : bool = False, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display : bool = False) -> tuple[str] | None:
         '''
         This allows, by default, the searching for the presence of specific
         term(s) in entities with data in the database as well as the name of the
@@ -2158,7 +2001,7 @@ class ChloeAI:
             return " ".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',sub_entry_string)) if segment]).lower()
 
 
-        if terminal_progress_display_enabled and tqdm_imported:
+        if terminal_progress_display and tqdm_imported:
             sys_clear()
 
         if max_line_concat < 2:
@@ -2330,7 +2173,7 @@ class ChloeAI:
                                     return ()
                                 return None
                         if len((found_matches := tuple(sorted(found_name_matches)))):
-                            if save_results_to_file:
+                            if save_to_file:
                                 genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                             if return_tuple:
                                 return found_matches
@@ -2366,7 +2209,7 @@ class ChloeAI:
                                         if testing_entry_string in " ".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name)) if segment]):
                                             found_name_matches.add(entity)
                         if len((found_matches := tuple(sorted(found_name_matches)))):
-                            if save_results_to_file:
+                            if save_to_file:
                                 genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                             if return_tuple:
                                 return found_matches
@@ -2519,7 +2362,7 @@ class ChloeAI:
                         else:
                             return None
                         if len((found_matches := tuple(found_name_matches))):
-                            if save_results_to_file:
+                            if save_to_file:
                                 genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                             if return_tuple:
                                 return found_matches
@@ -2698,7 +2541,7 @@ class ChloeAI:
                                                     pass
                             if len(found_matches) or len(found_name_matches):
                                 found_matches = tuple(sorted(set(found_matches + found_name_matches)))
-                                if save_results_to_file:
+                                if save_to_file:
                                     genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                                 elif return_tuple:
                                     return found_matches
@@ -3007,7 +2850,7 @@ class ChloeAI:
                             return None
                     if contents_found and names_found:
                         if len(found_matches := tuple(set(list(found_matches)+list(found_name_matches)))) and any((contents_found,names_found)):
-                            if save_results_to_file:
+                            if save_to_file:
                                 genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                             if return_tuple:
                                 return found_matches
@@ -3016,7 +2859,7 @@ class ChloeAI:
         found_matches = []
         found_name_matches = []
         if tqdm_imported:
-            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled, desc = f"Searching for instances of {entry_string}")
+            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display, desc = f"Searching for instances of {entry_string}")
         else:
             iterator = tuple(self.used_names)
         if not ' ' in entry_string:
@@ -3345,7 +3188,7 @@ class ChloeAI:
         except NameError: pass
 
         # Account for not selecting all on first run
-        if save_results_to_file:
+        if save_to_file:
             genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
 
         if self.chloe_vocalization:
@@ -3366,7 +3209,7 @@ class ChloeAI:
         return None
 
 
-    def findAllDuplicates(self, include_other_entities : bool = False, return_tuple : bool = False, save_results_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', terminal_progress_display_enabled : bool = False) -> None | tuple[tuple]:
+    def findAllDuplicates(self, include_other_entities : bool = False, return_tuple : bool = False, save_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', terminal_progress_display : bool = False) -> None | tuple[tuple]:
         '''
         Check items of matching type against each other and can optionally be
         outputted and viewed by the user.
@@ -3392,9 +3235,9 @@ class ChloeAI:
                     db_names.remove(db_name)
         num_dbs = len((db_names := tuple(db_names)))
         if tqdm_imported:
-            if terminal_progress_display_enabled:
+            if terminal_progress_display:
                 sys_clear()
-            iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display_enabled, desc = f"Checking for duplicates in {self.database_name}")
+            iterator = tqdm(range(num_dbs-1), disable = not terminal_progress_display, desc = f"Checking for duplicates in {self.database_name}")
         else:
             iterator = range(num_dbs-1)
         # This enables greater redundancy reduction.
@@ -4093,14 +3936,14 @@ class ChloeAI:
         if self.chloe_vocalization:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
 
-        if return_tuple or save_results_to_file:
+        if return_tuple or save_to_file:
             for n in range(len(found_duplicates)):
                 found_duplicates[n] = list(found_duplicates[n])
                 for x in range(len(found_duplicates[n])):
                     found_duplicates[n][x] = "%s\\%s.%s" % (self.path_pointer[found_duplicates[n][x][:found_duplicates[n][x].find("|")]].replace('/','\\'),found_duplicates[n][x][found_duplicates[n][x].find("|")+1:found_duplicates[n][x].rfind("_")],found_duplicates[n][x][found_duplicates[n][x].rfind("_")+1:])
                 found_duplicates[n] = tuple(found_duplicates[n])
 
-            if len((found_duplicates := tuple(found_duplicates + alia_found_duplicates))) and save_results_to_file:
+            if len((found_duplicates := tuple(found_duplicates + alia_found_duplicates))) and save_to_file:
                 genDuplicateFinderResultFile(found_duplicates,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
             if return_tuple:
                 return found_duplicates
@@ -4108,7 +3951,7 @@ class ChloeAI:
         return None
 
 
-    def getTotalRefSize(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display_enabled : bool = False) -> int:
+    def getTotalRefSize(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display : bool = False) -> int:
         '''
         The total size of actual referenced entities themselves.
         '''
@@ -4116,9 +3959,9 @@ class ChloeAI:
         total_size = Decimal(0)
 
         if tqdm_imported:
-            if terminal_progress_display_enabled:
+            if terminal_progress_display:
                 sys_clear()
-            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled, desc = "Getting Total Size of Actual Referenced")
+            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display, desc = "Getting Total Size of Actual Referenced")
         else:
             iterator = tuple(self.used_names)
 
@@ -4444,7 +4287,7 @@ class ChloeAI:
         return int(total_size)
 
 
-    def getTotalRefNum(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display_enabled : bool = False) -> int:
+    def getTotalRefNum(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display : bool = False) -> int:
         '''
         Number of entities in database.
         '''
@@ -4452,9 +4295,9 @@ class ChloeAI:
         entity_counter = 0
 
         if tqdm_imported:
-            if terminal_progress_display_enabled:
+            if terminal_progress_display:
                 sys_clear()
-            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display_enabled, desc = "Counting Referenced Entities")
+            iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display, desc = "Counting Referenced Entities")
         else:
             iterator = tuple(self.used_names)
 
@@ -4739,3 +4582,8 @@ class ChloeAI:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
 
         return entity_counter
+
+
+    def findNameLocation(self, file_name : str, strict_match : bool = False, save_to_file : bool = False) -> tuple | None:
+
+        return None
