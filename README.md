@@ -1,9 +1,21 @@
 # Chloe Felina
 Chloe Felina can be roughly classified as a hybrid of a rule-based expert system and data-driven inference engine.
 
+***
+
+_**Dynamic Search Query System**_
+
+This refers to an algorithm that can behave drastically different depending upon the parameters set, attempts to account for various scenarios to address outliers that normally would not be caught when scanning through text for matching strings, ignores case sensitivity, ignore distinguishing between non-alphanumeric characters, and has a system in place to cache previous searches in order to accelerate future searches involving previous searched terms. For example, if "ocean" was previously searched and the current search term is "atlantic ocean", instead of checking through the database entirely, the list of previously found matches is pulled and only those are checked for matching instances of "atlantic ocean". The only downside of this is that words considered to be vocabulary forms of each other are treated as separate things. For example, "time", "times", "timed", "timing", and "timings" are treated as separate words by the Dynamic Search Query System.
+
+_**In-Depth Streamlined Duplicate Finding System**_
+
+This refers to an algorithm that checks a database for information on files determined as unique such as text and images with files of the same "grouping" as each other for potential duplicates with very high confidence excluding extreme outliers (such as black-and-white or grayscale image files with the same ratio of histogram values). What information is used to compare files against each other is contextual to the file grouping itself. For example, the number of histogram values and the specific histogram ratio values are used to determine if images are duplicates of each other; PDFs and Word Documents have the extracted information of images and/or text compared against each other (but PDFs and Word Documents are not compared against each other themselves); and text files simply have the number of lines used and text itself compared against each other. The reason for comparisons not being made between image files and PDFs, for example, is the fundamental difference between the files themselves. Even though technically an image file can be converted into a PDF file and vice versa meaning that a PDF and image file could be duplicates of each other, cross "grouping" comparisons are avoided due to how overly complicated such comparisons can be. In addition, the goal of the In-Depth Streamlined Duplicate Finding System is to see if two files are merely of the same thing fundamentally and practically, not if, for example, an instance of image file exists one-to-one within a Word Document or PDF, or a Word Document is the same thing as a given PDF in terms of contents.
+
+***
+
 Chloe Felina has been designed with the philosophy of being able to function fully offline and work on any computer with Windows OS installed on it as well as acting as a virtual helper/assistant. It is not as feature-rich as I desire it to be. Currently, the Dynamic Term Search Query System and the In-Depth Streamlined Duplicate Finding System are the only things fully implemented.
 
-Note: It is highly recommended to use the latest version of Chloe Felina as earlier version will contain oversights and/or missing features.
+Note: It is highly recommended to use the latest release version of Chloe Felina as earlier version will contain oversights and/or missing features.
 
 ***
 
