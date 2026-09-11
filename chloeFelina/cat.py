@@ -2878,7 +2878,6 @@ class ChloeAI:
                         else:
                             return None
             else:
-                # To be rectified
                 contents_found = False ; names_found = False
                 test_contents_str = f'{entry_string}$contents' ; test_name_str = f'{entry_string}$names'
                 found_matches = [] ; found_name_matches = []
