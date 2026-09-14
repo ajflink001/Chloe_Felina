@@ -2775,7 +2775,7 @@ class ChloeAI:
                                                 case _:
                                                     pass
                                 del grouped_entities
-                            if len((found_matches := tuple(sorted(found_matches)):
+                            if len((found_matches := tuple(sorted(found_matches)))):
                                 if save_to_file:
                                     genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                                 elif return_tuple:
