@@ -26,6 +26,10 @@ txt - Text files (.txt)
 
 
 
+bin - Binary files (.bin)
+
+
+
 doc - Word Documents (.docx only)
 
 
@@ -270,27 +274,27 @@ Parameters:
 
 
 
-**output\_file\_type** (*String*) - This parameter only comes into effect if **save\_results\_to\_file** is True. This specifies the file type that the results will be saved to. "xlsx"/"excel" will result in an Excel file; "txt"/"text" will result in a delineated text file; and "csv" will result in a CSV file. If an invalid string is given, it will default to being "excel". By default, it is set as "excel" for an Excel file.
+**output\_file\_type** (*String*) - This parameter only comes into effect if **save\_to\_file** is True. This specifies the file type that the results will be saved to. "xlsx"/"excel" will result in an Excel file; "txt"/"text" will result in a delineated text file; and "csv" will result in a CSV file. If an invalid string is given, it will default to being "excel". By default, it is set as "excel" for an Excel file.
 
 
 
-**output\_location** (*String* or *NoneType*) - This parameters only comes into effect if **save\_results\_to\_file** is True. This specifies the location on the computer where the output results file will be saved to. If nothing is given or the specified location does not exist, it will default to the current user's Documents folder. By default, this is None.
+**output\_location** (*String* or *NoneType*) - This parameters only comes into effect if **save\_to\_file** is True. This specifies the location on the computer where the output results file will be saved to. If nothing is given or the specified location does not exist, it will default to the current user's Documents folder. By default, this is None.
 
 
 
-**output\_name** (*String* or *NoneType*) - This parameter only comes into effect if **save\_results\_to\_file** is True. This allows the output results file to have a specified name. If a file of the same name already exists in output\_location or the same **output\_file\_type**, a random string of characters will be appended to the end of the inputted output\_name to not overwrite any pre-existing file unless **overwrite\_existing\_output** is True. If nothing is given, it will generate a templated name for the output file. By default, this is None.
+**output\_name** (*String* or *NoneType*) - This parameter only comes into effect if **save\_to\_file** is True. This allows the output results file to have a specified name. If a file of the same name already exists in output\_location or the same **output\_file\_type**, a random string of characters will be appended to the end of the inputted output\_name to not overwrite any pre-existing file unless **overwrite\_existing\_output** is True. If nothing is given, it will generate a templated name for the output file. By default, this is None.
 
 
 
-**overwrite\_existing\_output** (*Boolean*) - This parameter only comes into effect if **save\_results\_to\_file** is True. If True, if a pre-existing Excel file, text file, or CSV file already exists at the specified **output\_location**, it will be overwritten. By default, this is False.
+**overwrite\_existing\_output** (*Boolean*) - This parameter only comes into effect if **save\_to\_file** is True. If True, if a pre-existing Excel file, text file, or CSV file already exists at the specified **output\_location**, it will be overwritten. By default, this is False.
 
 
 
-**csv\_field\_size\_limit** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This corresponds to **csv.field\_size\_limit** controlling the number of fields (or columns) may be present in a csv file. By default, this is 131\_072.
+**csv\_field\_size\_limit** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_to\_file** is True. This corresponds to **csv.field\_size\_limit** controlling the number of fields (or columns) may be present in a csv file. By default, this is 131\_072.
 
 
 
-**csv\_delimiter** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This corresponds to the "delimiter" parameter for csv.writer, which dictates what character will be used to separate items in each row. By default, this is ",".
+**csv\_delimiter** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_to\_file** is True. This corresponds to the "delimiter" parameter for csv.writer, which dictates what character will be used to separate items in each row. By default, this is ",".
 
 
 
@@ -346,27 +350,27 @@ Parameters:
 
 
 
-**output\_file\_type** (*String*) - This parameter only comes into effect if **save\_results\_to\_file** is True. This specifies the file type that the results will be saved to. "xlsx"/"excel" will result in an Excel file; "txt"/"text" will result in a delineated text file; and "csv" will result in a CSV file. If an invalid string is given, it will default to being "excel". By default, it is set as "excel" for an Excel file.
+**output\_file\_type** (*String*) - This parameter only comes into effect if **save\_to\_file** is True. This specifies the file type that the results will be saved to. "xlsx"/"excel" will result in an Excel file; "txt"/"text" will result in a delineated text file; and "csv" will result in a CSV file. If an invalid string is given, it will default to being "excel". By default, it is set as "excel" for an Excel file.
 
 
 
-**output\_location** (*String* or *NoneType*) - This parameter only comes into effect if **save\_results\_to\_file** is True. This specifies the directory/folder where the outputted found duplicates of the file type specified by **output\_file\_type** will be generated. If the specified location does not exist, it will default to the current user's Documents folder. By default, this is None.
+**output\_location** (*String* or *NoneType*) - This parameter only comes into effect if **save\_to\_file** is True. This specifies the directory/folder where the outputted found duplicates of the file type specified by **output\_file\_type** will be generated. If the specified location does not exist, it will default to the current user's Documents folder. By default, this is None.
 
 
 
-**output\_name** (*String* or *NoneType*) - This parameter only comes into effect if **save\_results\_to\_file** is True. This designates what the name of the output file, minus the extension suffix, will be when generated. By default, this is None.
+**output\_name** (*String* or *NoneType*) - This parameter only comes into effect if **save\_to\_file** is True. This designates what the name of the output file, minus the extension suffix, will be when generated. By default, this is None.
 
 
 
-**overwriting\_existing\_output** (*Boolean*) - This parameter only comes into effect if **save\_results\_to\_file** is True. This allows the overwriting of any pre-existing file of the same name and file extension at the designated **output\_location** (or the current user's Documents folder) to be overwritten. If False and a file of the same name and file extension is found in the **output\_location** (or the current user's Documents folder), a random string of characters will be appended to the output file's name. By default, this is False.
+**overwriting\_existing\_output** (*Boolean*) - This parameter only comes into effect if **save\_to\_file** is True. This allows the overwriting of any pre-existing file of the same name and file extension at the designated **output\_location** (or the current user's Documents folder) to be overwritten. If False and a file of the same name and file extension is found in the **output\_location** (or the current user's Documents folder), a random string of characters will be appended to the output file's name. By default, this is False.
 
 
 
-**csv\_field\_size\_limit** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This corresponds to **csv.field\_size\_limit** controlling the number of fields (or columns) may be present in a csv file. By default, this is 131\_072.
+**csv\_field\_size\_limit** (*Integer*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_to\_file** is True. This corresponds to **csv.field\_size\_limit** controlling the number of fields (or columns) may be present in a csv file. By default, this is 131\_072.
 
 
 
-**csv\_delimiter** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_results\_to\_file** is True. This corresponds to the "delimiter" parameter for csv.writer, which dictates what character will be used to separate items in each row. By default, this is ",".
+**csv\_delimiter** (*String*) - This parameter only comes into effect if **output\_file\_type** is "csv" and **save\_to\_file** is True. This corresponds to the "delimiter" parameter for csv.writer, which dictates what character will be used to separate items in each row. By default, this is ",".
 
 
 
@@ -388,7 +392,7 @@ Purpose: This outputs the total size of the files that are being referenced in t
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked. By default, the string is "any".
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "bin", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, binary file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked. By default, the string is "any".
 
 
 
@@ -408,7 +412,7 @@ Purpose: This simply outputs an integer value of the number of items with refere
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked. By default, the string is "any".
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "bin", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, binary file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked. By default, the string is "any".
 
 
 
