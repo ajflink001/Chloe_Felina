@@ -196,6 +196,13 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                         else:
                             organized_files['txt'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                             counter['txt'] = len(organized_files['txt'][0])
+                    case 'bin':
+                        if 'bin' in organized_files.keys():
+                            organized_files['bin'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                            counter['bin'] += len(organized_files['bin'][-1])
+                        else:
+                            organized_files['bin'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            counter['bin'] = len(organized_files['txt'][0])
                     case 'pdf':
                         if 'pdf' in organized_files.keys():
                             organized_files['pdf'].append(tuple(sorted([item for item in found_duplicates[n]])))
@@ -238,7 +245,7 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                         else:
                             organized_files['alia'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                             counter['alia'] = len(organized_files['alia'][0])
-        suffix_association = {'gdb' : 'File Geodatabases', 'img' : 'Images', 'pdf' : 'PDFs', 'shp' : 'ShapeFiles', 'txt' : 'Text Files', 'doc' : 'Word Documents', 'alia' : 'Questionable'}
+        suffix_association = {'gdb' : 'File Geodatabases', 'img' : 'Images', 'pdf' : 'PDFs', 'shp' : 'ShapeFiles', 'txt' : 'Text Files', 'bin' : "Binary Files", 'doc' : 'Word Documents', 'alia' : 'Questionable'}
         upper_letters = tuple(ascii_uppercase)
         for entity_type in tuple(counter.keys()):
             if counter[entity_type] <= 26:
@@ -340,6 +347,11 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                                 organized_files['txt'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                             else:
                                 organized_files['txt'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                        case 'bin':
+                            if not 'bin' in organized_files.keys():
+                                organized_files['bin'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['bin'].append(tuple(sorted([item for item in found_duplicates[n]])))
                         case 'pdf':
                             if not 'pdf' in organized_files.keys():
                                 organized_files['pdf'] = [tuple(sorted([item for item in found_duplicates[n]]))]
@@ -390,6 +402,11 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
                                 organized_files['txt'] = [tuple(sorted([item for item in found_duplicates[n]]))]
                             else:
                                 organized_files['txt'].append(tuple(sorted([item for item in found_duplicates[n]])))
+                        case 'bin':
+                            if not 'bin' in organized_files.keys():
+                                organized_files['bin'] = [tuple(sorted([item for item in found_duplicates[n]]))]
+                            else:
+                                organized_files['bin'].append(tuple(sorted([item for item in found_duplicates[n]])))
                         case 'pdf':
                             if not 'pdf' in organized_files.keys():
                                 organized_files['pdf'] = [tuple(sorted([item for item in found_duplicates[n]]))]
@@ -476,6 +493,11 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_file_type : str,
                     organized_files['txt'] = [item]
                 else:
                     organized_files['txt'].append(item)
+            case 'bin':
+                if not 'bin' in organized_files.keys():
+                    organized_files['bin'] = [item]
+                else:
+                    organized_files['bin'].append(item)
             case 'pdf':
                 if not 'pdf' in organized_files.keys():
                     organized_files['pdf'] = [item]
@@ -511,9 +533,9 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_file_type : str,
     for entity_key in tuple(organized_files.keys()):
         organized_files[entity_key] = tuple(sorted(organized_files[entity_key]))
     if output_path.endswith('.xlsx') and openpyxl_imported:
-        key_association = {"File Geodatabases":"gdb","Images":"img","PDFs":"pdf","ShapeFiles":"shp","Text Files":"txt","Word Documents":"doc","Miscellaneous":"alia"}
+        key_association = {"File Geodatabases":"gdb","Images":"img","PDFs":"pdf","ShapeFiles":"shp","Text Files":"txt","Binary Files":"bin","Word Documents":"doc","Miscellaneous":"alia"}
         wb = Workbook()
-        for worksheet_name in ("File Geodatabases","Images","PDFs","ShapeFiles","Text Files","Word Documents","Miscellaneous"):
+        for worksheet_name in ("Text Files","Binary Files","Word Documents","PDFs","Images","ShapeFiles","File Geodatabases","Miscellaneous"):
             if key_association[worksheet_name] in organized_files.keys():
                 wb.create_sheet(worksheet_name)
                 ws = wb[worksheet_name]

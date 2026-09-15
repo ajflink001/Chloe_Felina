@@ -80,9 +80,10 @@ from array import array
 from pathlib import Path
 from winsound import PlaySound,SND_FILENAME
 from secrets import choice
+from string import printable
 
 # Custom Python Modules
-from chloeFelina.purr import isQueryMatchKether,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchYesod,isQueryMatchGewurah,forcedTxtFileWrite,getImageTypeName,decodeZipTxtLine,getTxtFileLines,fileNameFixer
+from chloeFelina.purr import isQueryMatchKether,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchHessed,isQueryMatchYesod,isQueryMatchHod,isQueryMatchGewurah,forcedTxtFileWrite,decodeZipTxtLine,getTxtFileLines,fileNameFixer
 from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,genSearchQueryResultFile,forbidden_dirs,backupGen,genDuplicateFinderResultFile
 from chloeFelina.paxium import encrypt as pax_encrypt
 from chloeFelina.paxium import decrypt as pax_decrypt
@@ -137,9 +138,13 @@ class ChloeAI:
 
     def __init__(self, database_location : str | None = None, database_name : str = 'datumbazo', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, allow_truncating_images : bool = False, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, auto_update_database : bool = False, keep_db_if_no_connection : bool = True, clear_search_update : bool = False, updateCFB_progress_display : bool = False, corrupted_zip_check : bool = True):
 
-        self.valid_check_types = {'txt','pdf','doc','img','gdb','shp','alia'}
-        self.valid_extensions = ['txt']
+        self.valid_check_types = {'txt','bin','pdf','doc','img','gdb','shp','alia'}
+        # Text files (.txt) and Binary files (.bin) can have data properly
+        # extracted without needing to install third-party modules.
+        self.valid_extensions = ['txt','bin']
         self.known_image_types = {'art','avif','blp','bmp','bti','c4','cals','cit','cpt','clip','cpl','dds','dib','djvu','egt','exif','gif','flif','grf','icns','heif','heic','ico','iff','ilbm','lbm','jng','jbig','jpeg','jpg','jfif','jp2','jai','jaic','jar','jd','jfm','jls','jnft','jpp','jrf','jps','jsy','jxl','jxr','jxs','jxt','kra','lbm','max','miff','mng','msp','nef','nitf','otb','pbm','pc1','pc2','pc3','pcf','pcx','pdd','pdn','pgf','pgm','pi1','pi2','pi3','pict','pct','png','pnj','pnm','pns','ppm','psb','psd','psp','px','pxm','pxr','pxz','qfx','qoi','rle','sct','sgi','rgb','int','bw','tga','targa','icb','vda','vst','pix','tiff','tif','vtf','webp','xbm','xcf','xpm','zif','cr2','dng','raw'}
+
+        self.acceptable_chars = set(printable[:-5])
 
         self.crintum_obfuscation = crintum_obfuscation
         self.database_name = database_name[:]
@@ -379,6 +384,7 @@ class ChloeAI:
 
 
     def updateCFB(self, keep_db_if_no_connection : bool = True, clear_search_update : bool = False, terminal_progress_display : bool = False) -> None:
+        #CFB stands for Chloe Felina Basics
 
         if terminal_progress_display and tqdm_imported:
             sys_clear()
@@ -525,6 +531,12 @@ class ChloeAI:
                                             self.archive_alia_data(f'{ref_path}/{item}',db_name)
                                     except Exception:
                                         self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                                case 'bin':
+                                    try:
+                                        if not self.archive_bin_data(f'{ref_path}/{item}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{item}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{item}',db_name)
                                 case 'docx':
                                     if not docx_imported or not docx2_imported or not pil_imported:
                                         self.archive_alia_data(f'{ref_path}/{item}',db_name)
@@ -612,7 +624,7 @@ class ChloeAI:
                             case 'TXT':
                                 redacted_metadata_items.add((item_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'))
                                 remove(f'{self.db_path}/{db_name}/_txt_files/{item_name}.txt')
-                            case 'DOC' | 'PDF':
+                            case 'DOC' | 'PDF' | 'BIN':
                                 redacted_metadata_items.add((item_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'))
                                 rmtree(f'{self.db_path}/{db_name}/{item_name}')
                             case 'SHP':
@@ -842,14 +854,16 @@ class ChloeAI:
             items = {}
             for name in tuple(listdir(reference_directory)):
                 if isfile(f'{reference_directory}/{name}'):
-                    if name.lower().endswith('.shp'):
+                    if (temp_name := name.lower()).endswith('.shp'):
                         items[name] = 'SHP'
-                    elif name.lower().endswith('.txt'):
+                    elif temp_name.endswith('.txt'):
                         items[name] = 'TXT'
-                    elif name.lower().endswith('.pdf'):
+                    elif temp_name.endswith('.pdf'):
                         items[name] = 'PDF'
-                    elif name.lower().endswith('.docx'):
+                    elif temp_name.endswith('.docx'):
                         items[name] = 'DOC'
+                    elif temp_name.endswith('.bin'):
+                        items[name] = 'BIN'
                     elif name[name.rfind("."):] in self.accepted_image_extensions and '.' in name:
                         items[name] = 'IMG'
                     else:
@@ -898,6 +912,12 @@ class ChloeAI:
                                     remove(f'{self.db_path}/{archive_db_name}/_txt_files/{name[:name.rfind(".")]}_{name[name.rfind(".")+1:]}.txt')
                                     if not len(f'{self.db_path}/{archive_db_name}/_txt_files'):
                                         rmtree(f'{self.db_path}/{archive_db_name}/_txt_files')
+                                self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
+                        case 'BIN':
+                            try:
+                                if not self.archive_bin_data(f'{reference_directory}/{name}',archive_db_name):
+                                    self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
+                            except Exception:
                                 self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'PDF':
                             if pypdf_imported and pil_imported:
@@ -1981,9 +2001,191 @@ class ChloeAI:
         return None
 
 
-    def archive_bin_data(self, bin_path : str, archive_db_name : str) -> None:
+    def archive_bin_data(self, bin_path : str, archive_db_name : str) -> bool:
 
-        return None
+        if (baseline_metadata := getBaselineMetadata(bin_path)) is None:
+            return False
+
+        with open(bin_file,'rb') as bf:
+            lines = bf.readlines()
+
+        bin_lines = lines[:]
+
+        for n in range(len(bin_lines)):
+            try:
+                bin_lines[n] = bin_lines[n].decode('latin-1')
+            except Exception:
+                bin_lines[n] = None
+
+        while None in bin_lines:
+            bin_lines.remove(None)
+
+        extract_texted = ()
+
+        if len((bin_lines := tuple(bin_lines))):
+            extracted_text = tuple(["".join([char for char in bin_line if char in acceptable_chars]) for bin in bin_lines])
+
+        bin_nums = [lines[n][x] for n in range(len(lines)) for x in range(len(lines[n]))]
+
+        del lines
+
+        val_counter = 1 ; bin_num_order_count = []
+        bin_num_order = [(current_num := bin_nums[0])]
+
+        for n in range(1,len(bin_nums)):
+            if bin_nums[n] != current_num:
+                bin_num_order_count.append(val_counter)
+                val_counter = 1
+                bin_num_order.append(bin_nums[n])
+                current_num = bin_nums[n]
+            else:
+                val_counter += 1
+
+        del current_num
+
+        if len(bin_num_order) > len(bin_num_order_count):
+            bin_num_order_count.append(val_counter)
+            bin_num_order.append(bin_nums[-1])
+
+        del val_counter
+
+        replacers = {'10':'a','12':'b','13':'c','14':'d','15':'e','16':'f','17':'g','18':'h','19':'i','20':'j','21':'k','23':'l','24':'m','25':'n','26':'o','27':'p','28':'q','29':'r','30':'s','31':'t','32':'u','34':'v','35':'w','36':'x','37':'y','38':'z','39':'A','40':'B','41':'C','42':'D','43':'E','45':'F','46':'G','47':'H','48':'I','49':'J','50':'K','51':'L','52':'M','53':'N','54':'O','56':'P','57':'Q','58':'R','59':'S','60':'T','61':'U','62':'V','63':'W','64':'X','65':'Y','67':'Z'}
+
+        nums_keys = tuple(replacers.keys())
+
+        lines = []
+
+        for line in tuple([str(bin_num_order[n]) if bin_num_order_count[n] == 1 else f'{bin_num_order[n]}*{bin_num_order_count[n]}' for n in range(len(bin_num_order))]):
+            for nums in nums_keys:
+                line = line.replace(nums,replacers.keys())
+            lines.append(line)
+
+        del bin_num_order ; del bin_num_order_count
+
+        lines = tuple(lines)
+
+        simplified_lines = []
+
+        simplified_lines.append(lines[0])
+
+        for n in range(1,len(lines)):
+            if '*' in lines[n] or '*' in simplified_lines[-1]:
+                simplified_lines.append(lines[n])
+            else:
+                simplified_lines[-1] = f'{simplified_lines[-1]}{lines[n]}'
+
+        lines = tuple(simplified_lines)
+
+        simplified_lines = []
+
+        if len(lines) % 2 == 0:
+            simplified_lines = tuple([f'{lines[n]}+{lines[n+1]}' for n in range(0,len(lines),2)])
+        else:
+            simplified_lines = [f"{lines[n]}+{lines[n+1]}" for n in range(0,len(lines)-1,2)]
+            simplified_lines.append(lines[-1])
+            simplified_lines = tuple(simplified_lines)
+
+        del lines
+
+        val_counter = 1 ; bin_num_order_count = []
+        bin_num_order = [(current_num := simplified_lines[0])]
+
+        for n in range(1,len(simplified_lines)):
+            if simplified_lines[n] != current_num:
+                bin_num_order_count.append(val_counter)
+                val_counter = 1
+                bin_num_order.append(simplified_lines[n])
+            else:
+                val_counter += 1
+
+        del simplified_lines ; del current_num
+
+        if len(bin_num_order) > len(bin_num_order_count):
+            bin_num_order_count.append(val_counter)
+            bin_num_order.append(simplified_lines[-1])
+
+        del val_counter
+
+        abridged_lines = [str(bin_num_order[n]) if bin_num_order_count[n] == 1 else f'{bin_num_order[n]}^{bin_num_order_count[n]}' for n in range(len(bin_num_order))]
+        replacers_2 = {'10':"_",'20':'-','30':'!','40':'?','50':'@','60':'#','70':'$','80':'=','90':'&'}
+        chars = tuple(replacers_2.keys())
+
+        del bin_num_order ; del bin_num_order_count
+
+        for n in range(len(abridged_lines)):
+            for char in chars:
+                abridged_lines[n] = abridged_lines[n].replace(char,replacers_2[char])
+
+        del replacers_2 ; del chars
+
+        nums = [] ; starting_index = 0 ; starting_prefix = "" ; combo = []
+
+        for abridged_line in (abridged_lines := tuple(abridged_lines)):
+            starting_index += 1
+            if '+' in abridged_line:
+                starting_prefix = abridged_line[:abridged_line.find('+')+1]
+                combo.append(abridged_line[abridged_line.find('+')+1:])
+                break
+
+        for n in range(starting_index,len(abridged_lines)):
+            if abridged_lines[n].startswith(starting_prefix) and starting_prefix != "":
+                combo.append(abridged_lines[n])
+            elif starting_prefix == "":
+                if '+' in abridged_lines[n]:
+                    starting_prefix = abridged_lines[n][:abridged_lines[n].find('+')+1]
+                    combo.append(abridged_lines[n][abridged_lines[n].find('+')+1:])
+                else:
+                    nums.append(abridged_lines[n])
+            else:
+                nums.append("%s%s" % (starting_prefix,"|".join(combo)))
+                combo = []
+                starting_prefix = ""
+                if '+' in abridged_lines[n]:
+                    combo.append(abridged_lines[n][abridged_lines[n].find('+')+1:])
+                    starting_prefix = abridged_lines[n][:abridged_lines[n].find('+')+1]
+                else:
+                    nums.append(abridged_lines[n])
+
+        if starting_prefix != "":
+            nums.append("%s%s" % (starting_prefix,"|".join(combo)))
+
+        del starting_prefix ; del abridged_lines ; del combo
+
+        nums = tuple(nums)
+
+        if not 0 in (counters := (len(extract_texted),len(nums))):
+            file_name = bin_path[bin_path.rfind('/')+1:]
+            nomin_kalvamortum = "%s_%s" % (file_name[:file_name.rfind('.')],file_name[file_name.rfind('.')+1:])
+            del file_name
+            mkdir(f'{self.db_path}/{archive_db_name}/{nomin_kalvamortum}')
+            if counters[0]:
+                with open(f'{self.db_path}/{archive_db_name}/{nomin_kalvamortum}/bin_extracted_text.txt','w',encoding='utf-8') as tf:
+                    tf.write(extracted_text[0])
+                    for n in range(1,len(extracted_text)):
+                        tf.write(f'\n{extracted_text[n]}')
+            del extracted_text
+            if counters[1]:
+                with open(f'{self.db_path}/{archive_db_name}/{nomin_kalvamortum}/bin_nums.txt','w',encoding='utf-8') as tf:
+                    tf.write(nums[0])
+                    for n in range(1,len(nums)):
+                        tf.write(f'\n{nums[n]}')
+            del nums
+            if not exists((_metadata := f'{self.db_path}/{archive_db_name}/_metadata.txt')):
+                try:
+                    with open(_metadata,'w',encoding='utf-8') as tf:
+                        tf.write(f'{nomin_kalvamortum}|BIN|{baseline_metadata}|{counters[0]}|{counters[1]}')
+                except UnicodeEncodeError:
+                    with open(_metadata,'w',encoding='latin-1') as tf:
+                        tf.write(f'{nomin_kalvamortum}|BIN|{baseline_metadata}|{counters[0]}|{counters[1]}')
+            else:
+                try:
+                    with open(_metadata,'a',encoding='utf-8') as tf:
+                        tf.write(f'\n{nomin_kalvamortum}|BIN|{baseline_metadata}|{counters[0]}|{counters[1]}')
+                except UnicodeEncodeError:
+                    with open(_metadata,'a',encoding='latin-1') as tf:
+                        tf.write(f'\n{nomin_kalvamortum}|BIN|{baseline_metadata}|{counters[0]}|{counters[1]}')
+
+        return True
 
 
     def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, entity_names_only : bool = False, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display : bool = False) -> tuple[str] | None:
@@ -2081,7 +2283,8 @@ class ChloeAI:
                                             else:
                                                 if testing_entry_string in " ".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name)) if segment]):
                                                     found_name_matches.add(entity)
-                            case 'txt':
+                            case 'txt' | 'bin' | 'pdf' | 'shp' | 'gdb':
+                                extension = f'.{check_type}'
                                 for found_word in found_words:
                                     with open(f'{self.db_path}/_terms_searched/{found_word}$names.txt',encoding='utf-8') as tf:
                                         while True:
@@ -2090,19 +2293,7 @@ class ChloeAI:
                                                 break
                                             entity = entity.rstrip('\n')
                                             if '.' in (file_name := entity[entity.rfind('\\')+1:].lower()):
-                                                if file_name.endswith('.txt'):
-                                                    if testing_entry_string in " ".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                        found_name_matches.add(entity)
-                            case 'pdf':
-                                for found_word in found_words:
-                                    with open(f'{self.db_path}/_terms_searched/{found_word}$names.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if '.' in (file_name := entity[entity.rfind('\\')+1:].lower()):
-                                                if file_name.endswith('.pdf'):
+                                                if file_name.endswith(extension):
                                                     if testing_entry_string in " ".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
                                                         found_name_matches.add(entity)
                             case 'doc':
@@ -2127,30 +2318,6 @@ class ChloeAI:
                                             entity = entity.rstrip('\n')
                                             if '.' in (file_name := entity[entity.rfind('\\')+1:].lower()):
                                                 if file_name[file_name.rfind('.')+1:] in self.image_types:
-                                                    if testing_entry_string in " ".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                        found_name_matches.add(entity)
-                            case 'shp':
-                                for found_word in found_words:
-                                    with open(f'{self.db_path}/_terms_searched/{found_word}$names.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if '.' in (file_name := entity[entity.rfind('\\')+1:].lower()):
-                                                if file_name.endswith('.shp'):
-                                                    if testing_entry_string in " ".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                        found_name_matches.add(entity)
-                            case 'gdb':
-                                for found_word in found_words:
-                                    with open(f'{self.db_path}/_terms_searched/{found_word}$names.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if '.' in (file_name := entity[entity.rfind('\\')+1:].lower()):
-                                                if file_name.endswith('.gdb'):
                                                     if testing_entry_string in " ".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
                                                         found_name_matches.add(entity)
                             case 'alia':
@@ -2241,25 +2408,15 @@ class ChloeAI:
                                             else:
                                                 if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name)) if segment]):
                                                     found_name_matches.append(entity)
-                                case 'txt':
+                                case 'txt' | 'bin' | 'pdf' | 'shp' | 'gdb':
+                                    extension = f'.{check_type}'
                                     with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                         while True:
                                             entity = tf.readline()
                                             if not entity:
                                                 break
                                             entity = entity.rstrip('\n')
-                                            if entity.lower().endswith('.txt'):
-                                                file_name = entity[entity.rfind('\\')+1:].lower()
-                                                if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                    found_name_matches.append(entity)
-                                case 'pdf':
-                                    with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if entity.lower().endswith('.pdf'):
+                                            if entity.lower().endswith(extension):
                                                 file_name = entity[entity.rfind('\\')+1:].lower()
                                                 if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
                                                     found_name_matches.append(entity)
@@ -2271,28 +2428,6 @@ class ChloeAI:
                                                 break
                                             entity = entity.rstrip('\n')
                                             if entity.lower().endswith('.docx'):
-                                                file_name = entity[entity.rfind('\\')+1:].lower()
-                                                if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                    found_name_matches.append(entity)
-                                case 'shp':
-                                    with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if entity.lower().endswith('.shp'):
-                                                file_name = entity[entity.rfind('\\')+1:].lower()
-                                                if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                    found_name_matches.append(entity)
-                                case 'gdb':
-                                    with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if entity.lower().endswith('.gdb'):
                                                 file_name = entity[entity.rfind('\\')+1:].lower()
                                                 if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
                                                     found_name_matches.append(entity)
@@ -2344,7 +2479,7 @@ class ChloeAI:
                                     if '.' in (file_name := entity[entity.rfind('\\')+1:]):
                                         if (extension := file_name[file_name.rfind('.')+1:].lower()) in check_type:
                                             match extension:
-                                                case 'txt' | 'pdf' | 'docx' | 'shp' | 'gdb':
+                                                case 'txt' | 'bin' | 'pdf' | 'docx' | 'shp' | 'gdb':
                                                     if testing_entry_string in " ".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
                                                         found_name_matches.append(entity)
                                                 case _:
@@ -2414,16 +2549,8 @@ class ChloeAI:
                                                     counter_presence[entity] = 1
                                             else:
                                                 match check_type:
-                                                    case 'txt':
-                                                        if file_name.endswith('.txt'):
-                                                            if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                                counter_presence[entity] += 1
-                                                                if max_num < counter_presence[entity]:
-                                                                    max_num = counter_presence[entity]
-                                                            else:
-                                                                counter_presence[entity] = 1
-                                                    case 'pdf':
-                                                        if file_name.endswith('.pdf'):
+                                                    case 'txt' | 'bin' | 'pdf' | 'shp' | 'gdb':
+                                                        if file_name.endswith(f'.{check_type}'):
                                                             if (entity := entity.rstrip('\n')) in counter_presence.keys():
                                                                 counter_presence[entity] += 1
                                                                 if max_num < counter_presence[entity]:
@@ -2432,22 +2559,6 @@ class ChloeAI:
                                                                 counter_presence[entity] = 1
                                                     case 'doc':
                                                         if file_name.endswith('.docx'):
-                                                            if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                                counter_presence[entity] += 1
-                                                                if max_num < counter_presence[entity]:
-                                                                    max_num = counter_presence[entity]
-                                                            else:
-                                                                counter_presence[entity] = 1
-                                                    case 'shp':
-                                                        if file_name.endswith('.shp'):
-                                                            if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                                counter_presence[entity] += 1
-                                                                if max_num < counter_presence[entity]:
-                                                                    max_num = counter_presence[entity]
-                                                            else:
-                                                                counter_presence[entity] = 1
-                                                    case 'gdb':
-                                                        if file_name.endswith('.gdb'):
                                                             if (entity := entity.rstrip('\n')) in counter_presence.keys():
                                                                 counter_presence[entity] += 1
                                                                 if max_num < counter_presence[entity]:
@@ -2473,24 +2584,12 @@ class ChloeAI:
                                                         found_name_matches.append(entity)
                                             else:
                                                 match check_type:
-                                                    case 'txt':
-                                                        if file_name.endswith('.txt'):
-                                                            if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                                found_name_matches.append(entity)
-                                                    case 'pdf':
-                                                        if file_name.endswith('.pdf'):
+                                                    case 'txt' | 'bin' | 'pdf' | 'shp' | 'gdb':
+                                                        if file_name.endswith(f'.{check_type}'):
                                                             if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
                                                                 found_name_matches.append(entity)
                                                     case 'doc':
                                                         if file_name.endswith('.docx'):
-                                                            if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                                found_name_matches.append(entity)
-                                                    case 'shp':
-                                                        if file_name.endswith('.shp'):
-                                                            if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                                found_name_matches.append(entity)
-                                                    case 'gdb':
-                                                        if file_name.endswith('.gdb'):
                                                             if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
                                                                 found_name_matches.append(entity)
                                                     case 'img':
@@ -2517,23 +2616,21 @@ class ChloeAI:
                                         items = {item for item in tuple(zf.namelist()) if '/' in item}
                                         for entity in tuple(grouped_entities[zip_name]):
                                             file_name = "%s_%s" % (entity[:entity.rfind('.')],entity[entity.rfind('.')+1:])
-                                            match entity[entity.rfind('.')+1:].lower():
+                                            match (temp_type := entity[entity.rfind('.')+1:].lower()):
                                                 case 'txt':
                                                     if not isQueryMatchGewurah(entry_string,tuple(zf.open(f'_txt_files/{file_name}.txt').readlines()),max_line_concat):
                                                         found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'pdf':
-                                                    if (txt_file := f'{file_name}/pdf_metadata.txt') in items:
+                                                case 'bin':
+                                                    if (txt_file := f'{file_name}/bin_extracted_text.txt') in items:
+                                                        if not isQueryMatchHessed(entry_string,tuple(zf.open(txt_file).readlines())):
+                                                            found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
+                                                    else:
+                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
+                                                case 'doc' | 'pdf':
+                                                    if (txt_file := f'{file_name}/{temp_type}_metadata.txt') in items:
                                                         if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
                                                             continue
-                                                    if (txt_file := f'{file_name}/pdf_extracted_text.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            continue
-                                                    found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'doc':
-                                                    if (txt_file := f'{file_name}/doc_metadata.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            continue
-                                                    if (txt_file := f'{file_name}/doc_extracted_text.txt') in items:
+                                                    if (txt_file := f'{file_name}/{temp_type}_extracted_text.txt') in items:
                                                         if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
                                                             continue
                                                     found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
@@ -2621,6 +2718,12 @@ class ChloeAI:
                                                 case 'txt':
                                                     if isQueryMatchGewurah(entry_string,tuple(zf.open(f'_txt_files/{file_name}.txt').readlines()),max_line_concat):
                                                         found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
+                                                case 'bin':
+                                                    if (txt_file := f'{file_name}/bin_extracted_text.txt') in items:
+                                                        if not isQueryMatchHessed(entry_string,tuple(zf.open(txt_file).readlines())):
+                                                            found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
+                                                    else:
+                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
                                                 case 'pdf':
                                                     if (txt_file := f'{file_name}/pdf_metadata.txt') in items:
                                                         if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
@@ -2689,16 +2792,8 @@ class ChloeAI:
                                                     counter_presence[entity] = 1
                                             else:
                                                 match check_type:
-                                                    case 'txt':
-                                                        if file_name.endswith('.txt'):
-                                                            if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                                counter_presence[entity] += 1
-                                                                if max_num < counter_presence[entity]:
-                                                                    max_num = counter_presence[entity]
-                                                            else:
-                                                                counter_presence[entity] = 1
-                                                    case 'pdf':
-                                                        if file_name.endswith('.pdf'):
+                                                    case 'txt' | 'bin' | 'pdf' | 'shp' | 'gdb':
+                                                        if file_name.endswith(f'.{check_type}'):
                                                             if (entity := entity.rstrip('\n')) in counter_presence.keys():
                                                                 counter_presence[entity] += 1
                                                                 if max_num < counter_presence[entity]:
@@ -2707,22 +2802,6 @@ class ChloeAI:
                                                                 counter_presence[entity] = 1
                                                     case 'doc':
                                                         if file_name.endswith('.docx'):
-                                                            if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                                counter_presence[entity] += 1
-                                                                if max_num < counter_presence[entity]:
-                                                                    max_num = counter_presence[entity]
-                                                            else:
-                                                                counter_presence[entity] = 1
-                                                    case 'shp':
-                                                        if file_name.endswith('.shp'):
-                                                            if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                                counter_presence[entity] += 1
-                                                                if max_num < counter_presence[entity]:
-                                                                    max_num = counter_presence[entity]
-                                                            else:
-                                                                counter_presence[entity] = 1
-                                                    case 'gdb':
-                                                        if file_name.endswith('.gdb'):
                                                             if (entity := entity.rstrip('\n')) in counter_presence.keys():
                                                                 counter_presence[entity] += 1
                                                                 if max_num < counter_presence[entity]:
@@ -2743,23 +2822,21 @@ class ChloeAI:
                                         items = {item for item in tuple(zf.namelist()) if '/' in item}
                                         for entity in tuple(grouped_entities[zip_name]):
                                             file_name = "%s_%s" % (entity[:entity.rfind('.')],entity[entity.rfind('.')+1:])
-                                            match entity[entity.rfind('.')+1:].lower():
+                                            match (temp_type := entity[entity.rfind('.')+1:].lower()):
                                                 case 'txt':
                                                     if not isQueryMatchGewurah(entry_string,tuple(zf.open(f'_txt_files/{file_name}.txt').readlines()),max_line_concat):
                                                         found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'pdf':
-                                                    if (txt_file := f'{file_name}/pdf_metadata.txt') in items:
+                                                case 'bin':
+                                                    if (txt_file := f'{file_name}/bin_extracted_text.txt') in items:
+                                                        if not isQueryMatchHessed(entry_string,tuple(zf.open(txt_file).readlines())):
+                                                            found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
+                                                    else:
+                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
+                                                case 'pdf' | 'doc':
+                                                    if (txt_file := f'{file_name}/{temp_type}_metadata.txt') in items:
                                                         if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
                                                             continue
-                                                    if (txt_file := f'{file_name}/pdf_extracted_text.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            continue
-                                                    found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'doc':
-                                                    if (txt_file := f'{file_name}/doc_metadata.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            continue
-                                                    if (txt_file := f'{file_name}/doc_extracted_text.txt') in items:
+                                                    if (txt_file := f'{file_name}/{temp_type}_extracted_text.txt') in items:
                                                         if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
                                                             continue
                                                     found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
@@ -2836,6 +2913,12 @@ class ChloeAI:
                                                 case 'txt':
                                                     if isQueryMatchGewurah(entry_string,tuple(zf.open(f'_txt_files/{file_name}.txt').readlines()),max_line_concat):
                                                         found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
+                                                case 'bin':
+                                                    if (txt_file := f'{file_name}/bin_extracted_text.txt') in items:
+                                                        if not isQueryMatchHessed(entry_string,tuple(zf.open(txt_file).readlines())):
+                                                            found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
+                                                    else:
+                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
                                                 case 'pdf':
                                                     if (txt_file := f'{file_name}/pdf_metadata.txt') in items:
                                                         if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
@@ -2895,23 +2978,14 @@ class ChloeAI:
                                             if not entity:
                                                 break
                                             found_matches.append(entity.rstrip('\n'))
-                                case 'txt':
+                                case 'txt' | 'bin' | 'pdf' | 'shp' | 'gdb':
                                     with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                         while True:
                                             entity = tf.readline()
                                             if not entity:
                                                 break
                                             entity = entity.rstrip('\n')
-                                            if entity.lower().endswith('.txt'):
-                                                found_matches.append(entity)
-                                case 'pdf':
-                                    with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if entity.lower().endswith('.pdf'):
+                                            if entity.lower().endswith(f'.{check_type}'):
                                                 found_matches.append(entity)
                                 case 'doc':
                                     with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
@@ -2921,24 +2995,6 @@ class ChloeAI:
                                                 break
                                             entity = entity.rstrip('\n')
                                             if entity.lower().endswith('.docx'):
-                                                found_matches.append(entity)
-                                case 'shp':
-                                    with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if entity.lower().endswith('.shp'):
-                                                found_matches.append(entity)
-                                case 'gdb':
-                                    with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if entity.lower().endswith('.gdb'):
                                                 found_matches.append(entity)
                                 case 'img':
                                     temp_extensions = tuple(self.accepted_image_extensions)
@@ -2989,15 +3045,7 @@ class ChloeAI:
                                     entity = entity.rstrip('\n')
                                     if (extension := entity[entity.rfind('.')+1:].lower()) in check_type:
                                         match extension:
-                                            case 'txt':
-                                                found_matches.append(entity)
-                                            case 'pdf':
-                                                found_matches.append(entity)
-                                            case 'doc':
-                                                found_matches.append(entity)
-                                            case 'shp':
-                                                found_matches.append(entity)
-                                            case 'gdb':
+                                            case 'txt' | 'bin' | 'pdf' | 'doc' | 'shp' | 'gdb':
                                                 found_matches.append(entity)
                                             case _:
                                                 if extension in image_types_set:
@@ -3021,23 +3069,14 @@ class ChloeAI:
                                             if not entity:
                                                 break
                                             found_name_matches.append(entity.rstrip('\n'))
-                                case 'txt':
+                                case 'txt' | 'bin' | 'pdf' | 'shp' | 'gdb':
                                     with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                         while True:
                                             entity = tf.readline()
                                             if not entity:
                                                 break
                                             entity = entity.rstrip('\n')
-                                            if entity.lower().endswith('.txt'):
-                                                found_name_matches.append(entity)
-                                case 'pdf':
-                                    with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if entity.lower().endswith('.pdf'):
+                                            if entity.lower().endswith(f'.{check_type}'):
                                                 found_name_matches.append(entity)
                                 case 'doc':
                                     with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
@@ -3047,24 +3086,6 @@ class ChloeAI:
                                                 break
                                             entity = entity.rstrip('\n')
                                             if entity.lower().endswith('.docx'):
-                                                found_name_matches.append(entity)
-                                case 'shp':
-                                    with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if entity.lower().endswith('.shp'):
-                                                found_name_matches.append(entity)
-                                case 'gdb':
-                                    with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if entity.lower().endswith('.gdb'):
                                                 found_name_matches.append(entity)
                                 case 'img':
                                     temp_extensions = tuple(self.accepted_image_extensions)
@@ -3115,15 +3136,7 @@ class ChloeAI:
                                     entity = entity.rstrip('\n')
                                     if (extension := entity[entity.rfind('.')+1:].lower()) in check_type:
                                         match extension:
-                                            case 'txt':
-                                                found_name_matches.append(entity)
-                                            case 'pdf':
-                                                found_name_matches.append(entity)
-                                            case 'doc':
-                                                found_name_matches.append(entity)
-                                            case 'shp':
-                                                found_name_matches.append(entity)
-                                            case 'gdb':
+                                            case 'txt' | 'bin' | 'pdf' | 'doc' | 'shp' | 'gdb':
                                                 found_name_matches.append(entity)
                                             case _:
                                                 if extension in image_types_set:
@@ -3177,6 +3190,15 @@ class ChloeAI:
                                     found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
                                 if isQueryMatchKether(entry_string,tuple(zf.open(f'_txt_files/{txt_file}').readlines())):
                                     found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:-8],txt_file[txt_file.rfind('_')+1:txt_file.rfind('.')]))
+                        elif classify.lower().endswith('_bin'):
+                            if testing_entry_string in getTestName(classify):
+                                found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                            if 'bin_extracted_text.txt' in extracted_data[classify]:
+                                if (txt_file := f'{file_name}/bin_extracted_text.txt') in items:
+                                    if not isQueryMatchHessed(entry_string,tuple(zf.open(txt_file).readlines())):
+                                        found_matches.remove("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),classify[:-4],classify[-3:]))
+                                else:
+                                    found_matches.remove("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),classify[:-4],classify[-3:]))
                         elif classify == '_shp_files':
                             for txt_file in extracted_data[classify]:
                                 if testing_entry_string in getTestName(txt_file):
@@ -3271,6 +3293,18 @@ class ChloeAI:
                                         if isQueryMatchKether(term,txt_lines):
                                             term_memories[term].append("%s\\%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file))
                                 del txt_lines
+                        elif classify.lower().endswith('_bin'):
+                            if testing_entry_string in getTestName(classify):
+                                found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),classify[:-4],classify[-3:]))
+                            if 'bin_extracted_text.txt' in extracted_data[classify]:
+                                if isQueryMatchHod(entry_string,(txt_lines := tuple(zf.open(f'{classify}/bin_extracted_text.txt').readlines()))):
+                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                                if save_found_matches:
+                                    for term in terms:
+                                        if term.replace('_',' ') in getTestName(txt_file):
+                                            term_name_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
+                                        if isQueryMatchHessed(term,txt_lines):
+                                            term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-4],classify[-3:]))
                         elif classify == '_shp_files':
                             for txt_file in extracted_data[classify]:
                                 if testing_entry_string in getTestName(txt_file):
@@ -3372,26 +3406,11 @@ class ChloeAI:
             match check_type:
                 case 'all' | 'any' | 'every':
                     pass
-                case 'txt':
+                case 'txt' | 'bin' | 'pdf' | 'gdb' | 'shp':
                     if entity_names_only:
                         found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.txt')])
                     else:
                         found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.txt')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.txt')])
-                case 'pdf':
-                    if entity_names_only:
-                        found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.pdf')])
-                    else:
-                        found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.pdf')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.pdf')])
-                case 'gdb':
-                    if entity_names_only:
-                        found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.gdb')])
-                    else:
-                        found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.gdb')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.gdb')])
-                case 'shp':
-                    if entity_names_only:
-                        found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.shp')])
-                    else:
-                        found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.shp')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.shp')])
                 case 'doc':
                     if entity_names_only:
                         found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.docx')])
@@ -3409,7 +3428,7 @@ class ChloeAI:
                         if return_tuple:
                             return ()
                         return None
-                    irrelevant_extensions = {'txt','pdf','docx','shp','gdb'} + set(self.image_types)
+                    irrelevant_extensions = {'txt','bin','pdf','docx','shp','gdb'} + set(self.image_types)
                     found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind(".")+1:]])
             if not len(found_matches):
                 if return_tuple:
@@ -3427,7 +3446,7 @@ class ChloeAI:
             if entity_names_only:
                 if 'alia' in check_type:
                     check_type.remove('alia')
-                    irrelevant_extensions = {'txt','pdf','docx','shp','gdb'} + set(self.image_types)
+                    irrelevant_extensions = {'txt','bin','pdf','docx','shp','gdb'} + set(self.image_types)
                     alia_check_extensions = {irrelevant_extension for irrelevant_extension in tuple(irrelevant_extensions) if not irrelevant_extension in check_type}
                     found_matches = []
                     for found_name_match in found_name_matches:
@@ -3438,7 +3457,7 @@ class ChloeAI:
             elif include_entity_name:
                 if 'alia' in check_type:
                     check_type.remove('alia')
-                    irrelevant_extensions = {'txt','pdf','docx','shp','gdb'} + set(self.image_types)
+                    irrelevant_extensions = {'txt','bin','pdf','docx','shp','gdb'} + set(self.image_types)
                     alia_check_extensions = {irrelevant_extension for irrelevant_extension in tuple(irrelevant_extensions) if not irrelevant_extension in check_type}
                     neo_found_matches = []
                     for found_match in tuple(set(list(found_name_matches)+list(found_matches))):
@@ -3451,7 +3470,7 @@ class ChloeAI:
             else:
                 if 'alia' in check_type:
                     check_type.remove('alia')
-                    irrelevant_extensions = {'txt','pdf','docx','shp','gdb'} + set(self.image_types)
+                    irrelevant_extensions = {'txt','bin','pdf','docx','shp','gdb'} + set(self.image_types)
                     alia_check_extensions = {irrelevant_extension for irrelevant_extension in tuple(irrelevant_extensions) if not irrelevant_extension in check_type}
                     neo_found_matches = []
                     for found_match in found_matches:
@@ -3511,6 +3530,8 @@ class ChloeAI:
         elif not len((output_name := fileNameFixer(output_name))):
             output_name = randstr()
 
+        two_part_line_metadata = {'PDF','BIN','DOC'}
+
         checked = set() ; found_duplicates = []
         db_names = list(self.used_names)
         # exclude zip files that only contain '_alia_dosieroj.txt'
@@ -3526,7 +3547,7 @@ class ChloeAI:
         else:
             iterator = range(num_dbs-1)
         # This enables greater redundancy reduction.
-        type_checker = {"TXT":set(),"IMG":set(),"SHP":set(),"DOC":set(),"PDF":set(),"GDB":set()}
+        type_checker = {"TXT":set(),"BIN":set(),"IMG":set(),"SHP":set(),"DOC":set(),"PDF":set(),"GDB":set()}
         for db_name in db_names:
             with ZipFile(f"{self.db_path}/{db_name}.zip") as zf:
                 if '_metadata.txt' in (metadata_files := [item for item in tuple(zf.namelist()) if not '/' in item and item.endswith('_metadata.txt')]):
@@ -3555,7 +3576,7 @@ class ChloeAI:
                             if not line:
                                 break
                             line = decodeZipTxtLine(line).split('|')
-                            if line[1] in ('PDF','DOC'):
+                            if line[1] in two_part_line_metadata:
                                 if not f'{line[5]}|{line[6]}|{line[1]}' in line_num_checker.keys():
                                     line_num_checker[f'{line[5]}|{line[6]}|{line[1]}'] = {db_name}
                                 else:
@@ -3590,7 +3611,7 @@ class ChloeAI:
                                 checked.remove(f'{current_db_name}|{entity[0]}')
                                 continue
                             if entity[1] in current_entities.keys():
-                                if entity[1] in ('PDF','DOC'):
+                                if entity[1] in two_part_line_metadata:
                                     if f'{entity[5]}|{entity[6]}' in current_entities[entity[1]].keys():
                                         current_entities[entity[1]][f'{entity[5]}|{entity[6]}'].append(entity[0])
                                     else:
@@ -3601,7 +3622,7 @@ class ChloeAI:
                                     else:
                                         current_entities[entity[1]][entity[5]] = [entity[0]]
                             else:
-                                if entity[1] in ('PDF','DOC'):
+                                if entity[1] in two_part_line_metadata:
                                     current_entities[entity[1]] = {f'{entity[5]}|{entity[6]}' : [entity[0]]}
                                 else:
                                     current_entities[entity[1]] = {entity[5] : [entity[0]]}
@@ -3750,9 +3771,9 @@ class ChloeAI:
                                             found_duplicates[-1].append(f'{current_db_name}|{items[d]}')
                                             checked.add(f'{current_db_name}|{items[d]}')
                                     for d in range(a+1,num_dbs):
-                                        relevant_entities = []
                                         if not (other_db_name := db_names[d]) in type_checker['TXT'] or not other_db_name in line_num_checker[f'{current_line_count}|TXT']:
                                             continue
+                                        relevant_entities = []
                                         with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
                                             if not '_metadata.txt' in set(zf2.namelist()):
                                                 continue
@@ -3777,6 +3798,90 @@ class ChloeAI:
                                                 if duplicate_match:
                                                     found_duplicates[-1].append(f'{other_db_name}|{relevant_entity}')
                                                     checked.add(f'{other_db_name}|{relevant_entity}')
+                                case 'BIN':
+                                    current_lines = [] ; current_line_count = []
+                                    if nums[b][:nums[b].find('|')] == '0':
+                                        current_lines.append(None)
+                                        current_line_count.append(0)
+                                    else:
+                                        current_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{items[c]}/bin_extracted_text.txt').readlines())]))
+                                        current_line_count.append(len(current_lines[0]))
+                                    if nums[b][nums[b].find('|')+1:] == '0':
+                                        current_lines.append(None)
+                                        current_line_count.append(0)
+                                    else:
+                                        current_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{items[c]}/bin_nums.txt').readlines())]))
+                                        current_line_count.append(len(current_lines[1]))
+                                    if current_line_count[0] == 0 and current_line_count[1] == 0:
+                                        del found_duplicates[-1]
+                                        continue
+                                    current_lines = tuple(current_lines) ; current_line_count = tuple(current_line_count)
+                                    for d in range(c+1,num_items):
+                                        if f'{current_db_name}|{items[d]}' in checked:
+                                            checked.remove(f'{current_db_name}|{items[d]}')
+                                            continue
+                                        other_lines = [] ; other_line_count = []
+                                        if nums[b][:nums[b].find('|')] == '0':
+                                            other_lines.append(None)
+                                            other_line_count.append(0)
+                                        else:
+                                            other_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{items[d]}/bin_extracted_text.txt').readlines())]))
+                                            other_line_count.append(len(other_lines[0]))
+                                        if nums[b][nums[b].find('|')+1:] == '0':
+                                            other_lines.append(None)
+                                            other_line_count.append(0)
+                                        else:
+                                            other_lines.append(tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'{items[d]}/bin_nums.txt').readlines())]))
+                                            other_line_count.append(len(other_lines[1]))
+                                        duplicate_match = True
+                                        for e in range(current_line_count[0]):
+                                            if current_lines[0][e] != other_lines[0][e]:
+                                                duplicate_match = False
+                                                break
+                                        if duplicate_match:
+                                            for e in range(current_line_count[1]):
+                                                if current_lines[1][e] != other_lines[1][e]:
+                                                    duplicate_match = False
+                                                    break
+                                        if duplicate_match:
+                                            found_duplicates[-1].append(f'{current_db_name}|{items[d]}')
+                                            checked.add(f'{current_db_name}|{items[d]}')
+                                    for d in range(a+1,num_dbs):
+                                        if not (other_db_name := db_names[d]) in type_checker['BIN'] or not other_db_name in line_num_checker[f'{current_line_count[0]}|{current_line_count[1]}|BIN']:
+                                            continue
+                                        relevant_entities = []
+                                        with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
+                                            if not '_metadata.txt' in set(zf2.namelist()):
+                                                continue
+                                            with zf2.open('_metadata.txt') as tf:
+                                                while True:
+                                                    line = tf.readline()
+                                                    if not line:
+                                                        break
+                                                    line = tuple(decodeZipTxtLine(line).split('|'))
+                                                    if line[1] == 'BIN':
+                                                        if f"{line[5]}|{line[6]}" == f"{current_line_count[0]}|{current_line_count[1]}":
+                                                            if not f"{other_db_name}|{line[0]}" in checked:
+                                                                relevant_entities.append(line[0])
+                                            for relevant_entity in (relevant_entities := tuple(relevant_entities)):
+                                                duplicate_match = True
+                                                if current_line_count[0]:
+                                                    other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f"{relevant_entity}/bin_extracted_text.txt").readlines())])
+                                                    for f in range(current_line_count[0]):
+                                                        if current_lines[0][f] != other_lines[f]:
+                                                            duplicate_match = False
+                                                            break
+                                                if not duplicate_match:
+                                                    continue
+                                                if current_line_count[1]:
+                                                    other_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf2.open(f"{relevant_entity}/bin_nums.txt").readlines())])
+                                                    for f in range(current_line_count[1]):
+                                                        if current_lines[1][f] != other_lines[f]:
+                                                            duplicate_match = False
+                                                            break
+                                                if duplicate_match:
+                                                    found_duplicates[-1].append(f'{other_db_name}|{relevant_entity}')
+                                                    checked.add(f'{other_db_name}|{relevant_entity}')
                                 case 'IMG':
                                     current_lines = tuple([decodeZipTxtLine(line) for line in tuple(zf.open(f'_images/{items[c]}.txt').readlines())])
                                     current_line_count = int(nums[b])
@@ -3795,9 +3900,9 @@ class ChloeAI:
                                             found_duplicates[-1].append(f'{current_db_name}|{items[d]}')
                                             checked.add(f'{current_db_name}|{items[d]}')
                                     for d in range(a+1,num_dbs):
-                                        relevant_entities = []
                                         if not (other_db_name := db_names[d]) in type_checker['IMG'] or not other_db_name in line_num_checker[f'{current_line_count}|IMG']:
                                             continue
+                                        relevant_entities = []
                                         other_img_firstlines = {}
                                         with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
                                             if not '_metadata.txt' in set(zf2.namelist()):
@@ -3851,9 +3956,9 @@ class ChloeAI:
                                             found_duplicates[-1].append(f'{current_db_name}|{items[d]}')
                                             checked.add(f'{current_db_name}|{items[d]}')
                                         for e in range(a+1,num_dbs):
-                                            relevant_entities = []
                                             if not (other_db_name := db_names[e]) in type_checker['SHP'] or not other_db_name in line_num_checker[f'{current_line_count}|SHP']:
                                                 continue
+                                            relevant_entities = []
                                             with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
                                                 if not '_metadata.txt' in set(zf2.namelist()):
                                                     continue
@@ -3923,13 +4028,13 @@ class ChloeAI:
                                                 if current_lines[1][e] != other_lines[1][e]:
                                                     duplicate_match = False
                                                     break
-                                            if duplicate_match:
-                                                found_duplicates[-1].append(f'{current_db_name}|{items[d]}')
-                                                checked.add(f'{current_db_name}|{items[d]}')
+                                        if duplicate_match:
+                                            found_duplicates[-1].append(f'{current_db_name}|{items[d]}')
+                                            checked.add(f'{current_db_name}|{items[d]}')
                                     for d in range(a+1,num_dbs):
-                                        relevant_entities = []
                                         if not (other_db_name := db_names[d]) in type_checker['DOC'] or not other_db_name in line_num_checker[f'{current_line_count[0]}|{current_line_count[1]}|DOC']:
                                             continue
+                                        relevant_entities = []
                                         with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
                                             if not '_metadata.txt' in set(zf2.namelist()):
                                                 continue
@@ -4011,9 +4116,9 @@ class ChloeAI:
                                             found_duplicates[-1].append(f'{current_db_name}|{items[d]}')
                                             checked.add(f'{current_db_name}|{items[d]}')
                                     for d in range(a+1,num_dbs):
-                                        relevant_entities = []
                                         if not (other_db_name := db_names[d]) in type_checker['PDF'] or not other_db_name in line_num_checker[f'{current_line_count[0]}|{current_line_count[1]}|PDF']:
                                             continue
+                                        relevant_entities = []
                                         with ZipFile(f'{self.db_path}/{other_db_name}.zip') as zf2:
                                             if not '_metadata.txt' in set(zf2.namelist()):
                                                 continue
@@ -4272,7 +4377,7 @@ class ChloeAI:
                                                 break
                                             line = decodeZipTxtLine(line).split('|')
                                             match line[1]:
-                                                case 'TXT' | 'IMG' | 'SHP':
+                                                case 'TXT' | 'BIN' | 'IMG' | 'SHP':
                                                     total_size += Decimal(line[-2])
                                                 case _:
                                                     total_size += Decimal(line[-3])
@@ -4298,7 +4403,7 @@ class ChloeAI:
                                                 break
                                             line = decodeZipTxtLine(line).split('|')
                                             match line[1]:
-                                                case 'TXT' | 'IMG' | 'SHP':
+                                                case 'TXT' | 'BIN' | 'IMG' | 'SHP':
                                                     total_size += Decimal(line[-2])
                                                 case _:
                                                     total_size += Decimal(line[-3])
@@ -4312,7 +4417,7 @@ class ChloeAI:
                                                     break
                                                 line = decodeZipTxtLine(line)
                                                 total_size += Decimal(line[line.rfind('|')+1:])
-                case 'txt' | 'shp':
+                case 'txt' | 'bin' | 'shp':
                     if include_other_entities:
                         for used_name in iterator:
                             with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
@@ -4476,7 +4581,7 @@ class ChloeAI:
                                         line = decodeZipTxtLine(line).lower().split('|')
                                         if line[1] in check_type:
                                             match line[1]:
-                                                case 'txt' | 'img' | 'shp':
+                                                case 'txt' | 'bin' | 'img' | 'shp':
                                                     total_size += Decimal(line[-2])
                                                 case _:
                                                     total_size += Decimal(line[-3])
@@ -4510,7 +4615,7 @@ class ChloeAI:
                                         line = decodeZipTxtLine(line).lower().split('|')
                                         if line[1] in check_type:
                                             match line[1]:
-                                                case 'txt' | 'shp' | 'img':
+                                                case 'txt' | 'bin' | 'shp' | 'img':
                                                     total_size += Decimal(line[-2])
                                                 case _:
                                                     total_size += Decimal(line[-3])
@@ -4528,7 +4633,7 @@ class ChloeAI:
                                         line = decodeZipTxtLine(line).lower().split('|')
                                         if line[1] == check_type:
                                             match line[1]:
-                                                case 'txt' | 'shp' | 'img':
+                                                case 'txt' | 'bin' | 'shp' | 'img':
                                                     total_size += Decimal(line[-2])
                                                 case _:
                                                     total_size += Decimal(line[-3])
@@ -4554,7 +4659,7 @@ class ChloeAI:
                                         line = decodeZipTxtLine(line).lower().split('|')
                                         if line[1] == check_type:
                                             match line[1]:
-                                                case 'txt' | 'img' | 'shp':
+                                                case 'txt' | 'bin' | 'img' | 'shp':
                                                     total_size += Decimal(line[-2])
                                                 case _:
                                                     total_size += Decimal(line[-3])
@@ -4623,7 +4728,7 @@ class ChloeAI:
                                     for item in items:
                                         if item.lower().endswith("_gdb_metadata.txt"):
                                             entity_counter += 1
-                case 'txt' | 'shp' | 'pdf':
+                case 'txt' | 'bin' | 'shp' | 'pdf':
                     if include_other_entities:
                         for used_name in iterator:
                             with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:

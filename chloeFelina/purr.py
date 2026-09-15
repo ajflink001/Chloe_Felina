@@ -40,6 +40,32 @@ def getTxtFileLines(txt_file_path : str, expected_encoding : str = 'utf-8') -> t
     return None
 
 
+def isQueryMatchHessed(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
+
+    if not len(txt_lines):
+        return False
+
+    for txt_line in txt_lines:
+        current_line = decodeZipTxtLine(txt_line)
+        for word in tuple(current_line.lower().split(' ')):
+            if entry_string in ''.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]):
+                return True
+
+    return False
+
+
+def isQueryMatchHod(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
+
+    if not len(txt_lines):
+        return False
+
+    for txt_line in txt_lines:
+        if entry_string in ''.join([segment for segment in tuple(re.split(r'^[a-zA-Z0-9]+',decodeZipTxtLine(txt_line.lower()))) if segment]):
+            return True
+
+    return False
+
+
 def isQueryMatchKether(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
 
     if not (len_txt_lines := len(txt_lines)):
