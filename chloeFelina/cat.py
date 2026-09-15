@@ -3594,7 +3594,7 @@ class ChloeAI:
                                     if f'{entity[5]}|{entity[6]}' in current_entities[entity[1]].keys():
                                         current_entities[entity[1]][f'{entity[5]}|{entity[6]}'].append(entity[0])
                                     else:
-                                        current_entities[entity[1]][entity[f'{entity[5]}|{entity[6]}']] = [entity[0]]
+                                        current_entities[entity[1]][f'{entity[5]}|{entity[6]}'] = [entity[0]]
                                 else:
                                     if entity[5] in current_entities[entity[1]].keys():
                                         current_entities[entity[1]][entity[5]].append(entity[0])
