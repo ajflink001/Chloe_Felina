@@ -3037,7 +3037,7 @@ class ChloeAI:
                                 check_type.remove('img')
                                 for extension in self.image_types:
                                     check_type.add(extension)
-                            irrelevant_extensions = {'txt','gdb','pdf','docx','shp'} + (image_types_set := set(self.image_types))
+                            irrelevant_extensions = set(['txt','gdb','pdf','docx','shp'] + list((image_types_set := set(self.image_types))))
                             with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                 while True:
                                     entity = tf.readline()
@@ -3128,7 +3128,7 @@ class ChloeAI:
                                 check_type.remove('img')
                                 for extension in self.image_types:
                                     check_type.add(extension)
-                            irrelevant_extensions = {'txt','gdb','pdf','docx','shp'} + (image_types_set := set(self.image_types))
+                            irrelevant_extensions = set(['txt','gdb','pdf','docx','shp'] + list((image_types_set := set(self.image_types))))
                             with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                 while True:
                                     entity = tf.readline()
@@ -3429,7 +3429,7 @@ class ChloeAI:
                         if return_tuple:
                             return ()
                         return None
-                    irrelevant_extensions = {'txt','bin','pdf','docx','shp','gdb'} + set(self.image_types)
+                    irrelevant_extensions = set(['txt','gdb','pdf','docx','shp'] + list((self.image_types)))
                     found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind(".")+1:]])
             if not len(found_matches):
                 if return_tuple:
@@ -3447,7 +3447,7 @@ class ChloeAI:
             if entity_names_only:
                 if 'alia' in check_type:
                     check_type.remove('alia')
-                    irrelevant_extensions = {'txt','bin','pdf','docx','shp','gdb'} + set(self.image_types)
+                    irrelevant_extensions = set(['txt','gdb','pdf','docx','shp'] + list((self.image_types)))
                     alia_check_extensions = {irrelevant_extension for irrelevant_extension in tuple(irrelevant_extensions) if not irrelevant_extension in check_type}
                     found_matches = []
                     for found_name_match in found_name_matches:
@@ -3458,7 +3458,7 @@ class ChloeAI:
             elif include_entity_name:
                 if 'alia' in check_type:
                     check_type.remove('alia')
-                    irrelevant_extensions = {'txt','bin','pdf','docx','shp','gdb'} + set(self.image_types)
+                    irrelevant_extensions = set(['txt','gdb','pdf','docx','shp'] + list((self.image_types)))
                     alia_check_extensions = {irrelevant_extension for irrelevant_extension in tuple(irrelevant_extensions) if not irrelevant_extension in check_type}
                     neo_found_matches = []
                     for found_match in tuple(set(list(found_name_matches)+list(found_matches))):
@@ -3471,7 +3471,7 @@ class ChloeAI:
             else:
                 if 'alia' in check_type:
                     check_type.remove('alia')
-                    irrelevant_extensions = {'txt','bin','pdf','docx','shp','gdb'} + set(self.image_types)
+                    irrelevant_extensions = set(['txt','gdb','pdf','docx','shp'] + list((self.image_types)))
                     alia_check_extensions = {irrelevant_extension for irrelevant_extension in tuple(irrelevant_extensions) if not irrelevant_extension in check_type}
                     neo_found_matches = []
                     for found_match in found_matches:
