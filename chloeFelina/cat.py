@@ -542,7 +542,8 @@ class ChloeAI:
                                         self.archive_alia_data(f'{ref_path}/{item}',db_name)
                                     else:
                                         try:
-                                            pass
+                                            if not self.archive_doc_data(f'{ref_path}/{item}',db_name):
+                                                self.archive_alia_data(f'{ref_path}/{item}',db_name)
                                         except Exception:
                                             if exists(f'{self.db_path}/{db_name}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'):
                                                 rmtree(f'{self.db_path}/{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}')
