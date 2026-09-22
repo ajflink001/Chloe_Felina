@@ -30,15 +30,15 @@ except ModuleNotFoundError: arcpy_imported = False
 except RuntimeError: arcpy_imported = False
 # PyPDF
 pypdf_imported = True
+try: from pypdf import PdfReader,filters
+except ImportError: pypdf_imported = False
+except ModuleNotFoundError: pypdf_imported = False
 try:
-    from pypdf import PdfReader,filters
     import logging
     logger = logging.getLogger("pypdf")
     logger.setLevel(logging.ERROR)
-except ImportError:
-    pypdf_imported = False
-except ModuleNotFoundError:
-    pypdf_imported = False
+except Exception:
+    pass
 # Python Image Library (PIL)
 pil_imported = True
 try: from PIL import Image,ImageFile
@@ -400,18 +400,12 @@ class ChloeAI:
 
             metadata = []
 
-            try:
-                metadata.append(getModifiedDate(item_path)[4:])
-            except Exception:
-                metadata.append(None)
-            try:
-                metadata.append(getModifiedDate(item_path)[4:])
-            except Exception:
-                metadata.append(None)
-            try:
-                metadata.append(str(getSizeOfItem(item_path)))
-            except Exception:
-                metadata.append(None)
+            try: metadata.append(getModifiedDate(item_path)[4:])
+            except Exception: metadata.append(None)
+            try: metadata.append(getModifiedDate(item_path)[4:])
+            except Exception: metadata.append(None)
+            try: metadata.append(str(getSizeOfItem(item_path)))
+            except Exception: metadata.append(None)
 
             return tuple(metadata)
 
@@ -2214,7 +2208,7 @@ class ChloeAI:
 
         temp_str = tuple(entry_string.split(' '))
 
-        entry_string = " ".join(["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',item)) if segment]) for item in temp_str])
+        entry_string = " ".join(["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',item)) if segment]) for item in temp_str]).lower()
 
         del temp_str
 
@@ -2470,6 +2464,13 @@ class ChloeAI:
                                 check_type.remove('img')
                                 for extension in self.image_types:
                                     check_type.add(extension)
+                            for item in ('all','any','every'):
+                                if item in check_type:
+                                    check_type.remove(item)
+                            if not len(check_type):
+                                if return_tuple:
+                                    return ()
+                                return None
                             set_image_types = set(self.image_types)
                             with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                 while True:
@@ -2523,444 +2524,328 @@ class ChloeAI:
                         words[previous_search[:previous_search.rfind('$')]][0] = True
                         words[previous_search[:previous_search.rfind('$')]][2] = True
                 if len((found_words := tuple([word for word in tuple(words.keys()) if words[word][0]]))):
-                    if include_entity_name:
-                        if isinstance(check_type,str):
-                            if (check_type := check_type.lower()) == 'docx':
-                                check_type = 'doc'
-                            elif check_type in self.image_types:
-                                check_type = 'img'
-                            counter_presence = {}
-                            max_num = 1
-                            anything = {'any','every','all'}
+                    found_name_matches = set()
+                    if isinstance(check_type,str):
+                        if (check_type := check_type.lower()) == 'docx':
+                            check_type = 'doc'
+                        elif check_type in self.image_types:
+                            check_type = 'img'
+                        anything = {'any','all','every'}
+                        line_count_contents = {found_word : 0 for found_word in found_words}
+                        if include_entity_name:
                             for found_word in found_words:
                                 if words[found_word][1]:
+                                    counter = 0
                                     with open(f'{self.db_path}/_terms_searched/{found_word}$contents.txt',encoding='utf-8') as tf:
                                         while True:
                                             entity = tf.readline()
                                             if not entity:
                                                 break
-                                            entity = entity.rstrip('\n')
-                                            file_name = entity[entity.rfind('\\')+1:].lower()
-                                            if check_type in anything:
-                                                if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                    counter_presence[entity] += 1
-                                                    if max_num < counter_presence[entity]:
-                                                        max_num = counter_presence[entity]
-                                                else:
-                                                    counter_presence[entity] = 1
-                                            else:
-                                                match check_type:
-                                                    case 'txt' | 'bin' | 'pdf' | 'shp' | 'gdb':
-                                                        if file_name.endswith(f'.{check_type}'):
-                                                            if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                                counter_presence[entity] += 1
-                                                                if max_num < counter_presence[entity]:
-                                                                    max_num = counter_presence[entity]
-                                                            else:
-                                                                counter_presence[entity] = 1
-                                                    case 'doc':
-                                                        if file_name.endswith('.docx'):
-                                                            if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                                counter_presence[entity] += 1
-                                                                if max_num < counter_presence[entity]:
-                                                                    max_num = counter_presence[entity]
-                                                            else:
-                                                                counter_presence[entity] = 1
-                                                    case _:
-                                                        pass
+                                            counter += 1
+                                    line_count_contents[found_word] = counter
                                 if words[found_word][2]:
                                     with open(f'{self.db_path}/_terms_searched/{found_word}$names.txt',encoding='utf-8') as tf:
                                         while True:
                                             entity = tf.readline()
                                             if not entity:
                                                 break
-                                            entity = entity.rstrip('\n')
+                                            entity = entity.rstrip("\n")
                                             file_name = entity[entity.rfind('\\')+1:].lower()
-                                            if check_type in anything:
-                                                if '.' in file_name:
-                                                    if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                        found_name_matches.append(entity)
-                                                else:
-                                                    if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                        found_name_matches.append(entity)
-                                            else:
-                                                match check_type:
-                                                    case 'txt' | 'bin' | 'pdf' | 'shp' | 'gdb':
-                                                        if file_name.endswith(f'.{check_type}'):
-                                                            if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                                found_name_matches.append(entity)
-                                                    case 'doc':
-                                                        if file_name.endswith('.docx'):
-                                                            if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                                found_name_matches.append(entity)
-                                                    case 'img':
-                                                        if file_name[file_name.rfind('.')+1:] in self.image_types:
-                                                            if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                                found_name_matches.append(entity)
-                                                    case _:
-                                                        if check_type == 'alia':
-                                                            if not '.' in file_name:
-                                                                if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name)) if segment]):
-                                                                    found_name_matches.append(entity)
-                                                            elif not file_name[file_name.rfind('.')+1:] in self.valid_extensions:
-                                                                if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                                    found_name_matches.append(entity)
-                            if max_num:
-                                grouped_entities = {}
-                                for found_match in tuple((found_matches := [entity for entity in tuple(counter_presence.keys()) if counter_presence[entity] == max_num])):
-                                    if (zip_name := self.crintum_pointer[found_match[:found_match.rfind('\\')].replace('\\','/')]) in grouped_entities.keys():
-                                        grouped_entities[zip_name].append(found_match[found_match.rfind('\\')+1:])
-                                    else:
-                                        grouped_entities[zip_name] = [found_match[found_match.rfind('\\')+1:]]
-                                for zip_name in tuple(grouped_entities.keys()):
-                                    with ZipFile(f'{self.db_path}/{zip_name}.zip') as zf:
-                                        items = {item for item in tuple(zf.namelist()) if '/' in item}
-                                        for entity in tuple(grouped_entities[zip_name]):
-                                            file_name = "%s_%s" % (entity[:entity.rfind('.')],entity[entity.rfind('.')+1:])
-                                            match (temp_type := entity[entity.rfind('.')+1:].lower()):
-                                                case 'txt':
-                                                    if not isQueryMatchGewurah(entry_string,tuple(zf.open(f'_txt_files/{file_name}.txt').readlines()),max_line_concat):
-                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'bin':
-                                                    if (txt_file := f'{file_name}/bin_extracted_text.txt') in items:
-                                                        if not isQueryMatchHessed(entry_string,tuple(zf.open(txt_file).readlines())):
-                                                            found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                    else:
-                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'doc' | 'pdf':
-                                                    if (txt_file := f'{file_name}/{temp_type}_metadata.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            continue
-                                                    if (txt_file := f'{file_name}/{temp_type}_extracted_text.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            continue
-                                                    found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'shp':
-                                                    if not isQueryMatchChochmah(entry_string,f'_shp_files/{file_name}.txt',zf):
-                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'gdb':
-                                                    for item in tuple(items):
-                                                        if item.startswith(f'{file_name}/'):
-                                                            if isQueryMatchChochmah(entry_string,item,zf):
-                                                                continue
-                                                    found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case _:
-                                                    pass
-                                del grouped_entities
-                            if len((found_matches := tuple(sorted(set(found_matches + found_name_matches))))):
-                                if save_to_file:
-                                    genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
-                                elif return_tuple:
-                                    return found_matches
-                                return None
-                        elif isinstance(check_type,(tuple,list,set)):
-                            check_type = list(check_type)
-                            check_type = {check_type[n].lower().strip() for n in range(len(check_type))}
-                            if 'doc' in check_type:
-                                check_type.remove('doc')
-                                check_type.add('docx')
-                            if 'img' in check_type:
-                                check_type.remove('img')
-                                for image_type in self.image_types:
-                                    check_type.add(image_type)
-                            if 'alia' in check_type:
-                                check_type.remove('alia')
-                                alia_included = True
-                            max_num = 0
-                            counter_presence = {}
-                            found_name_matches = set()
-                            for found_word in found_words:
-                                if words[found_word][1]:
-                                    with open(f'{self.db_path}/_terms_searched/{found_word}$contents.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if entity[entity.rfind('.')+1:].lower() in check_type:
-                                                if entity in counter_presence.keys():
-                                                    counter_presence[entity] += 1
-                                                    if max_num < counter_presence[entity]:
-                                                        max_num = counter_presence[entity]
-                                                else:
-                                                    counter_presence[entity] = 1
-                                if words[found_word][2]:
-                                    with open(f'{self.db_path}/_terms_searched/{found_word}$names.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if not '.' in (file_name := entity[entity.rfind('\\')+1:].lower()) and alia_included:
-                                                if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name)) if segment]):
-                                                    found_name_matches.add(entity)
-                                            else:
-                                                if (extension := file_name[file_name.rfind('.')+1:]) in check_type or all((not extension in self.valid_extensions,alia_included)):
-                                                    if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
-                                                        found_name_matches.add(entity)
-                            try: del entity
-                            except NameError: pass
-                            if max_num:
-                                found_matches = set()
-                                relevant_entities = {}
-                                for entity in tuple(counter_presence.keys()):
-                                    if counter_presence[entity] == max_num:
-                                        file_name = entity[entity.rfind('\\')+1:]
-                                        if (zip_name := self.crintum_pointer[entity[:entity.rfind('\\')].replace('\\','/')]) in relevant_entities.keys:
-                                            relevant_entities[zip_name].append("%s_%s" % (file_name[:file_name.rfind('.')],file_name[file_name.rfind('.')+1:]))
-                                        else:
-                                            relevant_entities[zip_name] = ["%s_%s" % (file_name[:file_name.rfind('.')],file_name[file_name.rfind('.')+1:])]
-                                for zip_name in tuple(relevant_entities.keys()):
-                                    with ZipFile(f'{self.db_path}/{zip_name}.zip') as zf:
-                                        items = {item for item in tuple(zf.namelist()) if '/' in item}
-                                        for entity in tuple(relevant_entities[zip_name]):
-                                            file_name = entity[entity.rfind('\\')+1:].lower()
-                                            match (extension := file_name[file_name.rfind('.')+1:]):
-                                                case 'txt':
-                                                    if isQueryMatchGewurah(entry_string,tuple(zf.open(f'_txt_files/{file_name}.txt').readlines()),max_line_concat):
-                                                        found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                case 'bin':
-                                                    if (txt_file := f'{file_name}/bin_extracted_text.txt') in items:
-                                                        if not isQueryMatchHessed(entry_string,tuple(zf.open(txt_file).readlines())):
-                                                            found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                    else:
-                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'pdf':
-                                                    if (txt_file := f'{file_name}/pdf_metadata.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                    if (txt_file := f'{file_name}/pdf_extracted_text.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                case 'docx':
-                                                    if (txt_file := f'{file_name}/doc_metadata.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                    if (txt_file := f'{file_name}/doc_extracted_text.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                case 'shp':
-                                                    if isQueryMatchChochmah(entry_string,f'_shp_files/{file_name}.txt',zf):
-                                                        found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                case 'gdb':
-                                                    for item in tuple(items):
-                                                        if item.startswith(f'{file_name}/'):
-                                                            if isQueryMatchChochmah(entry_string,item,zf):
-                                                                found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                                break
-                                                case _:
-                                                    pass
-                                del relevant_entities
-                                found_matches = list(found_matches)
-                            if len((found_matches := tuple(sorted(set(found_matches + list(found_name_matches)))))):
-                                if save_to_file:
-                                    genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
-                                elif return_tuple:
-                                    return found_matches
-                                return None
-                            elif return_tuple:
-                                return ()
-                            else:
-                                return None
-                        elif return_tuple:
-                            return ()
+                                            if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
+                                                found_name_matches.add(entity)
+
                         else:
+                            for found_word in found_words:
+                                if words[found_word][1]:
+                                    counter = 0
+                                    with open(f'{self.db_path}/_terms_searched/{found_word}$contents.txt',encoding='utf-8') as tf:
+                                        while True:
+                                            entity = tf.readline()
+                                            if not entity:
+                                                break
+                                            counter += 1
+                                    line_count_contents[found_word] = counter
+                        found_name_matches = list(found_name_matches)
+                        least_items = "NOTHING"
+                        min_num = 10_000_000_000
+                        for found_word in found_words:
+                            if min_num > line_count_contents[found_word]:
+                                least_items = found_word[:]
+                                min_num = line_count_contents[found_word]
+                        relevant_entities = []
+                        with open(f'{self.db_path}/_terms_searched/{found_word}$contents.txt',encoding='utf-8') as tf:
+                            while True:
+                                entity = tf.readline()
+                                if not entity:
+                                    break
+                                relevant_entities.append(entity.rstrip('\n'))
+                        grouped_entities = {}
+                        for relevant_entity in (relevant_entities := tuple(relevant_entities)):
+                            if (zip_name := self.crintum_pointer[relevant_entity[:relevant_entity.rfind("\\")].replace('\\','/')]) in grouped_entities.keys():
+                                grouped_entities[zip_name].add(relevant_entity[relevant_entity.rfind('\\')+1:])
+                            else:
+                                grouped_entities[zip_name] = {relevant_entity[relevant_entity.rfind("\\")+1:]}
+                        if tqdm_imported:
+                            iterator = tqdm(tuple(grouped_entities.keys()),disable = not terminal_progress_display, desc = f"Searching for instances of {entry_string}")
+                        else:
+                            iterator = tuple(grouped_entities.keys())
+                        if not check_type in anything:
+                            for used_name in iterator:
+                                current_grouping = grouped_entities[used_name]
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in (items := zf.namelist()) and check_type != 'gdb':
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                line = tf.readline()
+                                                if not line:
+                                                    break
+                                                line = tuple(decodeZipTxtLine(line).split('|'))
+                                                if "%s.%s" % (line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]) in current_grouping:
+                                                    if line[1].lower() == check_type:
+                                                        match line[1]:
+                                                            case 'TXT':
+                                                                if isQueryMatchGewurah(entry_string,tuple(zf.open(f'_txt_files/{line[0]}.txt').readlines()),max_line_concat):
+                                                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                            case 'BIN':
+                                                                if isQueryMatchHod(entry_string,tuple(zf.open(f'{line[0]}/bin_extracted_text.txt').readlines())):
+                                                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                            case 'PDF':
+                                                                if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{line[0]}/pdf_metadata.txt').readlines()),max_line_concat):
+                                                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                                    continue
+                                                                if line[-2] != '0':
+                                                                    if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{line[0]}/pdf_extracted_text.txt').readlines()),max_line_concat):
+                                                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                            case 'DOC':
+                                                                if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{line[0]}/doc_metadata.txt').readlines()),max_line_concat):
+                                                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                                    continue
+                                                                if line[-2] != '0':
+                                                                    if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{line[0]}/doc_extracted_text.txt').readlines()),max_line_concat):
+                                                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                            case 'SHP':
+                                                                if isQueryMatchChochmah(entry_string,f'_shp_files/{line[0]}.txt',zf):
+                                                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                            case _:
+                                                                pass
+                                    elif check_type == 'gdb':
+                                        for item in tuple(items):
+                                            if not '_gdb/' in item.lower():
+                                                items.remove(item)
+                                        gdb_items = {}
+                                        for item in (items := tuple(items)):
+                                            if (gdb_entity := item[:item.find('/')]) in gdb_items.keys():
+                                                gdb_items[gdb_entity].append(item[item.find('/')+1:])
+                                            else:
+                                                gdb_items[gdb_entity] = [item[item.find('/')+1:]]
+                                        for gdb_item in tuple(gdb_items.keys()):
+                                            if not "%s.%s" % (gdb_item[:gdb_item.rfind('_')],gdb_item[gdb_item.rfind('_')+1:]) in current_grouping:
+                                                del gdb_items[gdb_item]
+                                        for gdb_item in tuple(gdb_items.keys()):
+                                            for item in tuple(gdb_items[gdb_item]):
+                                                if isQueryMatchChochmah(entry_string,f"{gdb_item}/{item}",zf):
+                                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),gdb_item[:gdb_item.rfind('_')],gdb_item[gdb_item.rfind('_')+1:]))
+                                                    break
+                        else:
+                            for used_name in iterator:
+                                current_grouping = grouped_entities[used_name]
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in (items := set(zf.namelist())):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                line = tf.readline()
+                                                if not line:
+                                                    break
+                                                line = tuple(decodeZipTxtLine(line).split('|'))
+                                                if "%s.%s" % (line[0][:line[0].rfind("_")],line[0][line[0].rfind("_")+1:]) in grouped_entities[used_name]:
+                                                    match line[1]:
+                                                        case 'TXT':
+                                                            if isQueryMatchGewurah(entry_string,tuple(zf.open(f'_txt_files/{line[0]}.txt').readlines()),max_line_concat):
+                                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                        case 'BIN':
+                                                            if isQueryMatchHod(entry_string,tuple(zf.open(f'{line[0]}/bin_extracted_text.txt').readlines())):
+                                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                        case 'PDF':
+                                                            if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{line[0]}/pdf_metadata.txt').readlines()),max_line_concat):
+                                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                                continue
+                                                            if line[-2] != '0':
+                                                                if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{line[0]}/pdf_extracted_text.txt').readlines()),max_line_concat):
+                                                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                        case 'DOC':
+                                                            if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{line[0]}/doc_metadata.txt').readlines()),max_line_concat):
+                                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                                continue
+                                                            if line[-2] != '0':
+                                                                if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{line[0]}/doc_extracted_text.txt').readlines()),max_line_concat):
+                                                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                        case 'SHP':
+                                                            if isQueryMatchChochmah(entry_string,f'_shp_files/{line[0]}.txt',zf):
+                                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                        case _:
+                                                            pass
+                                        items.remove('_metadata.txt')
+                                    for item in tuple(items):
+                                        if not '_gdb/' in item.lower():
+                                            items.remove(item)
+                                    gdb_items = {}
+                                    for item in (items := tuple(items)):
+                                        if (gdb_entity := item[:item.find('/')]) in gdb_items.keys():
+                                            gdb_items[gdb_entity].append(item[item.find('/')+1:])
+                                        else:
+                                            gdb_items[gdb_entity] = [item[item.find('/')+1:]]
+                                    for gdb_item in tuple(gdb_items.keys()):
+                                        if not "%s.%s" % (gdb_item[:gdb_item.rfind('_')],gdb_item[gdb_item.rfind('_')+1:]) in current_grouping:
+                                            del gdb_items[gdb_item]
+                                    for gdb_item in tuple(gdb_items.keys()):
+                                        for item in tuple(gdb_items[gdb_item]):
+                                            if isQueryMatchChochmah(entry_string,f"{gdb_item}/{item}",zf):
+                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),gdb_item[:gdb_item.rfind('_')],gdb_item[gdb_item.rfind('_')+1:]))
+                                                break
+                    elif isinstance(check_type,(tuple,list,set)):
+                        check_type = {item.strip().lower() for item in check_type}
+                        if 'docx' in check_type:
+                            check_type.remove('docx')
+                            check_type.add('doc')
+                        for item in self.image_types:
+                            if item in check_type:
+                                check_type.add('img')
+                                check_type.remove(item)
+                        for item in ('any','all','every'):
+                            if item in check_type:
+                                check_type.remove(item)
+                        if not len(check_type):
+                            if return_tuple:
+                                return ()
                             return None
+                        line_count_contents = {found_word : 0 for found_word in found_words}
+                        if include_entity_name:
+                            for found_word in found_words:
+                                if words[found_word][1]:
+                                    counter = 0
+                                    with open(f'{self.db_path}/_terms_searched/{found_word}$contents.txt',encoding='utf-8') as tf:
+                                        while True:
+                                            entity = tf.readline()
+                                            if not entity:
+                                                break
+                                            counter += 1
+                                    line_count_contents[found_word] = counter
+                                if words[found_word][2]:
+                                    with open(f'{self.db_path}/_terms_searched/{found_word}$names.txt',encoding='utf-8') as tf:
+                                        while True:
+                                            entity = tf.readline()
+                                            if not entity:
+                                                break
+                                            entity = entity.rstrip("\n")
+                                            file_name = entity[entity.rfind('\\')+1:].lower()
+                                            if testing_entry_string in ' '.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name[:file_name.rfind('.')])) if segment]):
+                                                found_name_matches.add(entity)
+                        else:
+                            for found_word in found_words:
+                                if words[found_word][1]:
+                                    counter = 0
+                                    with open(f'{self.db_path}/_terms_searched/{found_word}$contents.txt',encoding='utf-8') as tf:
+                                        while True:
+                                            entity = tf.readline()
+                                            if not entity:
+                                                break
+                                            counter += 1
+                                    line_count_contents[found_word] = counter
+                        found_name_matches = list(found_name_matches)
+                        least_items = "NOTHING"
+                        min_num = 10_000_000_000
+                        for found_word in found_words:
+                            if min_num > line_count_contents[found_word]:
+                                least_items = found_word[:]
+                                min_num = line_count_contents[found_word]
+                        relevant_entities = []
+                        with open(f'{self.db_path}/_terms_searched/{found_word}$contents.txt',encoding='utf-8') as tf:
+                            while True:
+                                entity = tf.readline()
+                                if not entity:
+                                    break
+                                relevant_entities.append(entity.rstrip('\n'))
+                        grouped_entities = {}
+                        for relevant_entity in (relevant_entities := tuple(relevant_entities)):
+                            if (zip_name := self.crintum_pointer[relevant_entity[:relevant_entity.rfind("\\")].replace('\\','/')]) in grouped_entities.keys():
+                                grouped_entities[zip_name].add(relevant_entity[relevant_entity.rfind('\\')+1:])
+                            else:
+                                grouped_entities[zip_name] = {relevant_entity[relevant_entity.rfind("\\")+1:]}
+                        if tqdm_imported:
+                            iterator = tqdm(tuple(grouped_entities.keys()),disable = not terminal_progress_display, desc = f"Searching for instances of {entry_string}")
+                        else:
+                            iterator = tuple(grouped_entities.keys())
+                        for used_name in iterator:
+                            current_grouping = grouped_entities[used_name]
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in (items := zf.namelist()):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            line = tuple(decodeZipTxtLine(line).split('|'))
+                                            if line[1].lower() in check_type:
+                                                if "%s.%s" % (line[0][:line[0].rfind("_")],line[0][line[0].rfind("_")+1:]) in current_grouping:
+                                                    match line[1]:
+                                                        case 'TXT':
+                                                            if isQueryMatchGewurah(entry_string,tuple(zf.open(f'_txt_files/{line[0]}.txt').readlines()),max_line_concat):
+                                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                        case 'BIN':
+                                                            if isQueryMatchHod(entry_string,tuple(zf.open(f'{line[0]}/bin_extracted_text.txt').readlines())):
+                                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                        case 'PDF':
+                                                            if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{line[0]}/pdf_metadata.txt').readlines()),max_line_concat):
+                                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                                continue
+                                                            if line[-2] != '0':
+                                                                if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{line[0]}/pdf_extracted_text.txt').readlines()),max_line_concat):
+                                                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                        case 'DOC':
+                                                            if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{line[0]}/doc_metadata.txt').readlines()),max_line_concat):
+                                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                                continue
+                                                            if line[-2] != '0':
+                                                                if isQueryMatchGewurah(entry_string,tuple(zf.open(f'{line[0]}/doc_extracted_text.txt').readlines()),max_line_concat):
+                                                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                        case 'SHP':
+                                                            if isQueryMatchChochmah(entry_string,f'_shp_files/{line[0]}.txt',zf):
+                                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                                                        case _:
+                                                            pass
+                                    items.remove('_metadata.txt')
+                                if 'gdb' in check_type:
+                                    for item in tuple(items):
+                                        if not '_gdb/' in item.lower():
+                                            items.remove(item)
+                                    gdb_items = {}
+                                    for item in (items := tuple(items)):
+                                        if (gdb_entity := item[:item.find('/')]) in gdb_items.keys():
+                                            gdb_items[gdb_entity].append(item[item.find('/')+1:])
+                                        else:
+                                            gdb_items[gdb_entity] = [item[item.find('/')+1:]]
+                                    for gdb_item in tuple(gdb_items.keys()):
+                                        if not "%s.%s" % (gdb_item[:gdb_item.rfind('_')],gdb_item[gdb_item.rfind('_')+1:]) in current_grouping:
+                                            del gdb_items[gdb_item]
+                                    for gdb_item in tuple(gdb_items.keys()):
+                                        for item in tuple(gdb_items[gdb_item]):
+                                            if isQueryMatchChochmah(entry_string,f"{gdb_item}/{item}",zf):
+                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),gdb_item[:gdb_item.rfind('_')],gdb_item[gdb_item.rfind('_')+1:]))
+                                                break
+                    elif return_tuple:
+                        return ()
                     else:
-                        if isinstance(check_type,str):
-                            if (check_type := check_type.lower()) == 'docx':
-                                check_type = 'doc'
-                            elif check_type in self.image_types:
-                                check_type = 'img'
-                            counter_presence = {}
-                            max_num = 1
-                            anything = {'any','every','all'}
-                            for found_word in found_words:
-                                if words[found_word][1]:
-                                    with open(f'{self.db_path}/_terms_searched/{found_word}$contents.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            file_name = entity[entity.rfind('\\')+1:].lower()
-                                            if check_type in anything:
-                                                if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                    counter_presence[entity] += 1
-                                                    if max_num < counter_presence[entity]:
-                                                        max_num = counter_presence[entity]
-                                                else:
-                                                    counter_presence[entity] = 1
-                                            else:
-                                                match check_type:
-                                                    case 'txt' | 'bin' | 'pdf' | 'shp' | 'gdb':
-                                                        if file_name.endswith(f'.{check_type}'):
-                                                            if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                                counter_presence[entity] += 1
-                                                                if max_num < counter_presence[entity]:
-                                                                    max_num = counter_presence[entity]
-                                                            else:
-                                                                counter_presence[entity] = 1
-                                                    case 'doc':
-                                                        if file_name.endswith('.docx'):
-                                                            if (entity := entity.rstrip('\n')) in counter_presence.keys():
-                                                                counter_presence[entity] += 1
-                                                                if max_num < counter_presence[entity]:
-                                                                    max_num = counter_presence[entity]
-                                                            else:
-                                                                counter_presence[entity] = 1
-                                                    case _:
-                                                        pass
-                            if max_num:
-                                grouped_entities = {}
-                                for found_match in tuple((found_matches := [entity for entity in tuple(counter_presence.keys()) if counter_presence[entity] == max_num])):
-                                    if (zip_name := self.crintum_pointer[found_match[:found_match.rfind('\\')].replace('\\','/')]) in grouped_entities.keys():
-                                        grouped_entities[zip_name].append(found_match[found_match.rfind('\\')+1:])
-                                    else:
-                                        grouped_entities[zip_name] = [found_match[found_match.rfind('\\')+1:]]
-                                for zip_name in tuple(grouped_entities.keys()):
-                                    with ZipFile(f'{self.db_path}/{zip_name}.zip') as zf:
-                                        items = {item for item in tuple(zf.namelist()) if '/' in item}
-                                        for entity in tuple(grouped_entities[zip_name]):
-                                            file_name = "%s_%s" % (entity[:entity.rfind('.')],entity[entity.rfind('.')+1:])
-                                            match (temp_type := entity[entity.rfind('.')+1:].lower()):
-                                                case 'txt':
-                                                    if not isQueryMatchGewurah(entry_string,tuple(zf.open(f'_txt_files/{file_name}.txt').readlines()),max_line_concat):
-                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'bin':
-                                                    if (txt_file := f'{file_name}/bin_extracted_text.txt') in items:
-                                                        if not isQueryMatchHessed(entry_string,tuple(zf.open(txt_file).readlines())):
-                                                            found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                    else:
-                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'pdf' | 'doc':
-                                                    if (txt_file := f'{file_name}/{temp_type}_metadata.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            continue
-                                                    if (txt_file := f'{file_name}/{temp_type}_extracted_text.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            continue
-                                                    found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'shp':
-                                                    if not isQueryMatchChochmah(entry_string,f'_shp_files/{file_name}.txt',zf):
-                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'gdb':
-                                                    for item in tuple(items):
-                                                        if item.startswith(f'{file_name}/'):
-                                                            if isQueryMatchChochmah(entry_string,item,zf):
-                                                                continue
-                                                    found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case _:
-                                                    pass
-                                del grouped_entities
-                            if len((found_matches := tuple(sorted(found_matches)))):
-                                if save_to_file:
-                                    genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
-                                elif return_tuple:
-                                    return found_matches
-                                return None
-                        elif isinstance(check_type,(tuple,list,set)):
-                            check_type = list(check_type)
-                            check_type = {check_type[n].lower().strip() for n in range(len(check_type))}
-                            if 'doc' in check_type:
-                                check_type.remove('doc')
-                                check_type.add('docx')
-                            if 'img' in check_type:
-                                check_type.remove('img')
-                                for image_type in self.image_types:
-                                    check_type.add(image_type)
-                            if 'alia' in check_type:
-                                check_type.remove('alia')
-                            if not len(check_type):
-                                if return_tuple:
-                                    return ()
-                                return None
-                            max_num = 0
-                            counter_presence = {}
-                            found_name_matches = set()
-                            for found_word in found_words:
-                                if words[found_word][1]:
-                                    with open(f'{self.db_path}/_terms_searched/{found_word}$contents.txt',encoding='utf-8') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = entity.rstrip('\n')
-                                            if entity[entity.rfind('.')+1:].lower() in check_type:
-                                                if entity in counter_presence.keys():
-                                                    counter_presence[entity] += 1
-                                                    if max_num < counter_presence[entity]:
-                                                        max_num = counter_presence[entity]
-                                                else:
-                                                    counter_presence[entity] = 1
-                            try: del entity
-                            except NameError: pass
-                            if max_num:
-                                found_matches = set()
-                                relevant_entities = {}
-                                for entity in tuple(counter_presence.keys()):
-                                    if counter_presence[entity] == max_num:
-                                        file_name = entity[entity.rfind('\\')+1:]
-                                        if (zip_name := self.crintum_pointer[entity[:entity.rfind('\\')].replace('\\','/')]) in relevant_entities.keys:
-                                            relevant_entities[zip_name].append("%s_%s" % (file_name[:file_name.rfind('.')],file_name[file_name.rfind('.')+1:]))
-                                        else:
-                                            relevant_entities[zip_name] = ["%s_%s" % (file_name[:file_name.rfind('.')],file_name[file_name.rfind('.')+1:])]
-                                for zip_name in tuple(relevant_entities.keys()):
-                                    with ZipFile(f'{self.db_path}/{zip_name}.zip') as zf:
-                                        items = {item for item in tuple(zf.namelist()) if '/' in item}
-                                        for entity in tuple(relevant_entities[zip_name]):
-                                            file_name = entity[entity.rfind('\\')+1:].lower()
-                                            match (extension := file_name[file_name.rfind('.')+1:]):
-                                                case 'txt':
-                                                    if isQueryMatchGewurah(entry_string,tuple(zf.open(f'_txt_files/{file_name}.txt').readlines()),max_line_concat):
-                                                        found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                case 'bin':
-                                                    if (txt_file := f'{file_name}/bin_extracted_text.txt') in items:
-                                                        if not isQueryMatchHessed(entry_string,tuple(zf.open(txt_file).readlines())):
-                                                            found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                    else:
-                                                        found_matches.remove("%s\\%s" % (self.path_pointer[zip_name].replace('/','\\'),entity))
-                                                case 'pdf':
-                                                    if (txt_file := f'{file_name}/pdf_metadata.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                    if (txt_file := f'{file_name}/pdf_extracted_text.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                case 'docx':
-                                                    if (txt_file := f'{file_name}/doc_metadata.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                    if (txt_file := f'{file_name}/doc_extracted_text.txt') in items:
-                                                        if isQueryMatchGewurah(entry_string,tuple(zf.open(txt_file).readlines()),max_line_concat):
-                                                            found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                case 'shp':
-                                                    if isQueryMatchChochmah(entry_string,f'_shp_files/{file_name}.txt',zf):
-                                                        found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                case 'gdb':
-                                                    for item in tuple(items):
-                                                        if item.startswith(f'{file_name}/'):
-                                                            if isQueryMatchChochmah(entry_string,item,zf):
-                                                                found_matches.add("%s\\%s.%s" % (self.path_pointer[zip_name].replace('/','\\'),file_name[:file_name.rfind('_')],file_name[file_name.rfind('_')+1:]))
-                                                                break
-                                                case _:
-                                                    pass
-                                del relevant_entities
-                                found_matches = list(found_matches)
-                            if len((found_matches := tuple(sorted(found_matches)))):
-                                if save_to_file:
-                                    genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
-                                elif return_tuple:
-                                    return found_matches
-                                return None
-                            elif return_tuple:
-                                return ()
-                            else:
-                                return None
-                        elif return_tuple:
-                            return ()
-                        else:
-                            return None
+                        return None
+                    if len((found_matches := tuple(sorted(set(found_matches + found_name_matches))))):
+                        if save_to_file:
+                            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
+                        if return_tuple:
+                            return found_matches
+                        return None
+                    elif return_tuple:
+                        return ()
+                    else:
+                        return None
             else:
                 contents_found = False ; names_found = False
                 test_contents_str = f'{entry_string}$contents' ; test_name_str = f'{entry_string}$names'
@@ -3037,6 +2922,13 @@ class ChloeAI:
                                 check_type.remove('img')
                                 for extension in self.image_types:
                                     check_type.add(extension)
+                            for item in ('all','any','every'):
+                                if item in check_type:
+                                    check_type.remove(item)
+                            if not len(check_type):
+                                if return_tuple:
+                                    return ()
+                                return None
                             irrelevant_extensions = set(['txt','gdb','pdf','docx','shp'] + list((image_types_set := set(self.image_types))))
                             with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                 while True:
@@ -3128,6 +3020,13 @@ class ChloeAI:
                                 check_type.remove('img')
                                 for extension in self.image_types:
                                     check_type.add(extension)
+                            for item in ('all','any','every'):
+                                if item in check_type:
+                                    check_type.remove(item)
+                            if not len(check_type):
+                                if return_tuple:
+                                    return ()
+                                return None
                             irrelevant_extensions = set(['txt','gdb','pdf','docx','shp'] + list((image_types_set := set(self.image_types))))
                             with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
                                 while True:
@@ -3444,6 +3343,13 @@ class ChloeAI:
             if 'doc' in check_type:
                 check_type.remove('doc')
                 check_type.add('docx')
+            for item in ('all','any','every'):
+                if item in check_type:
+                    check_type.remove(item)
+            if not len(check_type):
+                if return_tuple:
+                    return ()
+                return None
             if entity_names_only:
                 if 'alia' in check_type:
                     check_type.remove('alia')
@@ -4338,7 +4244,7 @@ class ChloeAI:
         return None
 
 
-    def getTotalRefSize(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display : bool = False) -> int:
+    def getTotalRefSize(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, digi_info_unit : str = "bytes", relevant_decimals : int = 8, rounding : bool = False, return_integer : bool = False, terminal_progress_display : bool = False) -> int | float:
         '''
         The total size of actual referenced entities themselves.
         '''
@@ -4552,12 +4458,15 @@ class ChloeAI:
                         return 0
         elif isinstance(check_type,(tuple,list,set)):
             check_type = {item.lower().replace(' ','') for item in tuple(check_type)}
-            img_type_found = False
-            for type_item in tuple(check_type):
-                if type_item in self.image_types:
-                    img_type_found = True
-                    check_type.remove(type_item)
-            check_type.add('img')
+            for item in ('all','any','every'):
+                if item in check_type:
+                    check_type.remove(item)
+            for item in self.image_types:
+                if item in check_type:
+                    check_type.remove(item)
+                    check_type.add('img')
+            if not len(check_type):
+                return None
             if include_other_entities or 'alia' in check_type:
                 if 'alia' in check_type:
                     check_type.remove('alia')
@@ -4671,7 +4580,40 @@ class ChloeAI:
         if self.chloe_vocalization:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
 
-        return int(total_size)
+
+        def totalRefSizeCal(num : Decimal, divisor : int, return_integer : bool, rounding : bool, relevant_decimals : int) -> int | float:
+            if return_integer:
+                return int(num / Decimal(divisor))
+            elif rounding:
+                return round(float(total_size / Decimal(divisor)),relevant_decimals)
+            else:
+                return float(total_size / Decimal(divisor))
+
+        if len((digi_info_unit := digi_info_unit.strip())) > 3:
+            digi_info_unit = digi_info_unit.lower()
+
+        match digi_info_unit:
+            case 'kilobyte' | 'kilobytes' | 'kB':
+                return totalRefSizeCal(total_size,1000,return_integer,rounding,relevant_decimals)
+            case 'kibibyte' | 'kibibytes' | 'KiB':
+                return totalRefSizeCal(total_size,1024,return_integer,rounding,relevant_decimals)
+            case 'megabyte' | 'megabytes' | 'MB':
+                return totalRefSizeCal(total_size,1000000,return_integer,rounding,relevant_decimals)
+            case 'bit' | 'bits' | 'b':
+                if return_integer:
+                    return int(num * Decimal(8))
+                elif rounding:
+                    round(float(total_size * Decimal(8)),relevant_decimals)
+                else:
+                    return float(total_size * Decimal(8))
+            case _:
+                # bytes
+                if return_integer:
+                    return int(total_size)
+                elif rounding:
+                    return round(float(total_size),relevant_decimals)
+                else:
+                    return float(total_size)
 
 
     def getTotalRefNum(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display : bool = False) -> int:
@@ -4860,45 +4802,9 @@ class ChloeAI:
             check_type = list(check_type)
             for n in range(len(check_type)):
                 check_type[n] = check_type[n].lower().strip()
-            if any(('all' in (check_type := set(check_type)),'any' in check_type, 'every' in check_type)):
-                if include_other_entities:
-                    for used_name in iterator:
-                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            if '_metadata.txt' in (items := {item for item in tuple(zf.namelist()) if not '/' in item and item.endswith("_metadata.txt")}):
-                                with zf.open('_metadata.txt') as tf:
-                                    while True:
-                                        line = tf.readline()
-                                        if not line:
-                                            break
-                                        entity_counter += 1
-                                items.remove('_metadata.txt')
-                            if len((items := tuple(items))):
-                                for item in items:
-                                    if item.lower().endswith("_gdb_metadata.txt"):
-                                        entity_counter += 1
-                            del items
-                            if '_alia_dosieroj.txt' in set(zf.namelist()):
-                                with zf.open('_alia_dosieroj.txt') as tf:
-                                    while True:
-                                        line = tf.readline()
-                                        if not line:
-                                            break
-                                        entity_counter += 1
-                else:
-                    for used_name in iterator:
-                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            if '_metadata.txt' in (items := {item for item in tuple(zf.namelist()) if not '/' in item and item.endswith("_metadata.txt")}):
-                                with zf.open('_metadata.txt') as tf:
-                                    while True:
-                                        line = tf.readline()
-                                        if not line:
-                                            break
-                                        entity_counter += 1
-                                items.remove('_metadata.txt')
-                            if len((items := tuple(items))):
-                                for item in items:
-                                    if item.lower().endswith("_gdb_metadata.txt"):
-                                        entity_counter += 1
+            for item in ('all','any','every'):
+                if item in check_type:
+                    check_type.remove(item)
             if 'img' in check_type:
                 check_type.remove('img')
                 for image_type in self.image_types:
@@ -4912,6 +4818,8 @@ class ChloeAI:
                 alia_enabled = True
             elif include_other_entities:
                 alia_enabled = True
+            if not len(check_type):
+                return None
             if alia_enabled:
                 if len(check_type):
                     for used_name in iterator:
