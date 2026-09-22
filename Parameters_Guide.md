@@ -68,6 +68,10 @@ Note 3: "alia" means "other" in Esperanto.
 
 
 
+Note 4: "any", "all", and "every" will be ignored and excluded if **check\_type** parameter is a list/tuple/set instead of a string.
+
+
+
 
 
 **ChloeAI** (i.e., **ChloeAI.\_\_init\_\_**)
