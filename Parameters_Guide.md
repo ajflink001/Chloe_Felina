@@ -392,11 +392,123 @@ Parameters:
 
 
 
-Purpose: This outputs the total size of the files that are being referenced in the database.
+Purpose: This outputs the total size of the files/entities that are being referenced in the database as a floating point or integer.
 
 
 
 **check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "bin", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, binary file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked. By default, the string is "any".
+
+
+
+**include\_other\_entities** (*Boolean*) - When True, the size of referenced files/entities that could not have in-depth information extracted (i.e., currently unsupported file/entity types) are included in the calculated total size of the files/entities that are being referenced in the database. By default, this is False.
+
+
+
+**digi\_info\_unit** (*String*) - This dictates what the outputted value is in reference to in terms of units. For example, "kilobyte" will result in the total bytes size being converted into kilobytes. By default, the string is "bytes". This parameter is case-sensitive if the string is less than 4 characters.
+
+
+
+\*\*\*
+
+
+
+The following are accepted inputs for digi\_info\_unit. If anything else is inputted, it will default to "bytes".
+
+
+
+byte/bytes/B (Technically, unused, since anything other than the proceeding will be ignored and treated as if "bytes" was given)
+
+
+
+"bit"/"bits"/"b"
+
+
+
+"kilobyte"/"kilobytes"/"kB"
+
+
+
+"kibibyte"/"kibibytes"/"KiB"
+
+
+
+"megabyte"/"megabytes"/"MB"
+
+
+
+"mebibyte"/"mebibytes"/"MiB"
+
+
+
+"gigabyte"/"gigabytes"/"GB"
+
+
+
+"gibibyte"/"gibibytes"/"GiB"
+
+
+
+"terabyte"/"terabytes"/"TB"
+
+
+
+"tebibyte"/"tebibytes"/"TiB"
+
+
+
+"exabyte"/"exabytes"/"EB"
+
+
+
+"exbibyte"/"exbibytes"/"EiB"
+
+
+
+"zettabyte"/"zettabytes"/"ZB"
+
+
+
+"zebibyte"/"zebibytes"/"ZiB"
+
+
+
+"yottabyte"/"yottabytes"/"YB"
+
+
+
+"yobibyte"/"yobibytes"/"YiB"
+
+
+
+"ronnabyte"/"ronnabytes"/"RB"
+
+
+
+"robibyte"/"robibytes"/"RiB"
+
+
+
+"quettabyte"/"quettabytes"/"QB"
+
+
+
+"quebibyte"/"quebibytes"/"qubibyte"/"qubibytes"/"QiB"
+
+
+
+\*\*\*
+
+
+
+**return\_integer** (*Boolean*) - This parameter makes both **rounding** and **relevant\_decimals** irrelevant and inputs for said two parameters will not affect the output. This effectively truncates the output to a whole number by converting the floating point value into an integer value. In other words, for example, both 1.101 and 1.999 would be converted to 1. By default, this is False.
+
+
+
+**rounding** (*Boolean*) - This parameter is directly related to **relevant\_decimals**. If **return\_integer** is False, the returned value will be a floating point value rounded to the number of decimal places indicated by **relevant\_decimals**. If False, the outputted floating point value, assuming **return\_integer** is False, will not be rounded. By default, this is False.
+
+
+
+**relevant\_decimals** (*Integer*) - This parameter only comes into effect if **rounding** is True and **return\_integer** is False. This rounds the value to be outputted by the number of decimal places based on the value given for this parameter. By default, this is 8.
 
 
 
@@ -412,11 +524,15 @@ Purpose: This outputs the total size of the files that are being referenced in t
 
 
 
-Purpose: This simply outputs an integer value of the number of items with referential data in the database.
+Purpose: This simply outputs an integer value of the number of items with referential data in the database as an integer.
 
 
 
 **check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "bin", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, binary file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked. By default, the string is "any".
+
+
+
+**include\_other\_entities** (*Boolean*) - When True, the referenced files/entities that could not have in-depth information extracted (i.e., currently unsupported file/entity types) are included in the number of the files/entities that are being referenced in the database. By default, this is False.
 
 
 
