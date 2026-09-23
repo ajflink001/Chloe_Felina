@@ -4598,7 +4598,41 @@ class ChloeAI:
             case 'kibibyte' | 'kibibytes' | 'KiB':
                 return totalRefSizeCal(total_size,1024,return_integer,rounding,relevant_decimals)
             case 'megabyte' | 'megabytes' | 'MB':
-                return totalRefSizeCal(total_size,1000000,return_integer,rounding,relevant_decimals)
+                return totalRefSizeCal(total_size,1_000_000,return_integer,rounding,relevant_decimals)
+            case 'mebibyte' | 'mebibytes' | 'MiB':
+                return totalRefSizeCal(total_size,1_048_576,return_integer,rounding,relevant_decimals)
+            case 'gigabyte' | 'gigabytes' | 'GB':
+                return totalRefSizeCal(total_size,1_000_000_000,return_integer,rounding,relevant_decimals)
+            case 'gibibyte' | 'gibibytes' | 'GiB':
+                return totalRefSizeCal(total_size,1_073_741_824,return_integer,rounding,relevant_decimals)
+            case 'terabyte' | 'terabytes' | 'TB':
+                return totalRefSizeCal(total_size,1_000_000_000_000,return_integer,rounding,relevant_decimals)
+            case 'tebibyte' | 'tebibytes' | 'TiB':
+                return totalRefSizeCal(total_size,1_099_511_627_776,return_integer,rounding,relevant_decimals)
+            case 'petabyte' | 'petabytes' | 'PB':
+                return totalRefSizeCal(total_size,1_000_000_000_000_000,return_integer,rounding,relevant_decimals)
+            case 'pebibyte' | 'pebibytes' | 'PiB':
+                return totalRefSizeCal(total_size,1_125_899_906_842_624,return_integer,rounding,relevant_decimals)
+            case 'exabyte' | 'exabytes' | 'EB':
+                return totalRefSizeCal(total_size,1_000_000_000_000_000_000,return_integer,rounding,relevant_decimals)
+            case 'exbibyte' | 'exbibytes' | 'EiB':
+                return totalRefSizeCal(total_size,1_152_921_504_606_846_976,return_integer,rounding,relevant_decimals)
+            case 'zettabyte' | 'zettabytes' | 'ZB':
+                return totalRefSizeCal(total_size,1_000_000_000_000_000_000_000,return_integer,rounding,relevant_decimals)
+            case 'zebibyte' | 'zebibytes' | 'ZiB':
+                return totalRefSizeCal(total_size,1_180_591_620_717_411_303_424,return_integer,rounding,relevant_decimals)
+            case 'yottabyte' | 'yottabytes' | 'YB':
+                return totalRefSizeCal(total_size,1_000_000_000_000_000_000_000_000,return_integer,rounding,relevant_decimals)
+            case 'yobibyte' | 'yobibytes' | 'YiB':
+                return totalRefSizeCal(total_size,1_208_925_819_614_629_174_706_176,return_integer,rounding,relevant_decimals)
+            case 'ronnabyte' | 'ronnabytes' | 'RB':
+                return totalRefSizeCal(total_size,1_000_000_000_000_000_000_000_000_000,return_integer,rounding,relevant_decimals)
+            case 'robibyte' | 'robibytes' | 'RiB':
+                return totalRefSizeCal(total_size,1_237_940_039_285_380_274_899_124_224,return_integer,rounding,relevant_decimals)
+            case 'quettabyte' | 'quettabytes' | 'QB':
+                return totalRefSizeCal(total_size,1_000_000_000_000_000_000_000_000_000_000,return_integer,rounding,relevant_decimals)
+            case 'quebibyte' | 'quebibytes' | 'qubibyte' | 'qubibytes' | 'QiB':
+                return totalRefSizeCal(total_size,1_267_650_600_228_229_401_496_703_205_376,return_integer,rounding,relevant_decimals)
             case 'bit' | 'bits' | 'b':
                 if return_integer:
                     return int(num * Decimal(8))
