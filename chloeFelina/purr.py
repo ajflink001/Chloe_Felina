@@ -242,18 +242,3 @@ def forcedTxtFileWrite(output_path : str, lines : list[str] | tuple[str]) -> Non
                         tf.write('UNEXPECTED ENCODING(S) USED FOR TEXT')
 
     return None
-
-
-def getImageTypeName(image_file_name : str) -> str:
-
-    match image_file_name[image_file_name.rfind('.')+1:].lower():
-        case 'tiff' | 'tif':
-            return 'Tagged Image File Format (Image)'
-        case 'png':
-            return 'Portable Network Graphic (Image)'
-        case 'jpeg' | 'jpg':
-            return 'Joint Photographic Experts Group (Image)'
-        case 'webp':
-            return 'Google Web Photograph'
-        case _:
-            return 'UNKNOWN'
