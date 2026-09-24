@@ -4637,7 +4637,7 @@ class ChloeAI:
                 if return_integer:
                     return int(num * Decimal(8))
                 elif rounding:
-                    round(float(total_size * Decimal(8)),relevant_decimals)
+                    return round(float(total_size * Decimal(8)),relevant_decimals)
                 else:
                     return float(total_size * Decimal(8))
             case _:
