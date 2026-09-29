@@ -1709,11 +1709,11 @@ class ChloeAI:
         baseline_metadata = '|'.join(baseline_metadata)
 
         try:
-            reader = PdfReader(pdf_path,strict=True)
+            reader = PdfReader(pdf_path,strict=False)
         except Exception:
             return False
         metadata_info = []
-        if not (meta_pdf := reader.metadata) in nulls:
+        if not (meta_pdf := reader.metadata) is None:
             if not (meta_item := meta_pdf.title) in nulls:
                 metadata_info.append(metaStr(meta_item))
             else:
