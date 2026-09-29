@@ -242,3 +242,16 @@ def forcedTxtFileWrite(output_path : str, lines : list[str] | tuple[str]) -> Non
                         tf.write('UNEXPECTED ENCODING(S) USED FOR TEXT')
 
     return None
+
+def metaStr(meta_item : str) -> str:
+
+    if meta_item == "<NULL>":
+        return '"<NULL>"'
+    meta_item = str(meta_item).rstrip('\n')
+    meta_item = meta_item.strip()
+    while '  ' in meta_item:
+        meta_item = meta_item.replace('  ',' ')
+    if not len(meta_item):
+        return "<NULL>"
+    else:
+        return meta_item

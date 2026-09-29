@@ -83,7 +83,7 @@ from secrets import choice
 from string import printable
 
 # Custom Python Modules
-from chloeFelina.purr import isQueryMatchKether,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchHessed,isQueryMatchYesod,isQueryMatchHod,isQueryMatchGewurah,forcedTxtFileWrite,decodeZipTxtLine,getTxtFileLines,fileNameFixer
+from chloeFelina.purr import isQueryMatchKether,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchHessed,isQueryMatchYesod,isQueryMatchHod,isQueryMatchGewurah,forcedTxtFileWrite,decodeZipTxtLine,getTxtFileLines,fileNameFixer,metaStr
 from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,genSearchQueryResultFile,forbidden_dirs,backupGen,genDuplicateFinderResultFile
 from chloeFelina.paxium import encrypt as pax_encrypt
 from chloeFelina.paxium import decrypt as pax_decrypt
@@ -532,7 +532,7 @@ class ChloeAI:
                                     except Exception:
                                         self.archive_alia_data(f'{ref_path}/{item}',db_name)
                                 case 'docx':
-                                    if not docx_imported or not docx2_imported or not pil_imported:
+                                    if not pypdf_imported or not pil_imported:
                                         self.archive_alia_data(f'{ref_path}/{item}',db_name)
                                     else:
                                         try:
@@ -927,7 +927,7 @@ class ChloeAI:
                             else:
                                 self.archive_alia_data(f'{reference_directory}/{name}',archive_db_name)
                         case 'DOC':
-                            if docx_imported and docx2_imported and pil_imported:
+                            if 'docx' in self.valid_extensions and pil_imported:
                                 try:
                                     self.archive_doc_data(f'{reference_directory}/{name}',archive_db_name)
                                 except Exception:
@@ -1195,94 +1195,40 @@ class ChloeAI:
         try:
             word_doc = Document(doc_path)
             props = word_doc.core_properties
-            if not (temp_str := props.title) in nulls:
-                if temp_str == "<NULL>":
-                    temp_str = '"<NULL>"'
-                temp_str = str(temp_str).rstrip('\n')
-                temp_str = temp_str.strip()
-                while '  ' in temp_str:
-                    temp_str = temp_str.replace('  ',' ')
-                metadata_info.append(temp_str)
+            if not (meta_item := props.title) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append("<NULL>")
-            if not (temp_str := props.author) in nulls:
-                if temp_str == "<NULL>":
-                    temp_str = '"<NULL>"'
-                temp_str = str(temp_str).rstrip('\n')
-                temp_str = temp_str.strip()
-                while '  ' in temp_str:
-                    temp_str = temp_str.replace('  ',' ')
-                metadata_info.append(temp_str)
+            if not (meta_item := props.author) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append("<NULL>")
-            if not (temp_str := props.subject) in nulls:
-                if temp_str == "<NULL>":
-                    temp_str = '"<NULL>"'
-                temp_str = str(temp_str).rstrip('\n')
-                temp_str = temp_str.strip()
-                while '  ' in temp_str:
-                    temp_str = temp_str.replace('  ',' ')
-                metadata_info.append(temp_str)
+            if not (meta_item := props.subject) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append("<NULL>")
-            if not (temp_str := props.identifier) in nulls:
-                if temp_str == "<NULL>":
-                    temp_str = '"<NULL>"'
-                temp_str = str(temp_str).rstrip('\n')
-                temp_str = temp_str.strip()
-                while '  ' in temp_str:
-                    temp_str = temp_str.replace('  ',' ')
-                metadata_info.append(temp_str)
+            if not (meta_item := props.identifier) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append("<NULL>")
-            if not (temp_str := props.language) in nulls:
-                if temp_str == "<NULL>":
-                    temp_str = '"<NULL>"'
-                temp_str = str(temp_str).rstrip('\n')
-                temp_str = temp_str.strip()
-                while '  ' in temp_str:
-                    temp_str = temp_str.replace('  ',' ')
-                metadata_info.append(temp_str)
+            if not (meta_item := props.language) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append("<NULL>")
-            if not (temp_str := props.category) in nulls:
-                if temp_str == "<NULL>":
-                    temp_str = '"<NULL>"'
-                temp_str = str(temp_str).rstrip('\n')
-                temp_str = temp_str.strip()
-                while '  ' in temp_str:
-                    temp_str = temp_str.replace('  ',' ')
-                metadata_info.append(temp_str)
+            if not (meta_item := props.category) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append("<NULL>")
-            if not (temp_str := props.keywords) in nulls:
-                if temp_str == "<NULL>":
-                    temp_str = '"<NULL>"'
-                temp_str = str(temp_str).rstrip('\n')
-                temp_str = temp_str.strip()
-                while '  ' in temp_str:
-                    temp_str = temp_str.replace('  ',' ')
-                metadata_info.append(temp_str)
+            if not (meta_item := props.keywords) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append("<NULL>")
-            if not (temp_str := props.revision) in nulls:
-                if temp_str == "<NULL>":
-                    temp_str = '"<NULL>"'
-                temp_str = str(temp_str).rstrip('\n')
-                temp_str = temp_str.strip()
-                while '  ' in temp_str:
-                    temp_str = temp_str.replace('  ',' ')
-                metadata_info.append(temp_str)
+            if not (meta_item := props.revision) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append("<NULL>")
-            if not (temp_str := props.version) in nulls:
-                if temp_str == "<NULL>":
-                    temp_str = '"<NULL>"'
-                temp_str = str(temp_str).rstrip('\n')
-                temp_str = temp_str.strip()
-                while '  ' in temp_str:
-                    temp_str = temp_str.replace('  ',' ')
-                metadata_info.append(temp_str)
+            if not (meta_item := props.version) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append("<NULL>")
 
@@ -1291,52 +1237,27 @@ class ChloeAI:
             try:
                 word_doc = docx2(doc_path)
                 props = word_doc.core_properties
-                if not (temp_str := props['title']) in nulls:
-                    if temp_str == "<NULL>":
-                        temp_str = '"<NULL>"'
-                    temp_str = str(temp_str).rstrip('\n')
-                    while '  ' in temp_str:
-                        temp_str = temp_str.replace('  ',' ')
-                    metadata_info.append(temp_str)
+                if not (meta_item := props['title']) in nulls:
+                    metadata_info.append(metaStr(meta_item))
                 else:
                     metadata_info.append("<NULL>")
-                if not (temp_str := props["creator"]) in nulls:
-                    if temp_str == "<NULL>":
-                        temp_str = '"<NULL>"'
-                    temp_str = str(temp_str).rstrip('\n')
-                    while '  ' in temp_str:
-                        temp_str = temp_str.replace('  ',' ')
-                    metadata_info.append(temp_str)
+                if not (meta_item := props["creator"]) in nulls:
+                    metadata_info.append(metaStr(meta_item))
                 else:
                     metadata_info.append("<NULL>")
-                if not (temp_str := props["subject"]) in nulls:
-                    if temp_str == "<NULL>":
-                        temp_str = '"<NULL>"'
-                    temp_str = str(temp_str).rstrip('\n')
-                    while '  ' in temp_str:
-                        temp_str = temp_str.replace('  ',' ')
-                    metadata_info.append(temp_str)
+                if not (meta_item := props["subject"]) in nulls:
+                    metadata_info.append(metaStr(meta_item))
                 else:
                     metadata_info.append("<NULL>")
                 metadata_info.append("<NULL>") # unable to determine indentifier
                 metadata_info.append("<NULL>") # unable to determine language
                 metadata_info.append("<NULL>") # unable to determine category
-                if not (temp_str := props["keywords"]) in nulls:
-                    if temp_str == "<NULL>":
-                        temp_str = '"<NULL>"'
-                    temp_str = str(temp_str).rstrip('\n')
-                    while '  ' in temp_str:
-                        temp_str = temp_str.replace('  ',' ')
-                    metadata_info.append(temp_str)
+                if not (meta_item := props["keywords"]) in nulls:
+                    metadata_info.append(metaStr(meta_item))
                 else:
                     metadata_info.append("<NULL>")
-                if not (temp_str := props["revision"]) in nulls:
-                    if temp_str == "<NULL>":
-                        temp_str = '"<NULL>"'
-                    temp_str = str(temp_str).rstrip('\n')
-                    while '  ' in temp_str:
-                        temp_str = temp_str.replace('  ',' ')
-                    metadata_info.append(temp_str)
+                if not (meta_item := props["revision"]) in nulls:
+                    metadata_info.append(metaStr(meta_item))
                 else:
                     metadata_info.append("<NULL>")
                 metadata_info.append("<NULL>") # unable to determine version
@@ -1363,10 +1284,11 @@ class ChloeAI:
                 doc_text = doc_content.text
             while '\n\n' in doc_text:
                 doc_text = doc_text.replace('\n\n','\n')
-            doc_text = doc_text.replace('\t','')
-            for n in range(len((doc_text := doc_text.split('\n')))):
+            doc_text = doc_text.split('\n')
+            for n in range(len(doc_text)):
                 while '  ' in doc_text[n]:
                     doc_text[n] = doc_text[n].replace('  ',' ')
+                doc_text[n] = doc_text[n].replace('\t','')
                 doc_text[n] = doc_text[n].strip()
             if len((doc_text := tuple(doc_text))):
                 with open(f'{doc_folder}/doc_extracted_text.txt','w',encoding='utf-8') as tf:
@@ -1374,7 +1296,7 @@ class ChloeAI:
                     for n in range(1,len(doc_text)):
                         tf.write(f"\n{doc_text[n]}")
             else:
-                with open(f'{doc_folder}/doc_extracted_text.txt','w',encoding='utf-8') as tf:
+                with open(f'\n{doc_folder}/doc_extracted_text.txt','w',encoding='utf-8') as tf:
                     pass
         except Exception:
             with open(f'{doc_folder}/doc_extracted_text.txt','w',encoding='utf-8') as tf:
@@ -1787,61 +1709,29 @@ class ChloeAI:
         baseline_metadata = '|'.join(baseline_metadata)
 
         try:
-            reader = PdfReader(pdf_path)
+            reader = PdfReader(pdf_path,strict=True)
         except Exception:
             return False
-
         metadata_info = []
-
-        if not (meta_pdf := reader.metadata) is None:
-            if (meta_item := meta_pdf.title):
-                if meta_item == "<NULL>":
-                    meta_item = '"<NULL>"'
-                meta_item = str(meta_item).rstrip('\n')
-                meta_item = meta_item.strip()
-                while '  ' in meta_item:
-                    meta_item = meta_item.replace('  ',' ')
-                metadata_info.append(meta_item)
+        if not (meta_pdf := reader.metadata) in nulls:
+            if not (meta_item := meta_pdf.title) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append("<NULL>")
-            if (meta_item := meta_pdf.author):
-                if meta_item == "<NULL>":
-                    meta_item = '"<NULL>"'
-                meta_item = str(meta_item).rstrip('\n')
-                meta_item = meta_item.strip()
-                while '  ' in meta_item:
-                    meta_item = meta_item.replace('  ',' ')
-                metadata_info.append(meta_item)
+            if not (meta_item := meta_pdf.author) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append("<NULL>")
-            if (meta_item := meta_pdf.creator):
-                if meta_item == "<NULL>":
-                    meta_item = '"<NULL>"'
-                meta_item = str(meta_item).rstrip('\n')
-                meta_item = meta_item.strip()
-                while '  ' in meta_item:
-                    meta_item = meta_item.replace('  ',' ')
-                metadata_info.append(meta_item)
+            if not (meta_item := meta_pdf.creator) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append('<NULL>')
-            if (meta_item := meta_pdf.producer):
-                if meta_item == "<NULL>":
-                    meta_item = '"<NULL>"'
-                meta_item = str(meta_item).rstrip('\n')
-                meta_item = meta_item.strip()
-                while '  ' in meta_item:
-                    meta_item = meta_item.replace('  ',' ')
-                metadata_info.append(meta_item)
+            if not (meta_item := meta_pdf.producer) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append('<NULL>')
-            if (meta_item := meta_pdf.subject):
-                if meta_item == "<NULL>":
-                    meta_item = '"<NULL>"'
-                meta_item = str(meta_item).rstrip('\n')
-                meta_item = meta_item.strip()
-                while '  ' in meta_item:
-                    meta_item = meta_item.replace('  ',' ')
-                metadata_info.append(meta_item)
+            if not (meta_item := meta_pdf.subject) in nulls:
+                metadata_info.append(metaStr(meta_item))
             else:
                 metadata_info.append('<NULL>')
             del meta_item
@@ -1868,18 +1758,25 @@ class ChloeAI:
                 # All pages have been iterated or unable to be read.
                 break
             if not (txt := pdf_info.extract_text()) in nulls:
-                txt = txt.replace(" \n"," ")
-                txt = txt.replace("\n"," ")
-                while '  ' in txt:
-                    txt = txt.replace('  ',' ')
-                txt = txt.strip()
+                while '\n\n' in txt:
+                    txt = txt.replace('\n\n','\n')
+                txt = txt.split('\n')
+                for n in range(len(txt)):
+                    while '  ' in txt[n]:
+                        txt[n] = txt[n].replace('  ',' ')
+                    txt[n] = txt[n].strip()
+                txt = tuple(txt)
                 if not exists(extracted_text_path):
                     with open(extracted_text_path,"w",encoding='utf-8') as tf:
-                        tf.write(txt)
+                        tf.write(txt[0])
+                        for x in range(1,len(txt)):
+                            tf.write(f'\n{txt[x]}')
                 else:
                     with open(extracted_text_path,"a",encoding='utf-8') as tf:
-                        tf.write(f"\n{txt}")
+                        for line in txt:
+                            tf.write(f'\n{line}')
             try:
+                counter = 1
                 for count,image_file_object in enumerate(pdf_info.images):
                     with open((temp_image_file := f'{pdf_folder}/{count}{image_file_object.name}'),'wb') as fp:
                         fp.write(image_file_object.data)
