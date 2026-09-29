@@ -1776,7 +1776,6 @@ class ChloeAI:
                         for line in txt:
                             tf.write(f'\n{line}')
             try:
-                counter = 1
                 for count,image_file_object in enumerate(pdf_info.images):
                     with open((temp_image_file := f'{pdf_folder}/{count}{image_file_object.name}'),'wb') as fp:
                         fp.write(image_file_object.data)
