@@ -19,6 +19,8 @@ except ImportError:
 except ModuleNotFoundError:
     tqdm_imported = False
 
+import logging
+
 # Installed Python Modules
 # ArcPy
 # If you don't access to ArcPy via ArcGIS Pro, don't worry, unless you work
@@ -34,8 +36,17 @@ try: from pypdf import PdfReader,filters
 except ImportError: pypdf_imported = False
 except ModuleNotFoundError: pypdf_imported = False
 try:
-    import logging
     logger = logging.getLogger("pypdf")
+    logger.setLevel(logging.ERROR)
+except Exception:
+    pass
+# PyMuPDF (Alternative to PyPDF)
+pymupdf_imported = True
+try: import pymupdf
+except ImportError: pymupdf_imported = False
+except ModuleNotFoundError: pymupdf_imported = False
+try:
+    logger = logging.getLogger("pymupdf")
     logger.setLevel(logging.ERROR)
 except Exception:
     pass
@@ -66,7 +77,7 @@ except ImportError: openpyxl_imported = False
 except ModuleNotFoundError: openpyxl_imported = False
 
 # Built-In Python Modules
-import csv,logging,warnings,hashlib,re
+import csv,warnings,hashlib,re
 from os import walk as walker
 from os import listdir,mkdir,chdir,getcwd,remove,chmod,rename
 from os.path import exists,isfile,isdir
@@ -85,6 +96,7 @@ from string import printable
 # Custom Python Modules
 from chloeFelina.purr import isQueryMatchKether,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchHessed,isQueryMatchYesod,isQueryMatchHod,isQueryMatchGewurah,forcedTxtFileWrite,decodeZipTxtLine,getTxtFileLines,fileNameFixer,metaStr
 from chloeFelina.meow import randstr,createCopy,getSizeOfItem,unc_path,getBaselineMetadata,getCreatedDate,getModifiedDate,genSearchQueryResultFile,forbidden_dirs,backupGen,genDuplicateFinderResultFile
+from chloeFelina.hairball import getSizeQueryTuple
 from chloeFelina.paxium import encrypt as pax_encrypt
 from chloeFelina.paxium import decrypt as pax_decrypt
 from chloeFelina import _audio_file_pointer
@@ -2079,7 +2091,7 @@ class ChloeAI:
         return True
 
 
-    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_entity_name : bool = True, entity_names_only : bool = False, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display : bool = False) -> tuple[str] | None:
+    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', size_query : str | None = None, include_entity_name : bool = True, entity_names_only : bool = False, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display : bool = False) -> tuple[str] | None:
         '''
         This allows, by default, the searching for the presence of specific
         term(s) in entities with data in the database as well as the name of the
@@ -2088,6 +2100,8 @@ class ChloeAI:
         alphanumeric characters making things harder to find, and the file
         extension, unless designated.
         '''
+
+        og_check_type = check_type[:]
 
         def getTestName(sub_entry_string : str) -> str:
 
@@ -2120,6 +2134,15 @@ class ChloeAI:
             if return_tuple:
                 return ()
             return None
+
+        valid_size_query_input = False
+        if size_query is None:
+            size_tester = None
+        else:
+            if (size_tester := getSizeQueryTuple(size_query)) is None:
+                size_tester = None
+            else:
+                valid_size_query_input = True
 
         if output_name is None:
             if entry_string[0].isdigit() or not entry_string[0].isalnum():
@@ -2230,8 +2253,10 @@ class ChloeAI:
                                 if return_tuple:
                                     return ()
                                 return None
-                        if len((found_matches := tuple(sorted(found_name_matches)))):
-                            if save_to_file:
+                        if len((found_matches := sorted(found_name_matches))):
+                            if valid_size_query_input:
+                                found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
+                            if save_to_file and len((found_matches := tuple(found_matches))):
                                 genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                             if return_tuple:
                                 return found_matches
@@ -2266,8 +2291,10 @@ class ChloeAI:
                                     elif 'alia' in check_type:
                                         if testing_entry_string in " ".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',file_name)) if segment]):
                                             found_name_matches.add(entity)
-                        if len((found_matches := tuple(sorted(found_name_matches)))):
-                            if save_to_file:
+                        if len((found_matches := sorted(found_name_matches))):
+                            if valid_size_query_input:
+                                found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
+                            if save_to_file and len((found_matches := tuple(found_matches))):
                                 genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                             if return_tuple:
                                 return found_matches
@@ -2395,7 +2422,9 @@ class ChloeAI:
                         else:
                             return None
                         if len((found_matches := tuple(found_name_matches))):
-                            if save_to_file:
+                            if valid_size_query_input:
+                                found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
+                            if save_to_file and len((found_matches := tuple(found_matches))):
                                 genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                             if return_tuple:
                                 return found_matches
@@ -2732,8 +2761,10 @@ class ChloeAI:
                         return ()
                     else:
                         return None
-                    if len((found_matches := tuple(sorted(set(found_matches + found_name_matches))))):
-                        if save_to_file:
+                    if len((found_matches := sorted(set(found_matches + found_name_matches)))):
+                        if valid_size_query_input:
+                            found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
+                        if save_to_file and len((found_matches := tuple(found_matches))):
                             genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                         if return_tuple:
                             return found_matches
@@ -2944,8 +2975,10 @@ class ChloeAI:
                         else:
                             return None
                     if contents_found and names_found:
-                        if len(found_matches := tuple(set(list(found_matches)+list(found_name_matches)))) and any((contents_found,names_found)):
-                            if save_to_file:
+                        if len(found_matches := set(list(found_matches)+list(found_name_matches))) and any((contents_found,names_found)):
+                            if valid_size_query_input:
+                                found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
+                            if save_to_file and len((found_matches := tuple(found_matches))):
                                 genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
                             if return_tuple:
                                 return found_matches
@@ -3204,28 +3237,28 @@ class ChloeAI:
                     pass
                 case 'txt' | 'bin' | 'pdf' | 'gdb' | 'shp':
                     if entity_names_only:
-                        found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.txt')])
+                        found_matches = sorted([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.txt')])
                     else:
-                        found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.txt')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.txt')])
+                        found_matches = sorted(set([found_match for found_match in found_matches if found_match.lower().endswith('.txt')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.txt')]))
                 case 'doc':
                     if entity_names_only:
-                        found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.docx')])
+                        found_matches = sorted([found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.docx')])
                     else:
-                        found_matches = tuple([found_match for found_match in found_matches if found_match.lower().endswith('.docx')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.docx')])
+                        found_matches = sorted(set([found_match for found_match in found_matches if found_match.lower().endswith('.docx')] + [found_name_match for found_name_match in found_name_matches if found_name_match.lower().endswith('.docx')]))
                 case 'img':
                     if not include_entity_name:
                         if return_tuple:
                             return ()
                         return None
                     check_type = set(self.image_types)
-                    found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind('.'):] in check_type])
+                    found_matches = sorted([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind('.'):] in check_type])
                 case _:
                     if not include_entity_name:
                         if return_tuple:
                             return ()
                         return None
                     irrelevant_extensions = set(['txt','gdb','pdf','docx','shp'] + list((self.image_types)))
-                    found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind(".")+1:]])
+                    found_matches = sorted([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind(".")+1:]])
             if not len(found_matches):
                 if return_tuple:
                     return ()
@@ -3256,7 +3289,7 @@ class ChloeAI:
                         if (extension := found_name_match[found_name_match.rfind('.')+1:]) in check_type or extension in alia_check_extensions:
                             found_matches.append(found_name_match)
                 else:
-                    found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind('.')+1:] in check_type])
+                    found_matches = sorted([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind('.')+1:] in check_type])
             elif include_entity_name:
                 if 'alia' in check_type:
                     check_type.remove('alia')
@@ -3266,10 +3299,10 @@ class ChloeAI:
                     for found_match in tuple(set(list(found_name_matches)+list(found_matches))):
                         if (extension := found_match[found_match.rfind('.')+1:]) in check_type or extension in alia_check_extensions:
                             neo_found_matches.append(found_match)
-                    found_matches = tuple(neo_found_matches)
+                    found_matches = sorted(neo_found_matches)
                     del neo_found_matches
                 else:
-                    found_matches = tuple([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind('.')+1:] in check_type] + [found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.')+1:] in check_type])
+                    found_matches = sorted(set([found_name_match for found_name_match in found_name_matches if found_name_match.lower()[found_name_match.rfind('.')+1:] in check_type] + [found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.')+1:] in check_type]))
             else:
                 if 'alia' in check_type:
                     check_type.remove('alia')
@@ -3279,10 +3312,10 @@ class ChloeAI:
                     for found_match in found_matches:
                         if (extension := found_match[found_match.rfind('.')+1:]) in check_type or extension in alia_check_extensions:
                             neo_found_matches.append(found_match)
-                    found_matches = tuple(neo_found_matches)
+                    found_matches = sorted(neo_found_matches)
                     del neo_found_matches
                 else:
-                    found_matches = tuple([found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.')+1:] in check_type])
+                    found_matches = sorted([found_match for found_match in found_matches if found_match.lower()[found_match.rfind('.')+1:] in check_type])
             if not len(found_matches):
                 if return_tuple:
                     return ()
@@ -3295,7 +3328,10 @@ class ChloeAI:
         try: del found_name_matches
         except NameError: pass
 
-        if save_to_file:
+        if valid_size_query_input:
+            found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
+
+        if save_to_file and len((found_matches := tuple(found_matches))):
             genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
 
         if self.chloe_vocalization:
@@ -3314,6 +3350,255 @@ class ChloeAI:
             mkdir(search_results_folder)
 
         return None
+
+
+    def simplifyResultsViaSize(self, found_matches : tuple | list, size_tester : tuple, check_type : list | tuple | set | str, terminal_progress_display : bool) -> tuple:
+
+        # check_type does not need to be validated if it is a string, list, set, or tuple due to the check being redudant where it is called in searchQuery.
+
+        groupings = {}
+        for found_match in tuple(found_matches):
+            if (loko := self.crintum_pointer[found_match[:found_match.rfind('\\')].replace('\\','/')]) in groupings.keys():
+                groupings[loko].add("%s_%s" % (found_match[found_match.rfind('\\')+1:found_match.rfind('.')],found_match[found_match.rfind('.')+1:]))
+            else:
+                groupings[loko] = {"%s_%s" % (found_match[found_match.rfind('\\')+1:found_match.rfind('.')],found_match[found_match.rfind('.')+1:])}
+        try: del loko
+        except NameError: pass
+        found_matches = []
+        if tqdm_imported:
+            iterator = tqdm(tuple(groupings.keys()), disable = not terminal_progress_display, desc = f"Removing Matches that do not satisfy Size Query")
+        else:
+            iterator = tuple(groupings.keys())
+        if isinstance(check_type,str):
+            match (check_type := check_type.strip().lower()):
+                case 'all' | 'any' | 'every':
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_metadata.txt' in (items := {item for item in tuple(zf.namelist()) if not '/' in item}):
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = tuple(decodeZipTxtLine(line).split('|'))
+                                        if line[0] in groupings[used_name]:
+                                            size_bytes = int(line[4])
+                                            if all([test.range_check(size_bytes) for test in size_tester]):
+                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                            if '_alia_dosieroj.txt' in items:
+                                with zf.open('_alia_dosieroj.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = tuple(decodeZipTxtLine(line).split('|'))
+                                        if line[0] in groupings[used_name]:
+                                            size_bytes = int(line[4])
+                                            if all([test.range_check(size_bytes) for test in size_tester]):
+                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                case 'txt' | 'bin' | 'pdf' | 'doc' | 'shp' | 'img':
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            with zf.open('_metadata.txt') as tf:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = tuple(decodeZipTxtLine(line).split('|'))
+                                if line[0] in groupings[used_name]:
+                                    size_bytes = int(line[4])
+                                    if all([test.range_check(size_bytes) for test in size_tester]):
+                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                case 'gdb':
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            for gdb_item in tuple([item for item in tuple(groupings[used_name]) if item.lower().endswith('_gdb')]):
+                                size_bytes = 0
+                                with zf.open(f'{gdb_item}_gdb_metadata.txt') as tf:
+                                    line = tf.readline()
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        size_bytes += int(decodeZipTxtLine(line).split('|')[3])
+                                if all([test.range_check(size_bytes) for test in size_tester]):
+                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                case _:
+                    # ALIA
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            with zf.open('_alia_dosieroj.txt') as tf:
+                                while True:
+                                    line = tf.readline()
+                                    if not line:
+                                        break
+                                    line = tuple(decodeZipTxtLine(line).split('|'))
+                                    if line[0] in groupings[used_name]:
+                                        size_bytes = int(line[4])
+                                        if all([test.range_check(size_bytes) for test in size_tester]):
+                                            found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+        else:
+            check_type = list(check_type)
+            for n in range(len(check_type)):
+                check_type[n] = check_type[n].strip().lower()
+            check_type = set(check_type)
+            _metadata_items_included = False
+            for item in ('bin','txt','pdf','doc','shp','img'):
+                if item in check_type:
+                    _metadata_items_included = True
+                    break
+            if _metadata_items_included:
+                if 'gdb' in check_type:
+                    if 'alia' in check_type:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_metadata.txt' in (items := {item for item in tuple(zf.namelist()) if not '/' in item}):
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = tuple(decodeZipTxtLine(line).split('|'))
+                                        if line[0] in groupings[used_name]:
+                                            size_bytes = int(line[4])
+                                            if all([test.range_check(size_bytes) for test in size_tester]):
+                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                            if '_alia_dosieroj.txt' in items:
+                                with zf.open('_alia_dosieroj.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = tuple(decodeZipTxtLine(line).split('|'))
+                                        if line[0] in groupings[used_name]:
+                                            size_bytes = int(line[4])
+                                            if all([test.range_check(size_bytes) for test in size_tester]):
+                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                            for gdb_item in tuple([item for item in tuple(groupings[used_name]) if item.lower().endswith('_gdb')]):
+                                size_bytes = 0
+                                with zf.open(f'{gdb_item}_gdb_metadata.txt') as tf:
+                                    line = tf.readline()
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        size_bytes += int(decodeZipTxtLine(line).split('|')[3])
+                                if all([test.range_check(size_bytes) for test in size_tester]):
+                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                    else:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_metadata.txt' in {item for item in tuple(zf.namelist()) if not '/' in item and item.lower().endswith('_metadata.txt')}:
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        line = tuple(decodeZipTxtLine(line).split('|'))
+                                        if line[0] in groupings[used_name]:
+                                            size_bytes = int(line[4])
+                                            if all([test.range_check(size_bytes) for test in size_tester]):
+                                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                            for gdb_item in tuple([item for item in tuple(groupings[used_name]) if item.lower().endswith('_gdb')]):
+                                size_bytes = 0
+                                with zf.open(f'{gdb_item}_gdb_metadata.txt') as tf:
+                                    line = tf.readline()
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        size_bytes += int(decodeZipTxtLine(line).split('|')[3])
+                                if all([test.range_check(size_bytes) for test in size_tester]):
+                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                elif 'alia' in check_type:
+                    with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                        if '_metadata.txt' in (items := {item for item in tuple(zf.namelist()) if not '/' in item}):
+                            with zf.open('_metadata.txt') as tf:
+                                while True:
+                                    line = tf.readline()
+                                    if not line:
+                                        break
+                                    line = tuple(decodeZipTxtLine(line).split('|'))
+                                    if line[0] in groupings[used_name]:
+                                        size_bytes = int(line[4])
+                                        if all([test.range_check(size_bytes) for test in size_tester]):
+                                            found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                        if '_alia_dosieroj.txt' in items:
+                            with zf.open('_alia_dosieroj.txt') as tf:
+                                while True:
+                                    line = tf.readline()
+                                    if not line:
+                                        break
+                                    line = tuple(decodeZipTxtLine(line).split('|'))
+                                    if line[0] in groupings[used_name]:
+                                        size_bytes = int(line[4])
+                                        if all([test.range_check(size_bytes) for test in size_tester]):
+                                            found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                else:
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            with zf.open('_metadata.txt') as tf:
+                                while True:
+                                    line = tf.readline()
+                                    if not line:
+                                        break
+                                    line = tuple(decodeZipTxtLine(line).split('|'))
+                                    if line[0] in groupings[used_name]:
+                                        size_bytes = int(line[4])
+                                        if all([test.range_check(size_bytes) for test in size_tester]):
+                                            found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+            elif 'gdb' in check_type:
+                if 'alia' in check_type:
+                    with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                        if '_alia_dosieroj.txt' in {item for item in tuple(zf.namelist()) if not '/' in item}:
+                            with zf.open('_alia_dosieroj.txt') as tf:
+                                while True:
+                                    line = tf.readline()
+                                    if not line:
+                                        break
+                                    line = tuple(decodeZipTxtLine(line).split('|'))
+                                    if line[0] in groupings[used_name]:
+                                        size_bytes = int(line[4])
+                                        if all([test.range_check(size_bytes) for test in size_tester]):
+                                            found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                        for gdb_item in tuple([item for item in tuple(groupings[used_name]) if item.lower().endswith('_gdb')]):
+                            size_bytes = 0
+                            with zf.open(f'{gdb_item}_gdb_metadata.txt') as tf:
+                                line = tf.readline()
+                                while True:
+                                    line = tf.readline()
+                                    if not line:
+                                        break
+                                    size_bytes += int(decodeZipTxtLine(line).split('|')[3])
+                            if all([test.range_check(size_bytes) for test in size_tester]):
+                                found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+                else:
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            for gdb_item in tuple([item for item in tuple(groupings[used_name]) if item.lower().endswith('_gdb')]):
+                                size_bytes = 0
+                                with zf.open(f'{gdb_item}_gdb_metadata.txt') as tf:
+                                    line = tf.readline()
+                                    while True:
+                                        line = tf.readline()
+                                        if not line:
+                                            break
+                                        size_bytes += int(decodeZipTxtLine(line).split('|')[3])
+                                if all([test.range_check(size_bytes) for test in size_tester]):
+                                    found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+            else:
+                # ALIA
+                for used_name in iterator:
+                    with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                        with zf.open('_alia_dosieroj.txt') as tf:
+                            while True:
+                                line = tf.readline()
+                                if not line:
+                                    break
+                                line = tuple(decodeZipTxtLine(line).split('|'))
+                                if line[0] in groupings[used_name]:
+                                    size_bytes = int(line[4])
+                                    if all([test.range_check(size_bytes) for test in size_tester]):
+                                        found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
+
+        return tuple(found_matches)
 
 
     def findAllDuplicates(self, include_other_entities : bool = False, return_tuple : bool = False, save_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', terminal_progress_display : bool = False) -> None | tuple[tuple]:
@@ -4489,7 +4774,7 @@ class ChloeAI:
             digi_info_unit = digi_info_unit.lower()
 
         match digi_info_unit:
-            case 'kilobyte' | 'kilobytes' | 'kB':
+            case 'kilobyte' | 'kilobytes' | 'kB' | 'KB':
                 return totalRefSizeCal(total_size,1000,return_integer,rounding,relevant_decimals)
             case 'kibibyte' | 'kibibytes' | 'KiB':
                 return totalRefSizeCal(total_size,1024,return_integer,rounding,relevant_decimals)
@@ -4536,7 +4821,7 @@ class ChloeAI:
                     return round(float(total_size * Decimal(8)),relevant_decimals)
                 else:
                     return float(total_size * Decimal(8))
-            case 'kilobit' | 'kilobits' | 'kb':
+            case 'kilobit' | 'kilobits' | 'kb' | 'Kb':
                 return totalRefSizeCal(total_size,125,return_integer,rounding,relevant_decimals)
             case 'kibibit' | 'kibibits' | 'Kib':
                 return totalRefSizeCal(total_size,128,return_integer,rounding,relevant_decimals)
