@@ -288,11 +288,11 @@ def convertDigitToBytes(entry_string : str) -> str | None:
                     try: entry_string = entry_string[last_index+2:]
                     except IndexError: break
                 elif relevant_portion_lower.startswith('zebibyte'):
-                    relevant_portion = entry_string[:last_index].replace(og_num,str(int(round(float(num * Decimal(1_152_921_504_606_846_976)))))) ; neo_str = f"{neo_str}{relevant_portion}"
+                    relevant_portion = entry_string[:last_index].replace(og_num,str(int(round(float(num * Decimal(1_180_591_620_717_411_303_424)))))) ; neo_str = f"{neo_str}{relevant_portion}"
                     try: entry_string = entry_string[last_index+8:]
                     except IndexError: break
                 elif relevant_portion.startswith('ZiB'):
-                    relevant_portion = entry_string[:last_index].replace(og_num,str(int(round(float(num * Decimal(1_152_921_504_606_846_976)))))) ; neo_str = f"{neo_str}{relevant_portion}"
+                    relevant_portion = entry_string[:last_index].replace(og_num,str(int(round(float(num * Decimal(1_180_591_620_717_411_303_424)))))) ; neo_str = f"{neo_str}{relevant_portion}"
                     try: entry_string = entry_string[last_index+3:]
                     except IndexError: break
                 elif relevant_portion_lower.startswith('zebibit'):
