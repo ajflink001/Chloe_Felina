@@ -250,6 +250,164 @@ Parameters:
 
 
 
+**size\_query** (*String* or *NoneType*) - This allows the usage of a custom SQL-like query system that allows the user to specify the size criteria that valid search matches must have in order to be included as part of the output. By default, this is None. If left as None or an invalid query statement is inputted, eliminating valid search matches based upon the size of the referenced file/entity will not be done.
+
+\#######
+
+
+
+Size Query Rules and Basic:
+
+\*\*\*
+
+Comparison Operator
+
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+
+>= / => | File/Entity must be greater than or equal to the following value.
+
+>       | File/Entity must be greater than the following value.
+
+<= / =< | File/Entity must be less than or equal to the following value.
+
+<       | File/Entity must be less than the following value.
+
+= / ==  | File/Entity must be equal to the following value.
+
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+
+\*\*\*
+
+Logical Operator
+
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+
+AND | File/Entity must also comply with the following statement.
+
+OR  | File/Entity can instead comply with the following statement.
+
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+
+Note: AND as well as OR do not need to be capitalized.
+
+\*\*\*
+
+Digital Unit Size
+
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+
+bytes/byte/B                                | Technically redundant as having no digital unit size after a numeric value does the same thing.
+
+bit/bits/b                                  | 8 bits equals 1 byte. Anything less than 8 will result in the value being set to 0.
+
+kilobit/kilobits/kb/Kb                      | 1 kb is equivalent to 125 bytes.
+
+kibibit/kibibits/Kib                        | 1 Kib is equivalent to 128 bytes.
+
+kilobyte/kilobytes/KB/kB                    | 1 kB is equivalent to 1,000 bytes.
+
+kibibyte/kibibytes/KiB                      | 1 KiB is equivalent to 1,024 bytes.
+
+megabit/megabits/Mb                         | 1 Mb is equivalent to 125,000 bytes.
+
+mebibit/mebibits/Mib                        | 1 Mib is equivalent to 131,072 bytes.
+
+megabyte/megabytes/MB                       | 1 MB is equivalent to 1,000,000 bytes.
+
+mebibyte/mebibytes/MiB                      | 1 MiB is equivalent to 1,048,576 bytes.
+
+gigabit/gigabits/Gb                         | 1 Gb is equivalent to 125,000,000 bytes.
+
+gibibit/gibibits/Gib                        | 1 Gib is equivalent to 134,217,728 bytes.
+
+gigabyte/gigabytes/GB                       | 1 GB is equivalent to 1,000,000,000 bytes.
+
+gibibyte/gibibytes/GiB                      | 1 GiB is equivalent to 1,073,741,824 bytes.
+
+terabit/terabits/Tb                         | 1 Tb is equivalent to 125,000,000,000 bytes.
+
+tebibit/tebibits/Tib                        | 1 Tib is equivalent to 137,438,953,472 bytes.
+
+terabyte/terabytes/TB                       | 1 TB is equivalent to 1,000,000,000,000 bytes.
+
+tebibyte/tebibytes/TiB                      | 1 TiB is equivalent to 1,099,511,627,776 bytes.
+
+petabit/petabits/Pb                         | 1 Pb is equivalent to 125,000,000,000,000 bytes.
+
+pebibit/pebibits/Pib                        | 1 Pib is equivalent to 140,737,488,355,328 bytes.
+
+petabyte/petabytes/PB                       | 1 PB is equivalent to 1,000,000,000,000,000 bytes.
+
+pebibyte/pebibytes/PiB                      | 1 PiB is equivalent to 1,125,899,906,842,624 bytes.
+
+exabit/exabits/Eb                           | 1 Eb is equivalent to 125,000,000,000,000,000 bytes.
+
+exbibit/exbibits/Eib                        | 1 Eib is equivalent to 144,115,188,075,855,872 bytes.
+
+exabyte/exabytes/EB                         | 1 EB is equivalent to 1,000,000,000,000,000,000 bytes.
+
+exbibyte/exbibytes/EiB                      | 1 EiB is equivalent to 1,152,921,504,606,846,976 bytes.
+
+zettabit/zettabits/Zb                       | 1 Zb is equivalent to 125,000,000,000,000,000,000 bytes.
+
+zebibit/zebibits/Zib                        | 1 Zib is equivalent to 147,573,952,589,676,412,928 bytes.
+
+zettabyte/zettabytes/ZB                     | 1 ZB is equivalent to 1,000,000,000,000,000,000,000 bytes.
+
+zebibyte/zebibytes/ZiB                      | 1 ZiB is equivalent to 1,180,591,620,717,411,303,424 bytes.
+
+yottabit/yottabits/Yb                       | 1 Yb is equivalent to 125,000,000,000,000,000,000,000 bytes.
+
+yobibit/yobibits/Yib                        | 1 Yib is equivalent to 151,115,727,451,828,646,838,272 bytes.
+
+yottabyte/yottabytes/YB                     | 1 YB is equivalent to 1,000,000,000,000,000,000,000,000 bytes.
+
+yobibyte/yobibytes/YiB                      | 1 YiB is equivalent to 1,208,925,819,614,629,174,706,176 bytes.
+
+ronnabit/ronnabits/Rb                       | 1 Rb is equivalent to 125,000,000,000,000,000,000,000,000 bytes.
+
+robibit/robibits/Rib                        | 1 Rib is equivalent to 154,742,504,910,672,534,362,390,528 bytes.
+
+ronnabyte/ronnabytes/RB                     | 1 RB is equivalent to 1,000,000,000,000,000,000,000,000,000 bytes.
+
+robibyte/robibytes/RiB                      | 1 RiB is equivalent to 1,237,940,039,285,380,274,899,124,224 bytes.
+
+quettabit/quettabits/Qb                     | 1 Qb is equivalent to 125,000,000,000,000,000,000,000,000,000 bytes.
+
+qubibit/quebibit/qubibits/quebibits/Qib     | 1 Qib is equivalent to 125,000,000,000,000,000,000,000,000,000 bytes.
+
+quettabyte/quettabytes/QB                   | 1 QB is equivalent to 1,000,000,000,000,000,000,000,000,000,000 bytes.
+
+qubibyte/quebibyte/qubibytes/quebibytes/QiB | 1 QiB is equivalent to 1,267,650,600,228,229,401,496,703,205,376 bytes.
+
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+
+Note: Not including a digital unit size will default to the assumption that the numeric value is in bytes and any non-whole number values will be truncated. Capitalization only matters for abbreviated versions of values such as GiB or Kb. The capitalization for "kilo" (i.e., "k") is the only exception as there is no SI unit prefix that uses "K". Technically, Kelvin uses "K"; however, since temperature is completely irrelevant, "k" or "K" is acceptable for "kilo".
+
+
+
+Here is example of acceptable size query:
+
+
+
+>= 100 KiB AND < 1 GB OR > 48 AND <= 198 kb
+
+
+
+If you understand how SQL works, the same logic applies here with the following distinctions:
+
+
+
+* As with the given example, you do not need to type out the same query as: num >= 100 KiB AND num < 1 GB OR num > 48 AND num <= 198 kb.
+* Using "()" is not supported unlike SQL.
+* "Under the hood", "100 KiB", "1 GB", and 198 kb are all converted into what the values would be in bytes.
+* Queries that will result in a logic error such as specifying the file/entity must be less than 1,000 bytes and greater than 10,000 bytes will not be processed and will be retreated as an erroneous query.
+* Numbers can be followed by a digital unit size.
+
+\#######
+
+
+
 **include\_entity\_name** (*Boolean*) - This determines if the name of the files themselves should be considered for being a valid match with **entry\_string**. By default, this is True.
 
 
