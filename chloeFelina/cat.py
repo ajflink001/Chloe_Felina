@@ -3383,7 +3383,7 @@ class ChloeAI:
                                         line = tuple(decodeZipTxtLine(line).split('|'))
                                         if line[0] in groupings[used_name]:
                                             size_bytes = int(line[4])
-                                            if all([test.range_check(size_bytes) for test in size_tester]):
+                                            if any([test.range_check(size_bytes) for test in size_tester]):
                                                 found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                             if '_alia_dosieroj.txt' in items:
                                 with zf.open('_alia_dosieroj.txt') as tf:
@@ -3394,7 +3394,7 @@ class ChloeAI:
                                         line = tuple(decodeZipTxtLine(line).split('|'))
                                         if line[0] in groupings[used_name]:
                                             size_bytes = int(line[4])
-                                            if all([test.range_check(size_bytes) for test in size_tester]):
+                                            if any([test.range_check(size_bytes) for test in size_tester]):
                                                 found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                 case 'txt' | 'bin' | 'pdf' | 'doc' | 'shp' | 'img':
                     for used_name in iterator:
@@ -3406,7 +3406,7 @@ class ChloeAI:
                                 line = tuple(decodeZipTxtLine(line).split('|'))
                                 if line[0] in groupings[used_name]:
                                     size_bytes = int(line[4])
-                                    if all([test.range_check(size_bytes) for test in size_tester]):
+                                    if any([test.range_check(size_bytes) for test in size_tester]):
                                         found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                 case 'gdb':
                     for used_name in iterator:
@@ -3420,7 +3420,7 @@ class ChloeAI:
                                         if not line:
                                             break
                                         size_bytes += int(decodeZipTxtLine(line).split('|')[3])
-                                if all([test.range_check(size_bytes) for test in size_tester]):
+                                if any([test.range_check(size_bytes) for test in size_tester]):
                                     found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                 case _:
                     # ALIA
@@ -3434,7 +3434,7 @@ class ChloeAI:
                                     line = tuple(decodeZipTxtLine(line).split('|'))
                                     if line[0] in groupings[used_name]:
                                         size_bytes = int(line[4])
-                                        if all([test.range_check(size_bytes) for test in size_tester]):
+                                        if any([test.range_check(size_bytes) for test in size_tester]):
                                             found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
         else:
             check_type = list(check_type)
@@ -3459,7 +3459,7 @@ class ChloeAI:
                                         line = tuple(decodeZipTxtLine(line).split('|'))
                                         if line[0] in groupings[used_name]:
                                             size_bytes = int(line[4])
-                                            if all([test.range_check(size_bytes) for test in size_tester]):
+                                            if any([test.range_check(size_bytes) for test in size_tester]):
                                                 found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                             if '_alia_dosieroj.txt' in items:
                                 with zf.open('_alia_dosieroj.txt') as tf:
@@ -3470,7 +3470,7 @@ class ChloeAI:
                                         line = tuple(decodeZipTxtLine(line).split('|'))
                                         if line[0] in groupings[used_name]:
                                             size_bytes = int(line[4])
-                                            if all([test.range_check(size_bytes) for test in size_tester]):
+                                            if any([test.range_check(size_bytes) for test in size_tester]):
                                                 found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                             for gdb_item in tuple([item for item in tuple(groupings[used_name]) if item.lower().endswith('_gdb')]):
                                 size_bytes = 0
@@ -3481,7 +3481,7 @@ class ChloeAI:
                                         if not line:
                                             break
                                         size_bytes += int(decodeZipTxtLine(line).split('|')[3])
-                                if all([test.range_check(size_bytes) for test in size_tester]):
+                                if any([test.range_check(size_bytes) for test in size_tester]):
                                     found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                     else:
                         with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
@@ -3494,7 +3494,7 @@ class ChloeAI:
                                         line = tuple(decodeZipTxtLine(line).split('|'))
                                         if line[0] in groupings[used_name]:
                                             size_bytes = int(line[4])
-                                            if all([test.range_check(size_bytes) for test in size_tester]):
+                                            if any([test.range_check(size_bytes) for test in size_tester]):
                                                 found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                             for gdb_item in tuple([item for item in tuple(groupings[used_name]) if item.lower().endswith('_gdb')]):
                                 size_bytes = 0
@@ -3505,7 +3505,7 @@ class ChloeAI:
                                         if not line:
                                             break
                                         size_bytes += int(decodeZipTxtLine(line).split('|')[3])
-                                if all([test.range_check(size_bytes) for test in size_tester]):
+                                if any([test.range_check(size_bytes) for test in size_tester]):
                                     found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                 elif 'alia' in check_type:
                     with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
@@ -3518,7 +3518,7 @@ class ChloeAI:
                                     line = tuple(decodeZipTxtLine(line).split('|'))
                                     if line[0] in groupings[used_name]:
                                         size_bytes = int(line[4])
-                                        if all([test.range_check(size_bytes) for test in size_tester]):
+                                        if any([test.range_check(size_bytes) for test in size_tester]):
                                             found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                         if '_alia_dosieroj.txt' in items:
                             with zf.open('_alia_dosieroj.txt') as tf:
@@ -3529,7 +3529,7 @@ class ChloeAI:
                                     line = tuple(decodeZipTxtLine(line).split('|'))
                                     if line[0] in groupings[used_name]:
                                         size_bytes = int(line[4])
-                                        if all([test.range_check(size_bytes) for test in size_tester]):
+                                        if any([test.range_check(size_bytes) for test in size_tester]):
                                             found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                 else:
                     for used_name in iterator:
@@ -3542,7 +3542,7 @@ class ChloeAI:
                                     line = tuple(decodeZipTxtLine(line).split('|'))
                                     if line[0] in groupings[used_name]:
                                         size_bytes = int(line[4])
-                                        if all([test.range_check(size_bytes) for test in size_tester]):
+                                        if any([test.range_check(size_bytes) for test in size_tester]):
                                             found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
             elif 'gdb' in check_type:
                 if 'alia' in check_type:
@@ -3556,7 +3556,7 @@ class ChloeAI:
                                     line = tuple(decodeZipTxtLine(line).split('|'))
                                     if line[0] in groupings[used_name]:
                                         size_bytes = int(line[4])
-                                        if all([test.range_check(size_bytes) for test in size_tester]):
+                                        if any([test.range_check(size_bytes) for test in size_tester]):
                                             found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                         for gdb_item in tuple([item for item in tuple(groupings[used_name]) if item.lower().endswith('_gdb')]):
                             size_bytes = 0
@@ -3567,7 +3567,7 @@ class ChloeAI:
                                     if not line:
                                         break
                                     size_bytes += int(decodeZipTxtLine(line).split('|')[3])
-                            if all([test.range_check(size_bytes) for test in size_tester]):
+                            if any([test.range_check(size_bytes) for test in size_tester]):
                                 found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
                 else:
                     for used_name in iterator:
@@ -3581,7 +3581,7 @@ class ChloeAI:
                                         if not line:
                                             break
                                         size_bytes += int(decodeZipTxtLine(line).split('|')[3])
-                                if all([test.range_check(size_bytes) for test in size_tester]):
+                                if any([test.range_check(size_bytes) for test in size_tester]):
                                     found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
             else:
                 # ALIA
@@ -3595,7 +3595,7 @@ class ChloeAI:
                                 line = tuple(decodeZipTxtLine(line).split('|'))
                                 if line[0] in groupings[used_name]:
                                     size_bytes = int(line[4])
-                                    if all([test.range_check(size_bytes) for test in size_tester]):
+                                    if any([test.range_check(size_bytes) for test in size_tester]):
                                         found_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),line[0][:line[0].rfind('_')],line[0][line[0].rfind('_')+1:]))
 
         return tuple(found_matches)
