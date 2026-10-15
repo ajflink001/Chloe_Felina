@@ -770,6 +770,10 @@ Purpose: This simply outputs an integer value of the number of items with refere
 
 
 
+**size\_query** (*String* or *NoneType*) - This allows the usage of a custom SQL-like query system that allows the user to specify the size criteria that items must meet to be counted towards the total. By default, this is None. If left as None or an invalid query statement is inputted, eliminating valid search matches based upon the size of the referenced file/entity will not be done. See **size\_query** in **ChloeAI.searchQuery** for more information.
+
+
+
 **include\_other\_entities** (*Boolean*) - When True, the referenced files/entities that could not have in-depth information extracted (i.e., currently unsupported file/entity types) are included in the number of the files/entities that are being referenced in the database. By default, this is False.
 
 
