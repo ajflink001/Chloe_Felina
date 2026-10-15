@@ -21,6 +21,16 @@ except ModuleNotFoundError:
 
 import logging
 
+def forceLoggingERRORLevel(module_name : str) -> None:
+
+    try:
+        logger = logging.getLogger(module_name)
+        logger.setLevel(logging.ERROR)
+    except Exception:
+        pass
+
+    return None
+
 # Installed Python Modules
 # ArcPy
 # If you don't access to ArcPy via ArcGIS Pro, don't worry, unless you work
@@ -32,39 +42,40 @@ except ModuleNotFoundError: arcpy_imported = False
 except RuntimeError: arcpy_imported = False
 # PyPDF
 pypdf_imported = True
-try: from pypdf import PdfReader,filters
-except ImportError: pypdf_imported = False
-except ModuleNotFoundError: pypdf_imported = False
 try:
-    logger = logging.getLogger("pypdf")
-    logger.setLevel(logging.ERROR)
-except Exception:
-    pass
-# PyMuPDF (Alternative to PyPDF)
-pymupdf_imported = True
-try: import pymupdf
-except ImportError: pymupdf_imported = False
-except ModuleNotFoundError: pymupdf_imported = False
-try:
-    logger = logging.getLogger("pymupdf")
-    logger.setLevel(logging.ERROR)
-except Exception:
-    pass
+    from pypdf import PdfReader,filters
+    forceLoggingERRORLevel("pypdf")
+except ImportError:
+    pypdf_imported = False
+except ModuleNotFoundError:
+    pypdf_imported = False
 # Python Image Library (PIL)
 pil_imported = True
-try: from PIL import Image,ImageFile
-except ImportError: pil_imported = False
-except ModuleNotFoundError: pil_imported = False
+try:
+    from PIL import Image,ImageFile
+    forceLoggingERRORLevel("PIL")
+except ImportError:
+    pil_imported = False
+except ModuleNotFoundError:
+    pil_imported = False
 # docx
 docx_imported = True
-try: from docx import Document
-except ImportError: docx_imported = False
-except ModuleNotFoundError: docx_imported = False
+try:
+    from docx import Document
+    forceLoggingERRORLevel("docx")
+except ImportError:
+    docx_imported = False
+except ModuleNotFoundError:
+    docx_imported = False
 # docx2
 docx2_imported = True
-try: from docx2python import docx2python as docx2
-except ImportError: docx2_imported = False
-except ModuleNotFoundError: docx2_imported = False
+try:
+    from docx2python import docx2python as docx2
+    forceLoggingERRORLevel("docx2")
+except ImportError:
+    docx2_imported = False
+except ModuleNotFoundError:
+    docx2_imported = False
 # pywin32
 win32api_imported = True
 try: from win32api import GetLogicalDriveStrings
@@ -72,9 +83,13 @@ except ImportError: win32api_imported = False
 except ModuleNotFoundError: win32api_imported = False
 # openpyxl
 openpyxl_imported = True
-try: from openpyxl import Workbook,load_workbook
-except ImportError: openpyxl_imported = False
-except ModuleNotFoundError: openpyxl_imported = False
+try:
+    from openpyxl import Workbook,load_workbook
+    forceLoggingERRORLevel("openpyxl")
+except ImportError:
+    openpyxl_imported = False
+except ModuleNotFoundError:
+    openpyxl_imported = False
 
 # Built-In Python Modules
 import csv,warnings,hashlib,re
@@ -335,6 +350,7 @@ class ChloeAI:
             # of writing only utilizes Nvidia GPUs exclusively.
             arcpy.env.processorType = "CPU"
             arcpy.env.parallelProcessingFactor = "75%"
+            arcpy.env.overwriteOutput = False
 
         if docx_imported and docx2_imported:
             self.valid_extensions.append('docx')
@@ -3354,8 +3370,6 @@ class ChloeAI:
 
     def simplifyResultsViaSize(self, found_matches : tuple | list, size_tester : tuple, check_type : list | tuple | set | str, terminal_progress_display : bool) -> tuple:
 
-        # check_type does not need to be validated if it is a string, list, set, or tuple due to the check being redudant where it is called in searchQuery.
-
         groupings = {}
         for found_match in tuple(found_matches):
             if (loko := self.crintum_pointer[found_match[:found_match.rfind('\\')].replace('\\','/')]) in groupings.keys():
@@ -4871,7 +4885,7 @@ class ChloeAI:
                     return float(total_size)
 
 
-    def getTotalRefNum(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', include_other_entities : bool = False, terminal_progress_display : bool = False) -> int:
+    def getTotalRefNum(self, check_type : str | tuple[str] | list[str] | set[str] = 'any', size_query : str | None = None, include_other_entities : bool = False, terminal_progress_display : bool = False) -> int:
         '''
         Number of entities in database.
         '''
@@ -4885,164 +4899,349 @@ class ChloeAI:
         else:
             iterator = tuple(self.used_names)
 
+        valid_size_query_input = False
+        if size_query is None:
+            size_tester = None
+        else:
+            if (size_tester := getSizeQueryTuple(size_query)) is None:
+                size_tester = None
+            else:
+                valid_size_query_input = True
+
         if isinstance(check_type,str):
-            match (check_type := check_type.lower().strip()):
-                case 'all' | 'any' | 'every':
-                    if include_other_entities:
+            if valid_size_query_input:
+                match (check_type := check_type.lower().strip()):
+                    case 'all' | 'any' | 'every':
+                        if include_other_entities:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in (items := {item for item in tuple(zf.namelist()) if not '/' in item and item.endswith("_metadata.txt")}):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                num = tf.readline()
+                                                if not num:
+                                                    break
+                                                num = int(decodeZipTxtLine(num).split('|')[4])
+                                                if any([test.range_check(num) for test in size_tester]):
+                                                    entity_counter += 1
+                                        items.remove('_metadata.txt')
+                                    if len((items := tuple(items))):
+                                        for item in items:
+                                            if item.lower().endswith("_gdb_metadata.txt"):
+                                                entity_counter += 1
+                                    del items
+                                    if '_alia_dosieroj.txt' in set(zf.namelist()):
+                                        with zf.open('_alia_dosieroj.txt') as tf:
+                                            while True:
+                                                num = tf.readline()
+                                                if not num:
+                                                    break
+                                                num = int(decodeZipTxtLine(num).split('|')[4])
+                                                if any([test.range_check(num) for test in size_tester]):
+                                                    entity_counter += 1
+                        else:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in (items := {item for item in tuple(zf.namelist()) if not '/' in item and item.endswith("_metadata.txt")}):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                num = tf.readline()
+                                                if not num:
+                                                    break
+                                                num = int(decodeZipTxtLine(num).split('|')[4])
+                                                if any([test.range_check(num) for test in size_tester]):
+                                                    entity_counter += 1
+                                        items.remove('_metadata.txt')
+                                    if len((items := tuple(items))):
+                                        for item in items:
+                                            if item.lower().endswith("_gdb_metadata.txt"):
+                                                entity_counter += 1
+                    case 'txt' | 'bin' | 'shp' | 'pdf':
+                        if include_other_entities:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in (items := set(zf.namelist())):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')
+                                                num = int(entity[4])
+                                                if entity[0].endswith(f'_{check_type}') and any([test.range_check(num) for test in size_tester]):
+                                                    entity_counter += 1
+                                    if '_alia_dosieroj.txt' in items:
+                                        with zf.open('_alia_dosieroj.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')
+                                                num = int(entity[4])
+                                                if entity[0].endswith(f'.{check_type}') and any([test.range_check(num) for test in size_tester]):
+                                                    entity_counter += 1
+                        else:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in set(zf.namelist()):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')
+                                                num = int(entity[4])
+                                                if entity[0].endswith(f'_{check_type}') and any([test.range_check(num) for test in size_tester]):
+                                                    entity_counter += 1
+                    case 'doc':
+                        if include_other_entities:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in (items := set(zf.namelist())):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')
+                                                num = int(entity[4])
+                                                if entity[0].endswith('_docx') and any([test.range_check(num) for test in size_tester]):
+                                                    entity_counter += 1
+                                    if '_alia_dosieroj.txt' in items:
+                                        with zf.open('_alia_dosieroj.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')
+                                                num = int(entity[4])
+                                                if entity.endswith('.docx') and any([test.range_check(num) for test in size_tester]):
+                                                    entity_counter += 1
+                        else:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in set(zf.namelist()):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                                if entity.endswith('_docx'):
+                                                    entity_counter += 1
+                    case 'img':
+                        if include_other_entities:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in (items := set(zf.namelist())):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')
+                                                num = int(entity[4])
+                                                if entity[0][entity[0].rfind('_')+1:] in self.image_types and any([test.range_check(num) for test in size_tester]):
+                                                    entity_counter += 1
+                                    if '_alia_dosieroj.txt' in items:
+                                        with zf.open('_alia_dosieroj.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')
+                                                num = int(entity[4])
+                                                if entity[0][entity[0].rfind('.')+1:] in self.image_types and any([test.range_check(num) for test in size_tester]):
+                                                    entity_counter += 1
+                        else:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in set(zf.namelist()):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                                if entity[entity.rfind('_')+1:] in self.image_types:
+                                                    entity_counter += 1
+                    case 'gdb':
                         for used_name in iterator:
                             with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                                if '_metadata.txt' in (items := {item for item in tuple(zf.namelist()) if not '/' in item and item.endswith("_metadata.txt")}):
-                                    with zf.open('_metadata.txt') as tf:
-                                        while True:
-                                            line = tf.readline()
-                                            if not line:
-                                                break
-                                            entity_counter += 1
-                                    items.remove('_metadata.txt')
-                                if len((items := tuple(items))):
-                                    for item in items:
-                                        if item.lower().endswith("_gdb_metadata.txt"):
-                                            entity_counter += 1
-                                del items
+                                entity_counter += len([item for item in tuple(zf.namelist()) if not '/' in item and item.lower().endswith('_gdb_metadata.txt')])
+                    case 'alia':
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
                                 if '_alia_dosieroj.txt' in set(zf.namelist()):
                                     with zf.open('_alia_dosieroj.txt') as tf:
-                                        while True:
-                                            line = tf.readline()
-                                            if not line:
-                                                break
+                                        num = tf.readline()
+                                        if not num:
+                                            break
+                                        num = int(decodeZipTxtLine(num).split('|')[4])
+                                        if any([test.range_check(num) for test in size_tester]):
                                             entity_counter += 1
-                    else:
+                    case _:
+                        if include_other_entities:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_alia_dosieroj.txt' in set(zf.namelist()):
+                                        with zf.open('_alia_dosieroj.txt') as tf:
+                                            num = tf.readline()
+                                            if not num:
+                                                break
+                                            num = int(decodeZipTxtLine(num).split('|')[4])
+                                            if any([test.range_check(num) for test in size_tester]):
+                                                entity_counter += 1
+                        else:
+                            return 0
+            else:
+                match (check_type := check_type.lower().strip()):
+                    case 'all' | 'any' | 'every':
+                        if include_other_entities:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in (items := {item for item in tuple(zf.namelist()) if not '/' in item and item.endswith("_metadata.txt")}):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                line = tf.readline()
+                                                if not line:
+                                                    break
+                                                entity_counter += 1
+                                        items.remove('_metadata.txt')
+                                    if len((items := tuple(items))):
+                                        for item in items:
+                                            if item.lower().endswith("_gdb_metadata.txt"):
+                                                entity_counter += 1
+                                    del items
+                                    if '_alia_dosieroj.txt' in set(zf.namelist()):
+                                        with zf.open('_alia_dosieroj.txt') as tf:
+                                            while True:
+                                                line = tf.readline()
+                                                if not line:
+                                                    break
+                                                entity_counter += 1
+                        else:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in (items := {item for item in tuple(zf.namelist()) if not '/' in item and item.endswith("_metadata.txt")}):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                line = tf.readline()
+                                                if not line:
+                                                    break
+                                                entity_counter += 1
+                                        items.remove('_metadata.txt')
+                                    if len((items := tuple(items))):
+                                        for item in items:
+                                            if item.lower().endswith("_gdb_metadata.txt"):
+                                                entity_counter += 1
+                    case 'txt' | 'bin' | 'shp' | 'pdf':
+                        if include_other_entities:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in (items := set(zf.namelist())):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                                if entity.endswith(f'_{check_type}'):
+                                                    entity_counter += 1
+                                    if '_alia_dosieroj.txt' in items:
+                                        with zf.open('_alia_dosieroj.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                                if entity.endswith(f'.{check_type}'):
+                                                    entity_counter += 1
+                        else:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in set(zf.namelist()):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                                if entity.endswith(f'_{check_type}'):
+                                                    entity_counter += 1
+                    case 'doc':
+                        if include_other_entities:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in (items := set(zf.namelist())):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                                if entity.endswith('_docx'):
+                                                    entity_counter += 1
+                                    if '_alia_dosieroj.txt' in items:
+                                        with zf.open('_alia_dosieroj.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                                if entity.endswith('.docx'):
+                                                    entity_counter += 1
+                        else:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in set(zf.namelist()):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                                if entity.endswith('_docx'):
+                                                    entity_counter += 1
+                    case 'img':
+                        if include_other_entities:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in (items := set(zf.namelist())):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                                if entity[entity.rfind('_')+1:] in self.image_types:
+                                                    entity_counter += 1
+                                    if '_alia_dosieroj.txt' in items:
+                                        with zf.open('_alia_dosieroj.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                                if entity[entity.rfind('.')+1:] in self.image_types:
+                                                    entity_counter += 1
+                        else:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_metadata.txt' in set(zf.namelist()):
+                                        with zf.open('_metadata.txt') as tf:
+                                            while True:
+                                                entity = tf.readline()
+                                                if not entity:
+                                                    break
+                                                entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                                if entity[entity.rfind('_')+1:] in self.image_types:
+                                                    entity_counter += 1
+                    case 'gdb':
                         for used_name in iterator:
                             with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                                if '_metadata.txt' in (items := {item for item in tuple(zf.namelist()) if not '/' in item and item.endswith("_metadata.txt")}):
-                                    with zf.open('_metadata.txt') as tf:
-                                        while True:
-                                            line = tf.readline()
-                                            if not line:
-                                                break
-                                            entity_counter += 1
-                                    items.remove('_metadata.txt')
-                                if len((items := tuple(items))):
-                                    for item in items:
-                                        if item.lower().endswith("_gdb_metadata.txt"):
-                                            entity_counter += 1
-                case 'txt' | 'bin' | 'shp' | 'pdf':
-                    if include_other_entities:
-                        for used_name in iterator:
-                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                                if '_metadata.txt' in (items := set(zf.namelist())):
-                                    with zf.open('_metadata.txt') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = decodeZipTxtLine(entity).lower().split('|')[0]
-                                            if entity.endswith(f'_{check_type}'):
-                                                entity_counter += 1
-                                if '_alia_dosieroj.txt' in items:
-                                    with zf.open('_alia_dosieroj.txt') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = decodeZipTxtLine(entity).lower().split('|')[0]
-                                            if entity.endswith(f'.{check_type}'):
-                                                entity_counter += 1
-                    else:
-                        for used_name in iterator:
-                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                                if '_metadata.txt' in set(zf.namelist()):
-                                    with zf.open('_metadata.txt') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = decodeZipTxtLine(entity).lower().split('|')[0]
-                                            if entity.endswith(f'_{check_type}'):
-                                                entity_counter += 1
-                case 'doc':
-                    if include_other_entities:
-                        for used_name in iterator:
-                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                                if '_metadata.txt' in (items := set(zf.namelist())):
-                                    with zf.open('_metadata.txt') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = decodeZipTxtLine(entity).lower().split('|')[0]
-                                            if entity.endswith('_docx'):
-                                                entity_counter += 1
-                                if '_alia_dosieroj.txt' in items:
-                                    with zf.open('_alia_dosieroj.txt') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = decodeZipTxtLine(entity).lower().split('|')[0]
-                                            if entity.endswith('.docx'):
-                                                entity_counter += 1
-                    else:
-                        for used_name in iterator:
-                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                                if '_metadata.txt' in set(zf.namelist()):
-                                    with zf.open('_metadata.txt') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = decodeZipTxtLine(entity).lower().split('|')[0]
-                                            if entity.endswith('_docx'):
-                                                entity_counter += 1
-                case 'img':
-                    if include_other_entities:
-                        for used_name in iterator:
-                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                                if '_metadata.txt' in (items := set(zf.namelist())):
-                                    with zf.open('_metadata.txt') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = decodeZipTxtLine(entity).lower().split('|')[0]
-                                            if entity[entity.rfind('_')+1:] in self.image_types:
-                                                entity_counter += 1
-                                if '_alia_dosieroj.txt' in items:
-                                    with zf.open('_alia_dosieroj.txt') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = decodeZipTxtLine(entity).lower().split('|')[0]
-                                            if entity[entity.rfind('.')+1:] in self.image_types:
-                                                entity_counter += 1
-                    else:
-                        for used_name in iterator:
-                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                                if '_metadata.txt' in set(zf.namelist()):
-                                    with zf.open('_metadata.txt') as tf:
-                                        while True:
-                                            entity = tf.readline()
-                                            if not entity:
-                                                break
-                                            entity = decodeZipTxtLine(entity).lower().split('|')[0]
-                                            if entity[entity.rfind('_')+1:] in self.image_types:
-                                                entity_counter += 1
-                case 'gdb':
-                    for used_name in iterator:
-                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            entity_counter += len([item for item in tuple(zf.namelist()) if not '/' in item and item.lower().endswith('_gdb_metadata.txt')])
-                case 'alia':
-                    for used_name in iterator:
-                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            if '_alia_dosieroj.txt' in set(zf.namelist()):
-                                with zf.open('_alia_dosieroj.txt') as tf:
-                                    line = tf.readline()
-                                    if not line:
-                                        break
-                                    entity_counter += 1
-                case _:
-                    if include_other_entities:
+                                entity_counter += len([item for item in tuple(zf.namelist()) if not '/' in item and item.lower().endswith('_gdb_metadata.txt')])
+                    case 'alia':
                         for used_name in iterator:
                             with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
                                 if '_alia_dosieroj.txt' in set(zf.namelist()):
@@ -5051,8 +5250,18 @@ class ChloeAI:
                                         if not line:
                                             break
                                         entity_counter += 1
-                    else:
-                        return 0
+                    case _:
+                        if include_other_entities:
+                            for used_name in iterator:
+                                with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                    if '_alia_dosieroj.txt' in set(zf.namelist()):
+                                        with zf.open('_alia_dosieroj.txt') as tf:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            entity_counter += 1
+                        else:
+                            return 0
         elif isinstance(check_type,(list,tuple,set)):
             check_type = list(check_type)
             for n in range(len(check_type)):
@@ -5075,8 +5284,99 @@ class ChloeAI:
                 alia_enabled = True
             if not len(check_type):
                 return None
-            if alia_enabled:
-                if len(check_type):
+            if valid_size_query_input:
+                if alia_enabled:
+                    if len(check_type):
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in (items := {thing for thing in tuple(zf.namelist()) if not '/' in thing}):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            entity = tf.readline()
+                                            if not entity:
+                                                break
+                                            entity = decodeZipTxtLine(entity).lower().split('|')
+                                            num = int(entity[4])
+                                            if entity[0][entity[0].rfind('_')+1:] in check_type and any([test.range_check(num) for test in size_tester]):
+                                                entity_counter += 1
+                                if '_alia_dosieroj.txt' in items:
+                                    with zf.open('_alia_dosieroj.txt') as tf:
+                                        while True:
+                                            entity = tf.readline()
+                                            if not entity:
+                                                break
+                                            entity = decodeZipTxtLine(entity).lower().split('|')
+                                            num = int(entity[4])
+                                            if entity[0][entity[0].rfind('.')+1:] in check_type and any([test.range_check(num) for test in size_tester]):
+                                                entity_counter += 1
+                                for thing in tuple(items):
+                                    if thing.lower().endswith('_gdb_metadata.txt'):
+                                        entity_counter += 1
+                    else:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_alia_dosieroj.txt' in set(zf.namelist()):
+                                    with zf.open('_alia_dosieroj.txt') as tf:
+                                        while True:
+                                            num = tf.readline()
+                                            if not num:
+                                                break
+                                            num = int(decodeZipTxtLine(num).split('|')[4])
+                                            if any([test.range_check(num) for test in size_tester]):
+                                                entity_counter += 1
+                else:
+                    for used_name in iterator:
+                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                            if '_metadata.txt' in (items := {thing for thing in tuple(zf.namelist()) if not '/' in thing}):
+                                with zf.open('_metadata.txt') as tf:
+                                    while True:
+                                        entity = tf.readline()
+                                        if not entity:
+                                            break
+                                        entity = decodeZipTxtLine(entity).lower().split('|')
+                                        num = int(entity[4])
+                                        if entity[0][entity[0].rfind('_')+1:] in check_type and any([test.range_check(num) for test in size_tester]):
+                                            entity_counter += 1
+                            for thing in tuple(items):
+                                if thing.lower().endswith('_gdb_metadata.txt'):
+                                    entity_counter += 1
+            else:
+                if alia_enabled:
+                    if len(check_type):
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_metadata.txt' in (items := {thing for thing in tuple(zf.namelist()) if not '/' in thing}):
+                                    with zf.open('_metadata.txt') as tf:
+                                        while True:
+                                            entity = tf.readline()
+                                            if not entity:
+                                                break
+                                            entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                            if entity[entity.rfind('_')+1:] in check_type:
+                                                entity_counter += 1
+                                if '_alia_dosieroj.txt' in items:
+                                    with zf.open('_alia_dosieroj.txt') as tf:
+                                        while True:
+                                            entity = tf.readline()
+                                            if not entity:
+                                                break
+                                            entity = decodeZipTxtLine(entity).lower().split('|')[0]
+                                            if entity[entity.rfind('.')+1:] in check_type:
+                                                entity_counter += 1
+                                for thing in tuple(items):
+                                    if thing.lower().endswith('_gdb_metadata.txt'):
+                                        entity_counter += 1
+                    else:
+                        for used_name in iterator:
+                            with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
+                                if '_alia_dosieroj.txt' in set(zf.namelist()):
+                                    with zf.open('_alia_dosieroj.txt') as tf:
+                                        while True:
+                                            line = tf.readline()
+                                            if not line:
+                                                break
+                                            entity_counter += 1
+                else:
                     for used_name in iterator:
                         with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
                             if '_metadata.txt' in (items := {thing for thing in tuple(zf.namelist()) if not '/' in thing}):
@@ -5088,43 +5388,9 @@ class ChloeAI:
                                         entity = decodeZipTxtLine(entity).lower().split('|')[0]
                                         if entity[entity.rfind('_')+1:] in check_type:
                                             entity_counter += 1
-                            if '_alia_dosieroj.txt' in items:
-                                with zf.open('_alia_dosieroj.txt') as tf:
-                                    while True:
-                                        entity = tf.readline()
-                                        if not entity:
-                                            break
-                                        entity = decodeZipTxtLine(entity).lower().split('|')[0]
-                                        if entity[entity.rfind('.')+1:] in check_type:
-                                            entity_counter += 1
                             for thing in tuple(items):
                                 if thing.lower().endswith('_gdb_metadata.txt'):
                                     entity_counter += 1
-                else:
-                    for used_name in iterator:
-                        with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                            if '_alia_dosieroj.txt' in set(zf.namelist()):
-                                with zf.open('_alia_dosieroj.txt') as tf:
-                                    while True:
-                                        line = tf.readline()
-                                        if not line:
-                                            break
-                                        entity_counter += 1
-            else:
-                for used_name in iterator:
-                    with ZipFile(f'{self.db_path}/{used_name}.zip') as zf:
-                        if '_metadata.txt' in (items := {thing for thing in tuple(zf.namelist()) if not '/' in thing}):
-                            with zf.open('_metadata.txt') as tf:
-                                while True:
-                                    entity = tf.readline()
-                                    if not entity:
-                                        break
-                                    entity = decodeZipTxtLine(entity).lower().split('|')[0]
-                                    if entity[entity.rfind('_')+1:] in check_type:
-                                        entity_counter += 1
-                        for thing in tuple(items):
-                            if thing.lower().endswith('_gdb_metadata.txt'):
-                                entity_counter += 1
         else:
             return 0
 
