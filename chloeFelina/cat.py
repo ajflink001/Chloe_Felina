@@ -3077,8 +3077,9 @@ class ChloeAI:
                                     break
                         elif classify == '_images':
                             for txt_file in extracted_data[classify]:
+                                txt_file = txt_file[:txt_file.rfind('.')]
                                 if entry_string in getTestName(txt_file):
-                                    found_name_matches.append("%s\\%s%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind(".")],txt_file[txt_file.rfind("."):]))
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind('_')],txt_file[txt_file.rfind('_')+1:]))
             if save_found_matches:
                 if len((found_matches := tuple(sorted(found_matches)))):
                     with open(f'{self.db_path}/_terms_searched/{entry_string}$contents.txt','w',encoding='utf-8') as tf:
@@ -3210,12 +3211,13 @@ class ChloeAI:
                                             term_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),classify[:-5],classify[-4:]))
                         elif classify == '_images':
                             for txt_file in extracted_data[classify]:
+                                txt_file = txt_file[:txt_file.rfind('.')]
                                 if testing_entry_string in (test_name := getTestName(txt_file)):
-                                    found_name_matches.append("%s\\%s%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind(".")],txt_file[txt_file.rfind("."):]))
+                                    found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind("_")],txt_file[txt_file.rfind("_")+1:]))
                                 if save_found_matches:
                                     for term in terms:
                                         if term.replace('_',' ') in test_name:
-                                            term_name_memories[term].append("%s\\%s%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind(".")],txt_file[txt_file.rfind("."):]))
+                                            term_name_memories[term].append("%s\\%s.%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file[:txt_file.rfind("_")],txt_file[txt_file.rfind("_")+1:]))
             if save_found_matches:
                 for term in terms:
                     if not len(term_memories[term]):
