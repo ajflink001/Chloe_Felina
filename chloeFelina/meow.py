@@ -7,7 +7,7 @@ from os import remove,listdir,mkdir
 from os.path import getsize,getmtime,getctime,isdir,exists
 from typing import Any
 from secrets import choice
-from time import ctime
+from time import ctime,sleep
 from decimal import Decimal
 # installed modules
 # OpenPyXL
@@ -164,7 +164,17 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
 
     if exists((output_path := f'{output_location}/{output_name}{output_suffix}')):
         if overwriteOutput:
-            remove(output_path)
+            try:
+                remove(output_path)
+            except PermissionError:
+                print(f"PLEASE CLOSE {output_path.replace('/','\\')}")
+                while True:
+                    sleep(3)
+                    try:
+                        remove(output_path)
+                        break
+                    except PermissionError:
+                        pass
         else:
             neo_output_name = f"{output_name}{output_suffix}"
             existing_files = set(listdir(output_location))
@@ -474,7 +484,17 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_file_type : str,
 
     if exists((output_path := f'{output_location}/{output_name}{output_suffix}')):
         if overwriteOutput:
-            remove(output_path)
+            try:
+                remove(output_path)
+            except PermissionError:
+                print(f"PLEASE CLOSE {output_path.replace('/','\\')}")
+                while True:
+                    sleep(3)
+                    try:
+                        remove(output_path)
+                        break
+                    except PermissionError:
+                        pass
         else:
             neo_output_name = f"{output_name}{output_suffix}"
             existing_files = set(listdir(output_location))
