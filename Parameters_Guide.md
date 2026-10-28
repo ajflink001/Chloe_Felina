@@ -46,7 +46,7 @@ gdb - Esri File Geodatabase (.gdb)
 
 
 
-img - Image files (So far, .tif, .tiff, .jpeg, .jpg, .png, .dib, .jp2, .j2k, .jpx, .pcx, .tga, .xbm and/or .webp)
+img - Image files (So far, .tif, .tiff, .jpeg, .jpg, .png, .dib, .jp2, .j2k, .jpx, .pcx, .tga, .xbm, .gif, and/or .webp)
 
 
 
@@ -246,7 +246,7 @@ Parameters:
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked for the presence of **entry\_string**. By default, the string is "any".
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, GIF and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked for the presence of **entry\_string**. By default, the string is "any".
 
 
 
@@ -468,6 +468,18 @@ If you understand how SQL works, the same logic applies here with the following 
 
 
 
+**force\_file\_generation** (*Boolean*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. If, for whatever reason, Chloe Felina cannot remove the file it is supposed to be ovewritting as well as there already being files of a different output format unable to be used because they already exist at the **output\_location**, a new output file will be generated instead of overwritting the pre-existing one appending a random string of 8 characters to the end of the name. If False and no alternative output file format can be used, no output file will be generated.
+
+
+
+**input\_to\_continue** (*Boolean*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. If a different file format is used due to being unable to overwrite a pre-existing file for whatever reason, The user will be prompted to hit ENTER/RETURN on one's keyboard in order to allow Chloe Felina to continue its execution. This is to allow the user to explicitly know that an alternative output file had be generated instead of the designated one. By default, this is False.
+
+
+
+**grace\_timer** (*Integer*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. This determines in seconds the amount of time the user is granted to close the program/application that is preventing the designated output file from being overwritten. By default, this is 120.
+
+
+
 
 
 **ChloeAI.clearSearchMemory**
@@ -544,6 +556,20 @@ Parameters:
 
 
 
+**force\_file\_generation** (*Boolean*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. If, for whatever reason, Chloe Felina cannot remove the file it is supposed to be ovewritting as well as there already being files of a different output format unable to be used because they already exist at the **output\_location**, a new output file will be generated instead of overwritting the pre-existing one appending a random string of 8 characters to the end of the name. If False and no alternative output file format can be used, no output file will be generated.
+
+
+
+**input\_to\_continue** (*Boolean*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. If a different file format is used due to being unable to overwrite a pre-existing file for whatever reason, The user will be prompted to hit ENTER/RETURN on one's keyboard in order to allow Chloe Felina to continue its execution. This is to allow the user to explicitly know that an alternative output file had be generated instead of the designated one. By default, this is False.
+
+
+
+**grace\_timer** (*Integer*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. This determines in seconds the amount of time the user is granted to close the program/application that is preventing the designated output file from being overwritten. By default, this is 120.
+
+
+
+
+
 
 
 **ChloeAI.getTotalRefSize**
@@ -554,7 +580,7 @@ Purpose: This outputs the total size of the files/entities that are being refere
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "bin", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, binary file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked. By default, the string is "any".
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "bin", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, binary file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, GIF, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked. By default, the string is "any".
 
 
 
@@ -766,7 +792,7 @@ Purpose: This simply outputs an integer value of the number of items with refere
 
 
 
-**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "bin", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, binary file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked. By default, the string is "any".
+**check\_type** (*String* or *Tuple* or *List* or *Set*) - This parameter results in slightly different behavior depending upon if a string is inputted or a tuple/list/set is given. If a string is given, it expects "all"/"any"/"every" to check all entity types for the existence of **entry\_string**. If "doc", "pdf", "txt", "bin", "shp", "img", "gdb", "alia" is given, only the specified file type of Word Document, PDF, text file, binary file, shapefile, image files (i.e., TIFF/TIF, PNG, JPEG/JPG, JPEG 2000, DIB, PCX, TGA, XBM, GIF, and WebP), file geodatabase, or the name only of other files, respectively, will be checked. If a tuple/list/set is inputted instead, it will expect a combination of the mentioned types to be checked. By default, the string is "any".
 
 
 
