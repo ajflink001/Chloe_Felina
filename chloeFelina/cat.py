@@ -332,8 +332,8 @@ class ChloeAI:
 
         if pil_imported:
             # More file types will be added after thorough testing.
-            self.accepted_image_extensions = {'.jpg','.JPG','.jpeg','.JPEG','.png','.PNG','.tif','.TIF','.tiff','.TIFF','.webp','.WEBP','.bmp','.BMP','.dib','.DIB','.icns','.ICNS','.ico','.ICO','.jp2','.JP2','.j2k','.J2K','.jpx','.JPX','.pcx','.PCX','.tga','.TGA','.xbm','.XBM'}
-            self.image_types = ('jpg','jpeg','png','tif','tiff','webp','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm')
+            self.accepted_image_extensions = {'.jpg','.JPG','.jpeg','.JPEG','.png','.PNG','.tif','.TIF','.tiff','.TIFF','.webp','.WEBP','.bmp','.BMP','.dib','.DIB','.icns','.ICNS','.ico','.ICO','.jp2','.JP2','.j2k','.J2K','.jpx','.JPX','.pcx','.PCX','.tga','.TGA','.xbm','.XBM','.gif','.GIF'}
+            self.image_types = ('jpg','jpeg','png','tif','tiff','webp','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm','gif')
             self.valid_extensions = self.valid_extensions + list(self.image_types)
             # Maximum number of pixels that an image can have until the PIL module
             # throws an error.
@@ -519,6 +519,7 @@ class ChloeAI:
                         items.remove('_metadata.txt')
                     for item in tuple(items):
                         if item.lower().endswith('_gdb_metadata.txt'):
+                            item = item[:item.rfind('_')]
                             stored_items[f"{item[:item.rfind('_')]}.{item[item.rfind('_')+1:]}"] = 'GDB'
                 try: del items
                 except NameError: pass
@@ -1686,7 +1687,66 @@ class ChloeAI:
 
         baseline_metadata = '|'.join(baseline_metadata)
 
-        if (histo_ratio := self.getImageInformation(image_path)):
+        if image_path.lower().endswith('.gif'):
+            if not exists((img_folder := f'{self.db_path}/{archive_db_name}/_images')):
+                mkdir(img_folder)
+            img_gif = Image.open(image_path)
+            img_gif.seek(1)
+            img_gif.save(f'{img_folder}/temp.png')
+            # If the first frame does not return None, all other frames are
+            # safely assumed to be valid as well.
+            txt_name_path = f'{img_folder}/{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}.txt'
+            try:
+                if (histo_ratio := self.getImageInformation(f'{img_folder}/temp.png')):
+                    with open(txt_name_path,'w',encoding='utf-8') as tf:
+                        tf.write(histo_ratio[0])
+                        if exists((firstline_images := f'{self.db_path}/{archive_db_name}/_firstline_image_files.txt')):
+                            with open(firstline_images,'a',encoding='utf-8') as f:
+                                f.write(f'\n{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]} {histo_ratio[0]}')
+                        else:
+                            with open(firstline_images,'w',encoding='utf-8') as f:
+                                f.write(f'{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]} {histo_ratio[0]}')
+                        counter = 1
+                        for n in range(1,len(histo_ratio)):
+                            tf.write(f'\n{histo_ratio[n]}')
+                            counter += 1
+                    remove(f'{img_folder}/temp.png')
+                    for i in range(1,img_gif.n_frames-1):
+                        img_gif.seek(i+1)
+                        img_gif.save(f'{img_folder}/temp.png')
+                        if (histo_ratio := self.getImageInformation(f'{img_folder}/temp.png')):
+                            with open(txt_name_path,'a',encoding='utf-8') as tf:
+                                for val in histo_ratio:
+                                    tf.write(f'\n{val}')
+                                    counter += 1
+                        remove(f'{img_folder}/temp.png')
+                else:
+                    if len(listdir(img_folder)) == 1:
+                        try:
+                            remove(img_folder)
+                        except Exception:
+                            rmtree(img_folder)
+                    else:
+                        try:
+                            img_gif.close()
+                        except Exception:
+                            pass
+                        remove(f'{img_folder}/temp.png')
+                    return False
+            except Exception:
+                if not len(listdir(img_folder)):
+                    remove(img_folder)
+                elif exists(f'{img_folder}/{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}.txt'):
+                    remove(f'{img_folder}/{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}.txt')
+                if exists(f'{img_folder}/temp.png'):
+                    try:
+                        img_gif.close()
+                    except Exception:
+                        pass
+                    remove(f'{img_folder}/temp.png')
+                return False
+            img_gif.close()
+        elif (histo_ratio := self.getImageInformation(image_path)):
             if not exists((img_folder := f'{self.db_path}/{archive_db_name}/_images')):
                 mkdir(img_folder)
             with open(f'{img_folder}/{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}.txt','w',encoding='utf-8') as tf:
@@ -2107,7 +2167,7 @@ class ChloeAI:
         return True
 
 
-    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', size_query : str | None = None, include_entity_name : bool = True, entity_names_only : bool = False, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display : bool = False) -> tuple[str] | None:
+    def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', size_query : str | None = None, include_entity_name : bool = True, entity_names_only : bool = False, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display : bool = False, force_file_generation : bool = True, input_to_continue : bool = False, grace_timer : int = 120) -> tuple[str] | None:
         '''
         This allows, by default, the searching for the presence of specific
         term(s) in entities with data in the database as well as the name of the
@@ -2273,7 +2333,7 @@ class ChloeAI:
                             if valid_size_query_input:
                                 found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
                             if save_to_file and len((found_matches := tuple(found_matches))):
-                                genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
+                                genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types),force_file_generation,input_to_continue,grace_timer)
                             if return_tuple:
                                 return found_matches
                             return None
@@ -2311,7 +2371,7 @@ class ChloeAI:
                             if valid_size_query_input:
                                 found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
                             if save_to_file and len((found_matches := tuple(found_matches))):
-                                genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
+                                genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types),force_file_generation,input_to_continue,grace_timer)
                             if return_tuple:
                                 return found_matches
                             return None
@@ -2441,7 +2501,7 @@ class ChloeAI:
                             if valid_size_query_input:
                                 found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
                             if save_to_file and len((found_matches := tuple(found_matches))):
-                                genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
+                                genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types),force_file_generation,input_to_continue,grace_timer)
                             if return_tuple:
                                 return found_matches
                             return None
@@ -2781,7 +2841,7 @@ class ChloeAI:
                         if valid_size_query_input:
                             found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
                         if save_to_file and len((found_matches := tuple(found_matches))):
-                            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
+                            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types),force_file_generation,input_to_continue,grace_timer)
                         if return_tuple:
                             return found_matches
                         return None
@@ -2995,7 +3055,7 @@ class ChloeAI:
                             if valid_size_query_input:
                                 found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
                             if save_to_file and len((found_matches := tuple(found_matches))):
-                                genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
+                                genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types),force_file_generation,input_to_continue,grace_timer)
                             if return_tuple:
                                 return found_matches
                         return None
@@ -3350,7 +3410,7 @@ class ChloeAI:
             found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
 
         if save_to_file and len((found_matches := tuple(found_matches))):
-            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
+            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types),force_file_generation,input_to_continue,grace_timer)
 
         if self.chloe_vocalization:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
@@ -3617,7 +3677,7 @@ class ChloeAI:
         return tuple(found_matches)
 
 
-    def findAllDuplicates(self, include_other_entities : bool = False, return_tuple : bool = False, save_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', terminal_progress_display : bool = False) -> None | tuple[tuple]:
+    def findAllDuplicates(self, include_other_entities : bool = False, return_tuple : bool = False, save_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, force_file_generation : bool = True, input_to_continue : bool = False, grace_timer : int = 120, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', terminal_progress_display : bool = False) -> None | tuple[tuple]:
         '''
         Check items of matching type against each other and can optionally be
         outputted and viewed by the user.
@@ -4434,7 +4494,7 @@ class ChloeAI:
                 found_duplicates[n] = tuple(found_duplicates[n])
 
             if len((found_duplicates := tuple(found_duplicates + alia_found_duplicates))) and save_to_file:
-                genDuplicateFinderResultFile(found_duplicates,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types))
+                genDuplicateFinderResultFile(found_duplicates,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types),force_file_generation,input_to_continue,grace_timer)
             if return_tuple:
                 return found_duplicates
 

@@ -136,7 +136,7 @@ def determineEntityType(entity_path : str) -> str | None:
     else:
         return None
 
-def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, overwriteOutput : bool, valid_image_types : set) -> None:
+def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, overwriteOutput : bool, valid_image_types : set, force_file_generation : bool, input_to_continue : bool, grace_timer : int) -> None:
 
     csv.field_size_limit(csv_field_size_limit)
 
@@ -167,14 +167,90 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
             try:
                 remove(output_path)
             except PermissionError:
-                print(f"PLEASE CLOSE {output_path.replace('/','\\')}")
+                print("Please close program using: %s" % output_path.replace('/','\\'))
+                counter = 0
+                removal_successful = True
                 while True:
-                    sleep(3)
+                    sleep(2)
+                    counter += 2
                     try:
                         remove(output_path)
                         break
                     except PermissionError:
                         pass
+                    if counter >= grace_timer:
+                        removal_successful = False
+                        break
+                if not removal_successful:
+                    if output_path.endswith('.xlsx'):
+                        if exists((output_path := "%s.csv" % output_path[:output_path.rfind('.')])):
+                            if exists((output_path := "%s.txt" % (output_path[:output_path.rfind('.')]))):
+                                if not force_file_generation:
+                                    print("Failed to generate output file for findings on duplicates!")
+                                    if input_to_continue:
+                                        input("Press ENTER/RETURN to end execution: ")
+                                    return None
+                                else:
+                                    new_output_path = output_path[:]
+                                    while True:
+                                        if not exists((new_output_path := "%s_%s.xlsx" % (output_path[:output_path.rfind(".")],randstr()))):
+                                            break
+                                    output_path = new_output_path[:]
+                                    del new_output_path
+                            else:
+                                print(f"Output file format changed to TXT: {output_path}")
+                                if input_to_continue:
+                                    input("Press ENTER/RETURN to continue execution: ")
+                        else:
+                            print(f"Output file format changed to CSV: {output_path}")
+                            if input_to_continue:
+                                input("Press ENTER/RETURN to continue execution: ")
+                    elif output_path.endswith(".csv"):
+                        if exists((output_path := "%s.xlsx" % output_path[:output_path.rfind('.')])):
+                            if exists((output_path := "%s.txt" % (output_path[:output_path.rfind('.')]))):
+                                if not force_file_generation:
+                                    print("Failed to generate output file for findings on duplicates!")
+                                    if input_to_continue:
+                                        input("Press ENTER/RETURN to end execution: ")
+                                    return None
+                                else:
+                                    new_output_path = output_path[:]
+                                    while True:
+                                        if not exists((new_output_path := "%s_%s.csv" % (output_path[:output_path.rfind(".")],randstr()))):
+                                            break
+                                    output_path = new_output_path[:]
+                                    del new_output_path
+                            else:
+                                print(f"Output file format changed to TXT: {output_path}")
+                                if input_to_continue:
+                                    input("Press ENTER/RETURN to continue execution: ")
+                        else:
+                            print(f"Output file format changed to XLSX: {output_path}")
+                            if input_to_continue:
+                                input("Press ENTER/RETURN to continue execution: ")
+                    else:
+                        if exists((output_path := "%s.xlsx" % output_path[:output_path.rfind('.')])):
+                            if exists((output_path := "%s.csv" % (output_path[:output_path.rfind('.')]))):
+                                if not force_file_generation:
+                                    print("Failed to generate output file for findings on duplicates!")
+                                    if input_to_continue:
+                                        input("Press ENTER/RETURN to end execution: ")
+                                    return None
+                                else:
+                                    new_output_path = output_path[:]
+                                    while True:
+                                        if not exists((new_output_path := "%s_%s.txt" % (output_path[:output_path.rfind(".")],randstr()))):
+                                            break
+                                    output_path = new_output_path[:]
+                                    del new_output_path
+                            else:
+                                print(f"Output file format changed to CSV: {output_path}")
+                                if input_to_continue:
+                                    input("Press ENTER/RETURN to continue execution: ")
+                        else:
+                            print(f"Output file format changed to XLSX: {output_path}")
+                            if input_to_continue:
+                                input("Press ENTER/RETURN to continue execution: ")
         else:
             neo_output_name = f"{output_name}{output_suffix}"
             existing_files = set(listdir(output_location))
@@ -456,7 +532,7 @@ def genDuplicateFinderResultFile(found_duplicates : tuple[str], output_type : st
 
     return None
 
-def genSearchQueryResultFile(found_matches : tuple[str], output_file_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, overwriteOutput : bool, valid_image_types : set) -> None:
+def genSearchQueryResultFile(found_matches : tuple[str], output_file_type : str, output_location : str, output_name : str, csv_field_size_limit : int, csv_delimiter : str, overwriteOutput : bool, valid_image_types : set, force_file_generation : bool, input_to_continue : bool, grace_timer : int) -> None:
 
     csv.field_size_limit(csv_field_size_limit)
 
@@ -487,14 +563,90 @@ def genSearchQueryResultFile(found_matches : tuple[str], output_file_type : str,
             try:
                 remove(output_path)
             except PermissionError:
-                print(f"PLEASE CLOSE {output_path.replace('/','\\')}")
+                print("Please close program using: %s" % output_path.replace('/','\\'))
+                counter = 0
+                removal_successful = True
                 while True:
-                    sleep(3)
+                    sleep(2)
+                    counter += 2
                     try:
                         remove(output_path)
                         break
                     except PermissionError:
                         pass
+                    if counter >= grace_timer:
+                        removal_successful = False
+                        break
+                if not removal_successful:
+                    if output_path.endswith('.xlsx'):
+                        if exists((output_path := "%s.csv" % output_path[:output_path.rfind('.')])):
+                            if exists((output_path := "%s.txt" % (output_path[:output_path.rfind('.')]))):
+                                if not force_file_generation:
+                                    print("Failed to generate output file for finding matching term(s)!")
+                                    if input_to_continue:
+                                        input("Press ENTER/RETURN to end execution: ")
+                                    return None
+                                else:
+                                    new_output_path = output_path[:]
+                                    while True:
+                                        if not exists((new_output_path := "%s_%s.xlsx" % (output_path[:output_path.rfind(".")],randstr()))):
+                                            break
+                                    output_path = new_output_path[:]
+                                    del new_output_path
+                            else:
+                                print(f"Output file format changed to TXT: {output_path}")
+                                if input_to_continue:
+                                    input("Press ENTER/RETURN to continue execution: ")
+                        else:
+                            print(f"Output file format changed to CSV: {output_path}")
+                            if input_to_continue:
+                                input("Press ENTER/RETURN to continue execution: ")
+                    elif output_path.endswith(".csv"):
+                        if exists((output_path := "%s.xlsx" % output_path[:output_path.rfind('.')])):
+                            if exists((output_path := "%s.txt" % (output_path[:output_path.rfind('.')]))):
+                                if not force_file_generation:
+                                    print("Failed to generate output file for finding matching term(s)!")
+                                    if input_to_continue:
+                                        input("Press ENTER/RETURN to end execution: ")
+                                    return None
+                                else:
+                                    new_output_path = output_path[:]
+                                    while True:
+                                        if not exists((new_output_path := "%s_%s.csv" % (output_path[:output_path.rfind(".")],randstr()))):
+                                            break
+                                    output_path = new_output_path[:]
+                                    del new_output_path
+                            else:
+                                print(f"Output file format changed to TXT: {output_path}")
+                                if input_to_continue:
+                                    input("Press ENTER/RETURN to continue execution: ")
+                        else:
+                            print(f"Output file format changed to XLSX: {output_path}")
+                            if input_to_continue:
+                                input("Press ENTER/RETURN to continue execution: ")
+                    else:
+                        if exists((output_path := "%s.xlsx" % output_path[:output_path.rfind('.')])):
+                            if exists((output_path := "%s.csv" % (output_path[:output_path.rfind('.')]))):
+                                if not force_file_generation:
+                                    print("Failed to generate output file for finding matching term(s)!")
+                                    if input_to_continue:
+                                        input("Press ENTER/RETURN to end execution: ")
+                                    return None
+                                else:
+                                    new_output_path = output_path[:]
+                                    while True:
+                                        if not exists((new_output_path := "%s_%s.txt" % (output_path[:output_path.rfind(".")],randstr()))):
+                                            break
+                                    output_path = new_output_path[:]
+                                    del new_output_path
+                            else:
+                                print(f"Output file format changed to CSV: {output_path}")
+                                if input_to_continue:
+                                    input("Press ENTER/RETURN to continue execution: ")
+                        else:
+                            print(f"Output file format changed to XLSX: {output_path}")
+                            if input_to_continue:
+                                input("Press ENTER/RETURN to continue execution: ")
         else:
             neo_output_name = f"{output_name}{output_suffix}"
             existing_files = set(listdir(output_location))
