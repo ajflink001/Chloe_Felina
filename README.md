@@ -15,7 +15,7 @@ This refers to an algorithm that checks a database for information on files dete
 
 Chloe Felina has been designed with the philosophy of being able to function fully offline and work on any computer with Windows OS installed on it as well as acting as a virtual helper/assistant. It is not as feature-rich as I desire it to be. Currently, the Dynamic Term Search Query System and the In-Depth Streamlined Duplicate Finding System are the only things fully implemented.
 
-Note: It is highly recommended to use the latest release version of Chloe Felina as earlier version will contain oversights and/or missing features.
+Note: It is highly recommended to use the latest release version of Chloe Felina as earlier versions will contain oversights and/or missing features and fixes.
 
 ***
 
