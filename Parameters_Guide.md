@@ -46,7 +46,7 @@ gdb - Esri File Geodatabase (.gdb)
 
 
 
-img - Image files (So far, .tif, .tiff, .jpeg, .jpg, .png, .dib, .jp2, .j2k, .jpx, .pcx, .tga, .xbm, .gif, and/or .webp)
+img - Image files (So far, .tif, .tiff, .jpeg, .jpg, .png, .dib, .jp2, .j2k, .jpx, .pcx, .tga, .xbm, .gif, apng, and/or .webp)
 
 
 
