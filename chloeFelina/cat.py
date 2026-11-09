@@ -332,8 +332,8 @@ class ChloeAI:
 
         if pil_imported:
             # More file types will be added after thorough testing.
-            self.accepted_image_extensions = {'.jpg','.JPG','.jpeg','.JPEG','.png','.PNG','.tif','.TIF','.tiff','.TIFF','.webp','.WEBP','.bmp','.BMP','.dib','.DIB','.icns','.ICNS','.ico','.ICO','.jp2','.JP2','.j2k','.J2K','.jpx','.JPX','.pcx','.PCX','.tga','.TGA','.xbm','.XBM','.gif','.GIF'}
-            self.image_types = ('jpg','jpeg','png','tif','tiff','webp','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm','gif')
+            self.accepted_image_extensions = {'.jpg','.JPG','.jpeg','.JPEG','.png','.PNG','.tif','.TIF','.tiff','.TIFF','.webp','.WEBP','.bmp','.BMP','.dib','.DIB','.icns','.ICNS','.ico','.ICO','.jp2','.JP2','.j2k','.J2K','.jpx','.JPX','.pcx','.PCX','.tga','.TGA','.xbm','.XBM','.gif','.GIF','.apng','.APNG'}
+            self.image_types = ('jpg','jpeg','png','tif','tiff','webp','bmp','dib','icns','ico','jp2','j2k','jpx','pcx','tga','xbm','gif','apng')
             self.valid_extensions = self.valid_extensions + list(self.image_types)
             # Maximum number of pixels that an image can have until the PIL module
             # throws an error.
@@ -1687,14 +1687,26 @@ class ChloeAI:
 
         baseline_metadata = '|'.join(baseline_metadata)
 
-        if image_path.lower().endswith('.gif'):
+        animated_image = False
+
+        # Works for: sequenced png, apng, sequenced gif, and sequenced webp.
+        try:
+            img = Image.open(image_path)
+            img.seek(1)
+            img.close()
+            animated_image = True
+        except Exception:
+            try:
+                img.close()
+            except Exception:
+                pass
+
+        if animated_image:
             if not exists((img_folder := f'{self.db_path}/{archive_db_name}/_images')):
                 mkdir(img_folder)
-            img_gif = Image.open(image_path)
-            img_gif.seek(1)
-            img_gif.save(f'{img_folder}/temp.png')
-            # If the first frame does not return None, all other frames are
-            # safely assumed to be valid as well.
+            img_seq = Image.open(image_path)
+            img_seq.seek(1)
+            img_seq.save(f'{img_folder}/temp.png')
             txt_name_path = f'{img_folder}/{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}.txt'
             try:
                 if (histo_ratio := self.getImageInformation(f'{img_folder}/temp.png')):
@@ -1711,9 +1723,9 @@ class ChloeAI:
                             tf.write(f'\n{histo_ratio[n]}')
                             counter += 1
                     remove(f'{img_folder}/temp.png')
-                    for i in range(1,img_gif.n_frames-1):
-                        img_gif.seek(i+1)
-                        img_gif.save(f'{img_folder}/temp.png')
+                    for i in range(1,img_seq.n_frames-1):
+                        img_seq.seek(i+1)
+                        img_seq.save(f'{img_folder}/temp.png')
                         if (histo_ratio := self.getImageInformation(f'{img_folder}/temp.png')):
                             with open(txt_name_path,'a',encoding='utf-8') as tf:
                                 for val in histo_ratio:
@@ -1728,24 +1740,25 @@ class ChloeAI:
                             rmtree(img_folder)
                     else:
                         try:
-                            img_gif.close()
+                            img_seq.close()
                         except Exception:
                             pass
                         remove(f'{img_folder}/temp.png')
                     return False
             except Exception:
+                # Missing frame or corrupted.
                 if not len(listdir(img_folder)):
                     remove(img_folder)
                 elif exists(f'{img_folder}/{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}.txt'):
                     remove(f'{img_folder}/{image_path[image_path.rfind("/")+1:image_path.rfind(".")]}_{image_path[image_path.rfind(".")+1:]}.txt')
                 if exists(f'{img_folder}/temp.png'):
                     try:
-                        img_gif.close()
+                        img_seq.close()
                     except Exception:
                         pass
                     remove(f'{img_folder}/temp.png')
                 return False
-            img_gif.close()
+            img_seq.close()
         elif (histo_ratio := self.getImageInformation(image_path)):
             if not exists((img_folder := f'{self.db_path}/{archive_db_name}/_images')):
                 mkdir(img_folder)
