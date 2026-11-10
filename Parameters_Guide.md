@@ -156,7 +156,7 @@ Parameters:
 
 
 
-Purpose: This dynamically checks and updates all zip files stored in the Chloe Felina database against the data they reference to determine if things need to be added, removed, and/or updated and/or if a directory being referenced no longer exists meaning that a zip file and related data are deleted. This is to ensure that ChloeAI.searchQuery and ChloeAI.findAllDuplicates do not produce redundant or inaccurate results or point to files/entities that no longer exist or have had their contents modified. As of right now, it can only add newly found data and remove redundant data. The portion of the algorithm governing updating zip files if the referenced data has been modified/updated has been commented out due to being incomplete.
+Purpose: This dynamically checks and updates all zip files stored in the Chloe Felina database against the data they reference to determine if things need to be added and/or removed and/or if a directory being referenced no longer exists meaning that a zip file and related data are deleted. This is to ensure that ChloeAI.searchQuery and ChloeAI.findAllDuplicates do not produce redundant or inaccurate results or point to files/entities that no longer exist or have had their contents modified. As of right now, it can only add newly found data and remove redundant data. The portion of the algorithm governing updating zip files if the referenced data has been modified/updated has been removed due to being incomplete.
 
 
 
