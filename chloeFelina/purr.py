@@ -46,8 +46,7 @@ def isQueryMatchHessed(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
         return False
 
     for txt_line in txt_lines:
-        current_line = decodeZipTxtLine(txt_line)
-        for word in tuple(current_line.lower().split(' ')):
+        for word in tuple(decodeZipTxtLine(txt_line).lower().split(' ')):
             if entry_string in ''.join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]):
                 return True
 
@@ -71,8 +70,7 @@ def isQueryMatchKether(entry_string : str, txt_lines : tuple[AnyStr]) -> bool:
     if not (len_txt_lines := len(txt_lines)):
         return False
     elif len_txt_lines == 1:
-        current_line = decodeZipTxtLine(txt_lines[0])
-        for word in tuple(current_line.lower().split(' ')):
+        for word in tuple(decodeZipTxtLine(txt_lines[0]).lower().split(' ')):
             if entry_string == "".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]):
                 return True
     else:
@@ -114,8 +112,7 @@ def isQueryMatchDaath(entry_string: str, entity_path : str, zf) -> bool:
             current_line = tf.readline()
             if not current_line:
                 break
-            current_line = decodeZipTxtLine(current_line)
-            for item in tuple(current_line.lower().split('|')):
+            for item in tuple(decodeZipTxtLine(current_line).lower().split('|')):
                 for word in tuple(set(item.split(' ') + item.replace('-','').split(' ') + item.replace('_','').split(' '))):
                     if entry_string == "".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]):
                         return True
@@ -130,8 +127,7 @@ def isQueryMatchChochmah(entry_string : str, entity_path : str, zf) -> bool:
             current_line = tf.readline()
             if not current_line:
                 break
-            current_line = decodeZipTxtLine(current_line)
-            for group in tuple(current_line.lower().split('|')):
+            for group in tuple(decodeZipTxtLine(current_line).lower().split('|')):
                 if entry_string in ' '.join(["".join([segment for segment in tuple(re.split(r'[^a-zA-Z0-9]+',word)) if segment]) for word in tuple(group.split(' '))]):
                     return True
 

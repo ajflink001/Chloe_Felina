@@ -4,6 +4,9 @@
 # This has been designed specifically for Windows 10/11. Although, it may work
 # on older versions of Windows if Python 3.11 or later are supported/usable on
 # said iteration/version of Windows.
+# Behavior with builds of Python at are thread-free have not had thorough
+# done; however, there should be no abnormal behavior resulting from using
+# such builds of Python.
 
 # Made in loving dedication and memory to my precious feline pet, friend, and
 # family member: Chloe Link.
@@ -107,6 +110,7 @@ from pathlib import Path
 from winsound import PlaySound,SND_FILENAME
 from secrets import choice
 from string import printable
+from datetime import datetime
 
 # Custom Python Modules
 from chloeFelina.purr import isQueryMatchKether,isQueryMatchDaath,isQueryMatchChochmah,isQueryMatchHessed,isQueryMatchYesod,isQueryMatchHod,isQueryMatchGewurah,forcedTxtFileWrite,decodeZipTxtLine,getTxtFileLines,fileNameFixer,metaStr
@@ -163,7 +167,7 @@ setlocale(LC_ALL,'')
 
 class ChloeAI:
 
-    def __init__(self, database_location : str | None = None, database_name : str = 'datumbazo', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, allow_truncating_images : bool = False, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, auto_update_database : bool = False, keep_db_if_no_connection : bool = True, clear_search_update : bool = False, updateCFB_progress_display : bool = False, corrupted_zip_check : bool = True):
+    def __init__(self, database_location : str | None = None, database_name : str = 'datumbazo', maximum_pixels : int = 10_000_000_000, histogram_ratio_precision : int = 6, allow_truncating_images : bool = False, pdf_max_array_out_stream_len : int = 100_000_000, pdf_max_declared_stream_len : int = 100_000_000, pdf_jbig2_max_out_len : int = 75_000_000, pdf_lzw_max_out_len : int = 75_000_000, pdf_zlib_max_out_len : int = 75_000_000, pdf_zlib_recovery_in_len : int = 5_000_000, pdf_flate_max_columns : int = 250_000, pdf_flate_max_row_len : int = 4_000_000, pdf_flate_max_buffer_size : int = 75_000_000, pdf_run_len_max_out_len : int = 75_000_000, crintum_obfuscation : bool = False, chloe_vocalization : bool = False, use_audio_wakeup_buffer : bool = False, audio_wakeup_buffer : int = 10, allow_autoclear_terms : bool = False, auto_update_database : bool = False, keep_db_if_no_connection : bool = True, clear_search_update : bool = False, updateCFB_progress_display : bool = False, log_cfb_changes : bool = False, num_previous_logs : int = 3, gen_backup_iterations : bool = False, corrupted_zip_check : bool = True):
 
         self.valid_check_types = {'txt','bin','pdf','doc','img','gdb','shp','alia'}
         # Text files (.txt) and Binary files (.bin) can have data properly
@@ -402,7 +406,7 @@ class ChloeAI:
         del db_for_deletion ; del existing_zips
 
         if auto_update_database:
-            self.updateCFB(keep_db_if_no_connection,clear_search_update,updateCFB_progress_display)
+            self.updateCFB(keep_db_if_no_connection,clear_search_update,updateCFB_progress_display,log_cfb_changes,num_previous_logs,gen_backup_iterations)
 
         self.chloe_vocalization = chloe_vocalization
         self.wakeup_buffer = (use_audio_wakeup_buffer,audio_wakeup_buffer)
@@ -411,8 +415,8 @@ class ChloeAI:
             playChloeHappy(self.wakeup_buffer[0],self.wakeup_buffer[1])
 
 
-    def updateCFB(self, keep_db_if_no_connection : bool = True, clear_search_update : bool = False, terminal_progress_display : bool = False) -> None:
-        #CFB stands for Chloe Felina Basics
+    def updateCFB(self, keep_db_if_no_connection : bool = True, clear_search_update : bool = False, terminal_progress_display : bool = False, log_changes : bool = False, num_previous_logs : int = 3, gen_backup_iterations : bool = False) -> None:
+        #CFB stands for Chloe Felina Baseline
 
         if terminal_progress_display and tqdm_imported:
             sys_clear()
@@ -423,6 +427,8 @@ class ChloeAI:
         # "interesting" time.
 
         change_done = False
+
+        change_logger = {"Redacted Directories" : [], "Modified Entities" : [], "Removed Entities" : [], "Appended Entities" : []}
 
         def getBasicInfo(item_path : str) -> tuple:
 
@@ -455,6 +461,10 @@ class ChloeAI:
 
             return None
 
+        if gen_backup_iterations:
+            if not exists(f'{self.db_path}/_updateCFB_logger'):
+                mkdir(f'{self.db_path}/_updateCFB_logger')
+
 
         if win32api_imported:
             nonlocal_drives = GetLogicalDriveStrings().split('\000')[:-1]
@@ -483,9 +493,17 @@ class ChloeAI:
                         redact_dbs.append(db_name)
             if len((redact_dbs := tuple(redact_dbs))):
                 change_done = True
-            for redact_db in redact_dbs:
-                self.removeCrintumEntry(self.path_pointer[redact_db])
-                remove(f'{self.db_path}/{redact_db}.zip')
+            if log_changes and change_done:
+                for redact_db in redact_dbs:
+                    self.removeCrintumEntry((temp_path := self.path_pointer[redact_db]))
+                    change_logger["Redacted Directories"].append(temp_path)
+                    remove(f'{self.db_path}/{redact_db}.zip')
+                del temp_path
+                change_logger["Redacted Directories"] = tuple(change_logger["Redacted Directories"])
+            else:
+                for redact_db in redact_dbs:
+                    self.removeCrintumEntry(self.path_pointer[redact_db])
+                    remove(f'{self.db_path}/{redact_db}.zip')
             del redact_dbs
             try: del reference_directory
             except NameError: pass
@@ -519,17 +537,28 @@ class ChloeAI:
                         items.remove('_metadata.txt')
                     for item in tuple(items):
                         if item.lower().endswith('_gdb_metadata.txt'):
-                            item = item[:item.rfind('_')]
-                            stored_items[f"{item[:item.rfind('_')]}.{item[item.rfind('_')+1:]}"] = 'GDB'
-                try: del items
-                except NameError: pass
-                real_items = []
+                            gdb_name = item[:item.rfind('_')]
+                            gdb_name = f"{gdb_name[:gdb_name.rfind('_')]}.{gdb_name[gdb_name.rfind('_')+1:]}"
+                            stored_items[gdb_name] = ['GDB',{}]
+                            with zf.open(item) as tf:
+                                while True:
+                                    line = tf.readline()
+                                    if not line:
+                                        break
+                                    line = tuple(decodeZipTxtLine(line).split('|'))
+                                    stored_items[gdb_name][1][line[0]] = line[1:]
+                real_info = {}
                 try:
                     for item in tuple([item for item in tuple(listdir(ref_path))]):
-                        if isfile(f'{ref_path}/{item}'):
-                            real_items.append(item)
+                        if isfile((current_real_item := f'{ref_path}/{item}')):
+                            real_info[item] = (getModifiedDate(current_real_item)[4:],getCreatedDate(current_real_item)[4:],getSizeOfItem(current_real_item))
                         elif isdir(f'{ref_path}/{item}') and item.lower().endswith('.gdb'):
-                            real_items.append(item)
+                            real_info[item] = {}
+                            for gdb_item in tuple(listdir(current_real_item)):
+                                if not gdb_item.lower().endswith('.lock'):
+                                    if (item_size := getSizeOfItem(current_real_item)) is None:
+                                        item_size = -1
+                                    real_info[item][gdb_item] = (getModifiedDate(f'{current_real_item}/{gdb_item}')[4:],getCreatedDate(f'{current_real_item}/{gdb_item}')[4:],item_size)
                 except Exception:
                     if keep_db_if_no_connection:
                         continue
@@ -538,10 +567,12 @@ class ChloeAI:
                         remove(f'{self.db_path}/{db_name}.zip')
                         continue
                 testing_set = set(stored_items.keys())
-                for item in tuple(real_items):
+                for item in tuple(real_info.keys()):
                     if not item in testing_set:
                         change_done = True
-                        real_items.remove(item)
+                        if log_changes:
+                            change_logger["Appended Entities"].append(f'{self.path_pointer[db_name]}/{item}')
+                        del real_info[item]
                         if not exists(f'{self.db_path}/{db_name}'):
                             self.uncompressZIP(db_name)
                         if not '.' in item:
@@ -635,16 +666,17 @@ class ChloeAI:
                                             self.archive_alia_data(f'{ref_path}/{item}',db_name)
                                     else:
                                         self.archive_alia_data(f'{ref_path}/{item}',db_name)
-                testing_set = set(real_items)
-                redacted_metadata_items = set()
-                redacted_image_items = set()
-                redacted_alia_items = set()
+                testing_set = set(real_info.keys())
+                redacted_metadata_items = set() ; redacted_image_items = set() ; redacted_alia_items = set()
                 for item in tuple(stored_items.keys()):
                     if not item in testing_set:
                         change_done = True
+                        if log_changes:
+                            change_logger["Redacted Entities"].append(f'{self.path_pointer[db_name]}/{item}')
                         if not exists(f'{self.db_path}/{db_name}'):
                             self.uncompressZIP(db_name)
-                        match stored_items[item]:
+                        del real_info[item]
+                        match stored_items[item][0]:
                             case 'TXT':
                                 redacted_metadata_items.add((item_name := f'{item[:item.rfind(".")]}_{item[item.rfind(".")+1:]}'))
                                 remove(f'{self.db_path}/{db_name}/_txt_files/{item_name}.txt')
@@ -699,10 +731,153 @@ class ChloeAI:
                                 tf.write(f'\n{new_lines[n]}')
                     else:
                         remove(f'{self.db_path}/{db_name}/_alia_dosieroj.txt')
-                try: del testing_set
-                except NameError: pass
-                try: del new_lines
-                except NameError: pass
+                testing_set = set(stored_items.keys())
+                alia_remove = [] ; metadata_remove = []
+                for entity_name in tuple(real_info.keys()):
+                    if entity_name in testing_set:
+                        if entity_name.lower().endswith('.gdb'):
+                            pass
+                        elif real_info[entity_name][0] != stored_items[entity_name][1] or real_info[entity_name][1] != stored_items[entity_name][2] or real_info[entity_name][2] != stored_items[entity_name][3]:
+                            if not exists(f'{self.db_path}/{db_name}'):
+                                self.uncompressZIP(db_name)
+                            change_done = True
+                            if log_changes:
+                                change_logger["Modified Entities"].append(f'{ref_path}/{entity_name}')
+                            if not '.' in (extension := entity_name.lower()[entity_name.rfind('.')+1:]):
+                                alia_remove.append(entity_name)
+                            elif extension == 'txt':
+                                if stored_items[entity_name][0] == 'ALIA':
+                                    alia_remove.append(entity_name)
+                                    try:
+                                        if not self.archive_txt_data(f'{ref_path}/{entity_name}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                else:
+                                    metadata_remove.append(f'{entity_name[:entity_name.rfind(".")]}_{entity_name[entity_name.rfind(".")+1:]}')
+                                    remove(f'{self.db_path}/{db_name}/_txt_files/{entity_name[:entity_name.rfind(".")]}_{entity_name[entity_name.rfind(".")+1:]}.txt')
+                                    try:
+                                        if not self.archive_txt_data(f'{ref_path}/{entity_name}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                            elif extension == 'bin':
+                                if stored_items[entity_name][0] == 'ALIA':
+                                    alia_remove.append(entity_name)
+                                    try:
+                                        if not self.archive_bin_data(f'{ref_path}/{entity_name}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                else:
+                                    metadata_remove.append(f"{entity_name[:entity_name.rfind('.')]}_{entity_name[entity_name.rfind('.')+1:]}")
+                                    rmtree(f'{self.db_path}/{db_name}/{entity_name[:entity_name.rfind(".")]}_{entity_name[entity_name.rfind(".")+1:]}')
+                                    try:
+                                        if not self.archive_bin_data(f'{ref_path}/{entity_name}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                            elif extension == 'pdf':
+                                if stored_items[entity_name][0] == 'ALIA':
+                                    alia_remove.append(entity_name)
+                                    try:
+                                        if not self.archive_pdf_data(f'{ref_path}/{entity_name}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                else:
+                                    metadata_remove.append(f"{entity_name[:entity_name.rfind('.')]}_{entity_name[entity_name.rfind('.')+1:]}")
+                                    rmtree(f'{self.db_path}/{db_name}/{entity_name[:entity_name.rfind(".")]}_{entity_name[entity_name.rfind(".")+1:]}')
+                                    try:
+                                        if not self.archive_pdf_data(f'{ref_path}/{entity_name}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                            elif extension == 'docx':
+                                if stored_items[entity_name][0] == 'ALIA':
+                                    alia_remove.append(entity_name)
+                                    try:
+                                        if not self.archive_doc_data(f'{ref_path}/{entity_name}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                else:
+                                    metadata_remove.append(f"{entity_name[:entity_name.rfind('.')]}_{entity_name[entity_name.rfind('.')+1:]}")
+                                    rmtree(f'{self.db_path}/{db_name}/{entity_name[:entity_name.rfind(".")]}_{entity_name[entity_name.rfind(".")+1:]}')
+                                    try:
+                                        if not self.archive_doc_data(f'{ref_path}/{entity_name}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                            elif extension == 'shp':
+                                if stored_items[entity_name][0] == 'ALIA':
+                                    alia_remove.append(entity_name)
+                                    try:
+                                        if not self.archive_shp_data(f'{ref_path}/{entity_name}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                else:
+                                    metadata_remove.append(f"{entity_name[:entity_name.rfind('.')]}_{entity_name[entity_name.rfind('.')+1:]}")
+                                    rmtree(f'{self.db_path}/{db_name}/{entity_name[:entity_name.rfind(".")]}_{entity_name[entity_name.rfind(".")+1:]}')
+                                    try:
+                                        if not self.archive_shp_data(f'{ref_path}/{entity_name}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                            elif extension in self.image_types:
+                                if stored_items[entity_name][0] == 'ALIA':
+                                    alia_remove.append(entity_name)
+                                    try:
+                                        if not self.archive_img_data(f'{ref_path}/{entity_name}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                else:
+                                    metadata_remove.append(f"{entity_name[:entity_name.rfind('.')]}_{entity_name[entity_name.rfind('.')+1:]}")
+                                    remove(f"{self.db_path}/{db_name}/_images/{entity_name[:entity_name.rfind('.')]}_{entity_name[entity_name.rfind('.')+1:]}.txt")
+                                    try:
+                                        if not self.archive_img_data(f'{ref_path}/{entity_name}',db_name):
+                                            self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                                    except Exception:
+                                        self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+                            else:
+                                # ALIA
+                                alia_remove.append(entity_name)
+                                self.archive_alia_data(f'{ref_path}/{entity_name}',db_name)
+
+                if len((alia_remove := tuple(alia_remove))):
+                    alia_lines = tuple([line.rstrip('\n') for line in tuple(open(f'{self.db_path}/{db_name}/_alia_dosieroj.txt',encoding='utf-8').readlines())])
+                    entity_list = [] ; entity_info = []
+                    for line in alia_lines:
+                        items = tuple(line.split('|'))
+                        entity_list.append(items[0])
+                        entity_info.append(items[1:])
+                    for alia in alia_remove:
+                        entity_list.pop((first_index := entity_list.index(alia)))
+                        entity_info.pop(first_index)
+                    entity_list = tuple(entity_list) ; entity_info = tuple(entity_info)
+                    with open(f'{self.db_path}/{db_name}/_alia_dosieroj.txt','w',encoding='utf-8') as tf:
+                        tf.write('%s|%s' % (entity_list[0],'|'.join(entity_info[0])))
+                        for n in range(1,len(entity_list)):
+                            tf.write("\n%s|%s" % (entity_list[n],'|'.join(entity_info[n])))
+                    del entity_list ; del entity_info
+                if len((metadata_remove := tuple(metadata_remove))):
+                    metadata_lines = tuple([line.rstrip('\n') for line in tuple(open(f'{self.db_path}/{db_name}/_metadata.txt',encoding='utf-8').readlines())])
+                    entity_list = [] ; entity_info = []
+                    for line in metadata_lines:
+                        items = tuple(line.split('|'))
+                        entity_list.append(items[0])
+                        entity_info.append(items[1:])
+                    for item in metadata_remove:
+                        entity_list.pop((first_index := entity_list.index(item)))
+                        entity_info.pop(first_index)
+                    entity_list = tuple(entity_list) ; entity_info = tuple(entity_info)
+                    with open(f'{self.db_path}/{db_name}/_metadata.txt','w',encoding='utf-8') as tf:
+                        tf.write('%s|%s' % (entity_list[0],'|'.join(entity_info[0])))
+                        for n in range(1,len(entity_list)):
+                            tf.write("\n%s|%s" % (entity_list[n],'|'.join(entity_info[n])))
+                    del entity_list ; del entity_info
                 if exists(f'{self.db_path}/{db_name}'):
                     if not len(listdir(f'{self.db_path}/{db_name}')):
                         try:
@@ -715,8 +890,32 @@ class ChloeAI:
                         remove(f'{self.db_path}/{db_name}.zip')
                         self.compressToZIP(db_name)
 
+        if log_changes:
+            completion_time_str = str(datetime.now())
+
         if change_done and clear_search_update:
             self.clearSearchQueryMemory()
+
+        if change_done and log_changes:
+
+            if '.' in (completion_time_str := completion_time_str.replace(":","_")):
+                # fractional/decimal seconds are not needed
+                completion_time_str = completion_time_str[:completion_time_str.rfind('.')]
+            change_findings = []
+            for change_type in tuple(change_logger.keys()):
+                if len(change_logger[change_type]):
+                    for item in change_logger[change_type]:
+                        change_findings.append(f"{item}|{change_type}")
+            del change_logger
+            change_findings = tuple(change_findings)
+            if not exists(f'{self.db_path}/_updateCFB_logger'):
+                mkdir(f'{self.db_path}/_updateCFB_logger')
+                with open(f'{self.db_path}/_updateCFB_logger/{completion_time_str}.txt','w',encoding='utf-8') as tf:
+                    tf.write(change_findings[0])
+                    for n in range(1,len(change_findings)):
+                        tf.write(f'\n{change_findings[n]}')
+            else:
+                pass
 
         if terminal_progress_display:
             sys_clear()
@@ -1209,6 +1408,225 @@ class ChloeAI:
 
         return True
 
+    def archive_alia_data(self, alia_path : str, archive_db_name : str) -> None:
+
+        baseline_metadata = []
+
+        try:
+            baseline_metadata.append(getModifiedDate(alia_path)[4:])
+        except Exception:
+            baseline_metadata.append('<NULL>')
+        try:
+            baseline_metadata.append(getCreatedDate(alia_path)[4:])
+        except Exception:
+            baseline_metadata.append('<NULL>')
+        try:
+            baseline_metadata.append(md5_checksum(alia_path))
+        except Exception:
+            baseline_metadata.append('<NULL>')
+        try:
+            baseline_metadata.append(str(getSizeOfItem(alia_path)))
+        except Exception:
+            baseline_metadata.append('<NULL>')
+
+        baseline_metadata = '|'.join(baseline_metadata)
+
+        if not exists(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt'):
+            with open(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt','w',encoding='utf-8') as tf:
+                tf.write(f'{alia_path[alia_path.rfind("/")+1:]}|{baseline_metadata}')
+        else:
+            with open(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt','a',encoding='utf-8') as tf:
+                tf.write(f'\n{alia_path[alia_path.rfind("/")+1:]}|{baseline_metadata}')
+
+        return None
+
+
+    def archive_bin_data(self, bin_path : str, archive_db_name : str) -> bool:
+
+        if (baseline_metadata := getBaselineMetadata(bin_path)) is None:
+            return False
+
+        with open(bin_file,'rb') as bf:
+            lines = bf.readlines()
+
+        bin_lines = lines[:]
+
+        for n in range(len(bin_lines)):
+            try:
+                bin_lines[n] = bin_lines[n].decode('latin-1')
+            except Exception:
+                bin_lines[n] = None
+
+        while None in bin_lines:
+            bin_lines.remove(None)
+
+        extract_texted = ()
+
+        if len((bin_lines := tuple(bin_lines))):
+            extracted_text = tuple(["".join([char for char in bin_line if char in acceptable_chars]) for bin in bin_lines])
+
+        bin_nums = [lines[n][x] for n in range(len(lines)) for x in range(len(lines[n]))]
+
+        del lines
+
+        val_counter = 1 ; bin_num_order_count = []
+        bin_num_order = [(current_num := bin_nums[0])]
+
+        for n in range(1,len(bin_nums)):
+            if bin_nums[n] != current_num:
+                bin_num_order_count.append(val_counter)
+                val_counter = 1
+                bin_num_order.append(bin_nums[n])
+                current_num = bin_nums[n]
+            else:
+                val_counter += 1
+
+        del current_num
+
+        if len(bin_num_order) > len(bin_num_order_count):
+            bin_num_order_count.append(val_counter)
+            bin_num_order.append(bin_nums[-1])
+
+        del val_counter
+
+        replacers = {'10':'a','12':'b','13':'c','14':'d','15':'e','16':'f','17':'g','18':'h','19':'i','20':'j','21':'k','23':'l','24':'m','25':'n','26':'o','27':'p','28':'q','29':'r','30':'s','31':'t','32':'u','34':'v','35':'w','36':'x','37':'y','38':'z','39':'A','40':'B','41':'C','42':'D','43':'E','45':'F','46':'G','47':'H','48':'I','49':'J','50':'K','51':'L','52':'M','53':'N','54':'O','56':'P','57':'Q','58':'R','59':'S','60':'T','61':'U','62':'V','63':'W','64':'X','65':'Y','67':'Z'}
+
+        nums_keys = tuple(replacers.keys())
+
+        lines = []
+
+        for line in tuple([str(bin_num_order[n]) if bin_num_order_count[n] == 1 else f'{bin_num_order[n]}*{bin_num_order_count[n]}' for n in range(len(bin_num_order))]):
+            for nums in nums_keys:
+                line = line.replace(nums,replacers.keys())
+            lines.append(line)
+
+        del bin_num_order ; del bin_num_order_count
+
+        lines = tuple(lines)
+
+        simplified_lines = []
+
+        simplified_lines.append(lines[0])
+
+        for n in range(1,len(lines)):
+            if '*' in lines[n] or '*' in simplified_lines[-1]:
+                simplified_lines.append(lines[n])
+            else:
+                simplified_lines[-1] = f'{simplified_lines[-1]}{lines[n]}'
+
+        lines = tuple(simplified_lines)
+
+        simplified_lines = []
+
+        if len(lines) % 2 == 0:
+            simplified_lines = tuple([f'{lines[n]}+{lines[n+1]}' for n in range(0,len(lines),2)])
+        else:
+            simplified_lines = [f"{lines[n]}+{lines[n+1]}" for n in range(0,len(lines)-1,2)]
+            simplified_lines.append(lines[-1])
+            simplified_lines = tuple(simplified_lines)
+
+        del lines
+
+        val_counter = 1 ; bin_num_order_count = []
+        bin_num_order = [(current_num := simplified_lines[0])]
+
+        for n in range(1,len(simplified_lines)):
+            if simplified_lines[n] != current_num:
+                bin_num_order_count.append(val_counter)
+                val_counter = 1
+                bin_num_order.append(simplified_lines[n])
+            else:
+                val_counter += 1
+
+        del simplified_lines ; del current_num
+
+        if len(bin_num_order) > len(bin_num_order_count):
+            bin_num_order_count.append(val_counter)
+            bin_num_order.append(simplified_lines[-1])
+
+        del val_counter
+
+        abridged_lines = [str(bin_num_order[n]) if bin_num_order_count[n] == 1 else f'{bin_num_order[n]}^{bin_num_order_count[n]}' for n in range(len(bin_num_order))]
+        replacers_2 = {'10':"_",'20':'-','30':'!','40':'?','50':'@','60':'#','70':'$','80':'=','90':'&'}
+        chars = tuple(replacers_2.keys())
+
+        del bin_num_order ; del bin_num_order_count
+
+        for n in range(len(abridged_lines)):
+            for char in chars:
+                abridged_lines[n] = abridged_lines[n].replace(char,replacers_2[char])
+
+        del replacers_2 ; del chars
+
+        nums = [] ; starting_index = 0 ; starting_prefix = "" ; combo = []
+
+        for abridged_line in (abridged_lines := tuple(abridged_lines)):
+            starting_index += 1
+            if '+' in abridged_line:
+                starting_prefix = abridged_line[:abridged_line.find('+')+1]
+                combo.append(abridged_line[abridged_line.find('+')+1:])
+                break
+
+        for n in range(starting_index,len(abridged_lines)):
+            if abridged_lines[n].startswith(starting_prefix) and starting_prefix != "":
+                combo.append(abridged_lines[n])
+            elif starting_prefix == "":
+                if '+' in abridged_lines[n]:
+                    starting_prefix = abridged_lines[n][:abridged_lines[n].find('+')+1]
+                    combo.append(abridged_lines[n][abridged_lines[n].find('+')+1:])
+                else:
+                    nums.append(abridged_lines[n])
+            else:
+                nums.append("%s%s" % (starting_prefix,"|".join(combo)))
+                combo = []
+                starting_prefix = ""
+                if '+' in abridged_lines[n]:
+                    combo.append(abridged_lines[n][abridged_lines[n].find('+')+1:])
+                    starting_prefix = abridged_lines[n][:abridged_lines[n].find('+')+1]
+                else:
+                    nums.append(abridged_lines[n])
+
+        if starting_prefix != "":
+            nums.append("%s%s" % (starting_prefix,"|".join(combo)))
+
+        del starting_prefix ; del abridged_lines ; del combo
+
+        nums = tuple(nums)
+
+        if not 0 in (counters := (len(extract_texted),len(nums))):
+            file_name = bin_path[bin_path.rfind('/')+1:]
+            nomin_kalvamortum = "%s_%s" % (file_name[:file_name.rfind('.')],file_name[file_name.rfind('.')+1:])
+            del file_name
+            mkdir(f'{self.db_path}/{archive_db_name}/{nomin_kalvamortum}')
+            if counters[0]:
+                with open(f'{self.db_path}/{archive_db_name}/{nomin_kalvamortum}/bin_extracted_text.txt','w',encoding='utf-8') as tf:
+                    tf.write(extracted_text[0])
+                    for n in range(1,len(extracted_text)):
+                        tf.write(f'\n{extracted_text[n]}')
+            del extracted_text
+            if counters[1]:
+                with open(f'{self.db_path}/{archive_db_name}/{nomin_kalvamortum}/bin_nums.txt','w',encoding='utf-8') as tf:
+                    tf.write(nums[0])
+                    for n in range(1,len(nums)):
+                        tf.write(f'\n{nums[n]}')
+            del nums
+            if not exists((_metadata := f'{self.db_path}/{archive_db_name}/_metadata.txt')):
+                try:
+                    with open(_metadata,'w',encoding='utf-8') as tf:
+                        tf.write(f'{nomin_kalvamortum}|BIN|{baseline_metadata}|{counters[0]}|{counters[1]}')
+                except UnicodeEncodeError:
+                    with open(_metadata,'w',encoding='latin-1') as tf:
+                        tf.write(f'{nomin_kalvamortum}|BIN|{baseline_metadata}|{counters[0]}|{counters[1]}')
+            else:
+                try:
+                    with open(_metadata,'a',encoding='utf-8') as tf:
+                        tf.write(f'\n{nomin_kalvamortum}|BIN|{baseline_metadata}|{counters[0]}|{counters[1]}')
+                except UnicodeEncodeError:
+                    with open(_metadata,'a',encoding='latin-1') as tf:
+                        tf.write(f'\n{nomin_kalvamortum}|BIN|{baseline_metadata}|{counters[0]}|{counters[1]}')
+
+        return True
+
 
     def archive_doc_data(self, doc_path : str, archive_db_name : str) -> bool:
 
@@ -1224,71 +1642,42 @@ class ChloeAI:
         try:
             word_doc = Document(doc_path)
             props = word_doc.core_properties
-            if not (meta_item := props.title) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append("<NULL>")
-            if not (meta_item := props.author) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append("<NULL>")
-            if not (meta_item := props.subject) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append("<NULL>")
-            if not (meta_item := props.identifier) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append("<NULL>")
-            if not (meta_item := props.language) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append("<NULL>")
-            if not (meta_item := props.category) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append("<NULL>")
-            if not (meta_item := props.keywords) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append("<NULL>")
-            if not (meta_item := props.revision) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append("<NULL>")
-            if not (meta_item := props.version) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append("<NULL>")
-
+            if not (meta_item := props.title) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append("<NULL>")
+            if not (meta_item := props.author) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append("<NULL>")
+            if not (meta_item := props.subject) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append("<NULL>")
+            if not (meta_item := props.identifier) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append("<NULL>")
+            if not (meta_item := props.language) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append("<NULL>")
+            if not (meta_item := props.category) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append("<NULL>")
+            if not (meta_item := props.keywords) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append("<NULL>")
+            if not (meta_item := props.revision) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append("<NULL>")
+            if not (meta_item := props.version) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append("<NULL>")
             metadata_info = tuple(metadata_info)
         except Exception:
             try:
                 word_doc = docx2(doc_path)
                 props = word_doc.core_properties
-                if not (meta_item := props['title']) in nulls:
-                    metadata_info.append(metaStr(meta_item))
-                else:
-                    metadata_info.append("<NULL>")
-                if not (meta_item := props["creator"]) in nulls:
-                    metadata_info.append(metaStr(meta_item))
-                else:
-                    metadata_info.append("<NULL>")
-                if not (meta_item := props["subject"]) in nulls:
-                    metadata_info.append(metaStr(meta_item))
-                else:
-                    metadata_info.append("<NULL>")
+                if not (meta_item := props['title']) in nulls: metadata_info.append(metaStr(meta_item))
+                else: metadata_info.append("<NULL>")
+                if not (meta_item := props["creator"]) in nulls: metadata_info.append(metaStr(meta_item))
+                else: metadata_info.append("<NULL>")
+                if not (meta_item := props["subject"]) in nulls: metadata_info.append(metaStr(meta_item))
+                else: metadata_info.append("<NULL>")
                 metadata_info.append("<NULL>") # unable to determine indentifier
                 metadata_info.append("<NULL>") # unable to determine language
                 metadata_info.append("<NULL>") # unable to determine category
-                if not (meta_item := props["keywords"]) in nulls:
-                    metadata_info.append(metaStr(meta_item))
-                else:
-                    metadata_info.append("<NULL>")
-                if not (meta_item := props["revision"]) in nulls:
-                    metadata_info.append(metaStr(meta_item))
-                else:
-                    metadata_info.append("<NULL>")
+                if not (meta_item := props["keywords"]) in nulls: metadata_info.append(metaStr(meta_item))
+                else: metadata_info.append("<NULL>")
+                if not (meta_item := props["revision"]) in nulls: metadata_info.append(metaStr(meta_item))
+                else: metadata_info.append("<NULL>")
                 metadata_info.append("<NULL>") # unable to determine version
             except Exception:
                 pass
@@ -1396,6 +1785,156 @@ class ChloeAI:
         return True
 
 
+    def archive_pdf_data(self, pdf_path : str, archive_db_name : str) -> bool:
+
+        nulls = {"",0,None}
+
+        if (baseline_metadata := getBaselineMetadata(pdf_path)) is None:
+            return False
+
+        baseline_metadata = '|'.join(baseline_metadata)
+
+        try:
+            reader = PdfReader(pdf_path,strict=False)
+        except Exception:
+            return False
+        metadata_info = []
+        if not (meta_pdf := reader.metadata) is None:
+            if not (meta_item := meta_pdf.title) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append("<NULL>")
+            if not (meta_item := meta_pdf.author) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append("<NULL>")
+            if not (meta_item := meta_pdf.creator) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append('<NULL>')
+            if not (meta_item := meta_pdf.producer) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append('<NULL>')
+            if not (meta_item := meta_pdf.subject) in nulls: metadata_info.append(metaStr(meta_item))
+            else: metadata_info.append('<NULL>')
+            del meta_item
+        else:
+            metadata_info = ['<NULL>' for n in range(5)]
+
+        mkdir((pdf_folder := f'{self.db_path}/{archive_db_name}/{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}'))
+
+        forcedTxtFileWrite(f"{pdf_folder}/pdf_metadata.txt",metadata_info)
+
+        del metadata_info
+
+        # Technically, you could create a PDF with more pages than this; however,
+        # unless you are trying to compile vast amounts of human knowledge into
+        # a single PDF file, this limit will never be reached for practical purposes.
+        # So, 4,294,967,296 should be considered a hard cap.
+
+        extracted_text_path = f"{pdf_folder}/pdf_extracted_text.txt"
+
+        for n in range(4_294_967_296):
+            try:
+                pdf_info = reader.pages[n]
+            except Exception:
+                # All pages have been iterated or unable to be read.
+                break
+            if not (txt := pdf_info.extract_text()) in nulls:
+                while '\n\n' in txt:
+                    txt = txt.replace('\n\n','\n')
+                txt = txt.split('\n')
+                for n in range(len(txt)):
+                    while '  ' in txt[n]:
+                        txt[n] = txt[n].replace('  ',' ')
+                    txt[n] = txt[n].strip()
+                txt = tuple(txt)
+                if not exists(extracted_text_path):
+                    with open(extracted_text_path,"w",encoding='utf-8') as tf:
+                        tf.write(txt[0])
+                        for x in range(1,len(txt)):
+                            tf.write(f'\n{txt[x]}')
+                else:
+                    with open(extracted_text_path,"a",encoding='utf-8') as tf:
+                        for line in txt:
+                            tf.write(f'\n{line}')
+            try:
+                for count,image_file_object in enumerate(pdf_info.images):
+                    with open((temp_image_file := f'{pdf_folder}/{count}{image_file_object.name}'),'wb') as fp:
+                        fp.write(image_file_object.data)
+                    if (histo_info := self.getImageInformation(temp_image_file)):
+                        if not exists((image_histogram_data := f"{pdf_folder}/image_histogram_data.txt")):
+                            with open(image_histogram_data,'w',encoding='utf-8') as tf:
+                                tf.write(f"{count}{image_file_object.name}")
+                                for line in histo_info:
+                                    tf.write(f'\n{line}')
+                                try: entropy_val = round(Image.open(temp_image_file).entropy(),8)
+                                except Exception: entropy_val = 0
+                                tf.write(f"\n{entropy_val}")
+                        else:
+                            with open(image_histogram_data,'a',encoding='utf-8') as tf:
+                                tf.write(f"\n{count}{image_file_object.name}")
+                                for line in histo_info:
+                                    tf.write(f'\n{line}')
+                                try: entropy_val = round(Image.open(temp_image_file).entropy(),8)
+                                except Exception: entropy_val = 0
+                                tf.write(f'\n{entropy_val}')
+                    else:
+                        if not exists((image_histogram_data := f"{pdf_folder}/image_histogram_data.txt")):
+                            with open(image_histogram_data,'w',encoding='utf-8') as tf:
+                                tf.write(f"{count}{image_file_object.name}\nNO DATA")
+                        else:
+                            with open(image_histogram_data,'a',encoding='utf-8') as tf:
+                                tf.write(f"\n{count}{image_file_object.name}\nNO DATA")
+                    remove(temp_image_file)
+            except Exception:
+                try:
+                    remove(temp_image_file)
+                except Exception:
+                    pass
+
+        try: del txt
+        except NameError: pass
+        try: del temp_folder
+        except NameError: pass
+        try: del img_info
+        except NameError: pass
+        try: del image_histogram_data
+        except NameError: pass
+
+        counters = [0,0]
+
+        if exists(f'{pdf_folder}/pdf_extracted_text.txt'):
+            with open(f'{pdf_folder}/pdf_extracted_text.txt','r',encoding='utf-8') as tf:
+                while True:
+                    line = tf.readline()
+                    if not line:
+                        break
+                    counters[0] += 1
+            if counters[0] == 1:
+                # This prevents PDFs that are forms from being processed.
+                if line.startswith('Please wait... If this message is not eventually replaced by the proper contents of the document, your PDF viewer may not be able to display this type of document.'):
+                    rmtree(pdf_folder)
+                    return False
+        if exists(f'{pdf_folder}/image_histogram_data.txt'):
+            with open(f'{pdf_folder}/image_histogram_data.txt','r',encoding='utf-8') as tf:
+                while True:
+                    line = tf.readline()
+                    if not line:
+                        break
+                    counters[1] += 1
+
+        if not exists((_metadata := f'{self.db_path}/{archive_db_name}/_metadata.txt')):
+            try:
+                with open(_metadata,'w',encoding='utf-8') as tf:
+                    tf.write(f'{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
+            except UnicodeEncodeError:
+                with open(_metadata,'w',encoding='latin-1') as tf:
+                    tf.write(f'{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
+        else:
+            try:
+                with open(_metadata,'a',encoding='utf-8') as tf:
+                    tf.write(f'\n{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
+            except UnicodeEncodeError:
+                with open(_metadata,'a',encoding='latin-1') as tf:
+                    tf.write(f'\n{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
+
+        return True
+
+
     def archive_shp_data(self, shp_path : str, archive_db_name : str) -> bool:
 
         if (baseline_metadata := getBaselineMetadata(shp_path)) is None:
@@ -1425,7 +1964,7 @@ class ChloeAI:
         fields.remove(oid_name)
         fields = sorted(fields)
         fields.insert(0,oid_name)
-        # prevent a weird bug where arcpy thinks a field named matching a SQL keyword is
+        # prevent a weird bug where arcpy thinks a field name matching a SQL keyword is
         # actually an SQL query despite documentation implying this is not
         # supposed to happen.
         sql_fields = []
@@ -1800,386 +2339,6 @@ class ChloeAI:
         return True
 
 
-    def archive_pdf_data(self, pdf_path : str, archive_db_name : str) -> bool:
-
-        nulls = {"",0,None}
-
-        if (baseline_metadata := getBaselineMetadata(pdf_path)) is None:
-            return False
-
-        baseline_metadata = '|'.join(baseline_metadata)
-
-        try:
-            reader = PdfReader(pdf_path,strict=False)
-        except Exception:
-            return False
-        metadata_info = []
-        if not (meta_pdf := reader.metadata) is None:
-            if not (meta_item := meta_pdf.title) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append("<NULL>")
-            if not (meta_item := meta_pdf.author) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append("<NULL>")
-            if not (meta_item := meta_pdf.creator) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append('<NULL>')
-            if not (meta_item := meta_pdf.producer) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append('<NULL>')
-            if not (meta_item := meta_pdf.subject) in nulls:
-                metadata_info.append(metaStr(meta_item))
-            else:
-                metadata_info.append('<NULL>')
-            del meta_item
-        else:
-            metadata_info = ['<NULL>' for n in range(5)]
-
-        mkdir((pdf_folder := f'{self.db_path}/{archive_db_name}/{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}'))
-
-        forcedTxtFileWrite(f"{pdf_folder}/pdf_metadata.txt",metadata_info)
-
-        del metadata_info
-
-        # Technically, you could create a PDF with more pages than this; however,
-        # unless you are trying to compile vast amounts of human knowledge into
-        # a single PDF file, this limit will never be reached for practical purposes.
-        # So, 4,294,967,296 should be considered a hard cap.
-
-        extracted_text_path = f"{pdf_folder}/pdf_extracted_text.txt"
-
-        for n in range(4_294_967_296):
-            try:
-                pdf_info = reader.pages[n]
-            except Exception:
-                # All pages have been iterated or unable to be read.
-                break
-            if not (txt := pdf_info.extract_text()) in nulls:
-                while '\n\n' in txt:
-                    txt = txt.replace('\n\n','\n')
-                txt = txt.split('\n')
-                for n in range(len(txt)):
-                    while '  ' in txt[n]:
-                        txt[n] = txt[n].replace('  ',' ')
-                    txt[n] = txt[n].strip()
-                txt = tuple(txt)
-                if not exists(extracted_text_path):
-                    with open(extracted_text_path,"w",encoding='utf-8') as tf:
-                        tf.write(txt[0])
-                        for x in range(1,len(txt)):
-                            tf.write(f'\n{txt[x]}')
-                else:
-                    with open(extracted_text_path,"a",encoding='utf-8') as tf:
-                        for line in txt:
-                            tf.write(f'\n{line}')
-            try:
-                for count,image_file_object in enumerate(pdf_info.images):
-                    with open((temp_image_file := f'{pdf_folder}/{count}{image_file_object.name}'),'wb') as fp:
-                        fp.write(image_file_object.data)
-                    if (histo_info := self.getImageInformation(temp_image_file)):
-                        if not exists((image_histogram_data := f"{pdf_folder}/image_histogram_data.txt")):
-                            with open(image_histogram_data,'w',encoding='utf-8') as tf:
-                                tf.write(f"{count}{image_file_object.name}")
-                                for line in histo_info:
-                                    tf.write(f'\n{line}')
-                                try: entropy_val = round(Image.open(temp_image_file).entropy(),8)
-                                except Exception: entropy_val = 0
-                                tf.write(f"\n{entropy_val}")
-                        else:
-                            with open(image_histogram_data,'a',encoding='utf-8') as tf:
-                                tf.write(f"\n{count}{image_file_object.name}")
-                                for line in histo_info:
-                                    tf.write(f'\n{line}')
-                                try: entropy_val = round(Image.open(temp_image_file).entropy(),8)
-                                except Exception: entropy_val = 0
-                                tf.write(f'\n{entropy_val}')
-                    else:
-                        if not exists((image_histogram_data := f"{pdf_folder}/image_histogram_data.txt")):
-                            with open(image_histogram_data,'w',encoding='utf-8') as tf:
-                                tf.write(f"{count}{image_file_object.name}\nNO DATA")
-                        else:
-                            with open(image_histogram_data,'a',encoding='utf-8') as tf:
-                                tf.write(f"\n{count}{image_file_object.name}\nNO DATA")
-                    remove(temp_image_file)
-            except Exception:
-                try:
-                    remove(temp_image_file)
-                except Exception:
-                    pass
-
-        try: del txt
-        except NameError: pass
-        try: del temp_folder
-        except NameError: pass
-        try: del img_info
-        except NameError: pass
-        try: del image_histogram_data
-        except NameError: pass
-
-        counters = [0,0]
-
-        if exists(f'{pdf_folder}/pdf_extracted_text.txt'):
-            with open(f'{pdf_folder}/pdf_extracted_text.txt','r',encoding='utf-8') as tf:
-                while True:
-                    line = tf.readline()
-                    if not line:
-                        break
-                    counters[0] += 1
-            if counters[0] == 1:
-                # This prevents PDFs that are forms from being processed.
-                if line.startswith('Please wait... If this message is not eventually replaced by the proper contents of the document, your PDF viewer may not be able to display this type of document.'):
-                    rmtree(pdf_folder)
-                    return False
-        if exists(f'{pdf_folder}/image_histogram_data.txt'):
-            with open(f'{pdf_folder}/image_histogram_data.txt','r',encoding='utf-8') as tf:
-                while True:
-                    line = tf.readline()
-                    if not line:
-                        break
-                    counters[1] += 1
-
-        if not exists((_metadata := f'{self.db_path}/{archive_db_name}/_metadata.txt')):
-            try:
-                with open(_metadata,'w',encoding='utf-8') as tf:
-                    tf.write(f'{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
-            except UnicodeEncodeError:
-                with open(_metadata,'w',encoding='latin-1') as tf:
-                    tf.write(f'{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
-        else:
-            try:
-                with open(_metadata,'a',encoding='utf-8') as tf:
-                    tf.write(f'\n{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
-            except UnicodeEncodeError:
-                with open(_metadata,'a',encoding='latin-1') as tf:
-                    tf.write(f'\n{pdf_path[pdf_path.rfind("/")+1:pdf_path.rfind(".")]}_{pdf_path[pdf_path.rfind(".")+1:]}|PDF|{baseline_metadata}|{counters[0]}|{counters[1]}')
-
-        return True
-
-
-    def archive_alia_data(self, alia_path : str, archive_db_name : str) -> None:
-
-        baseline_metadata = []
-
-        try:
-            baseline_metadata.append(getModifiedDate(alia_path)[4:])
-        except Exception:
-            baseline_metadata.append('<NULL>')
-        try:
-            baseline_metadata.append(getCreatedDate(alia_path)[4:])
-        except Exception:
-            baseline_metadata.append('<NULL>')
-        try:
-            baseline_metadata.append(md5_checksum(alia_path))
-        except Exception:
-            baseline_metadata.append('<NULL>')
-        try:
-            baseline_metadata.append(str(getSizeOfItem(alia_path)))
-        except Exception:
-            baseline_metadata.append('<NULL>')
-
-        baseline_metadata = '|'.join(baseline_metadata)
-
-        if not exists(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt'):
-            with open(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt','w',encoding='utf-8') as tf:
-                tf.write(f'{alia_path[alia_path.rfind("/")+1:]}|{baseline_metadata}')
-        else:
-            with open(f'{self.db_path}/{archive_db_name}/_alia_dosieroj.txt','a',encoding='utf-8') as tf:
-                tf.write(f'\n{alia_path[alia_path.rfind("/")+1:]}|{baseline_metadata}')
-
-        return None
-
-
-    def archive_bin_data(self, bin_path : str, archive_db_name : str) -> bool:
-
-        if (baseline_metadata := getBaselineMetadata(bin_path)) is None:
-            return False
-
-        with open(bin_file,'rb') as bf:
-            lines = bf.readlines()
-
-        bin_lines = lines[:]
-
-        for n in range(len(bin_lines)):
-            try:
-                bin_lines[n] = bin_lines[n].decode('latin-1')
-            except Exception:
-                bin_lines[n] = None
-
-        while None in bin_lines:
-            bin_lines.remove(None)
-
-        extract_texted = ()
-
-        if len((bin_lines := tuple(bin_lines))):
-            extracted_text = tuple(["".join([char for char in bin_line if char in acceptable_chars]) for bin in bin_lines])
-
-        bin_nums = [lines[n][x] for n in range(len(lines)) for x in range(len(lines[n]))]
-
-        del lines
-
-        val_counter = 1 ; bin_num_order_count = []
-        bin_num_order = [(current_num := bin_nums[0])]
-
-        for n in range(1,len(bin_nums)):
-            if bin_nums[n] != current_num:
-                bin_num_order_count.append(val_counter)
-                val_counter = 1
-                bin_num_order.append(bin_nums[n])
-                current_num = bin_nums[n]
-            else:
-                val_counter += 1
-
-        del current_num
-
-        if len(bin_num_order) > len(bin_num_order_count):
-            bin_num_order_count.append(val_counter)
-            bin_num_order.append(bin_nums[-1])
-
-        del val_counter
-
-        replacers = {'10':'a','12':'b','13':'c','14':'d','15':'e','16':'f','17':'g','18':'h','19':'i','20':'j','21':'k','23':'l','24':'m','25':'n','26':'o','27':'p','28':'q','29':'r','30':'s','31':'t','32':'u','34':'v','35':'w','36':'x','37':'y','38':'z','39':'A','40':'B','41':'C','42':'D','43':'E','45':'F','46':'G','47':'H','48':'I','49':'J','50':'K','51':'L','52':'M','53':'N','54':'O','56':'P','57':'Q','58':'R','59':'S','60':'T','61':'U','62':'V','63':'W','64':'X','65':'Y','67':'Z'}
-
-        nums_keys = tuple(replacers.keys())
-
-        lines = []
-
-        for line in tuple([str(bin_num_order[n]) if bin_num_order_count[n] == 1 else f'{bin_num_order[n]}*{bin_num_order_count[n]}' for n in range(len(bin_num_order))]):
-            for nums in nums_keys:
-                line = line.replace(nums,replacers.keys())
-            lines.append(line)
-
-        del bin_num_order ; del bin_num_order_count
-
-        lines = tuple(lines)
-
-        simplified_lines = []
-
-        simplified_lines.append(lines[0])
-
-        for n in range(1,len(lines)):
-            if '*' in lines[n] or '*' in simplified_lines[-1]:
-                simplified_lines.append(lines[n])
-            else:
-                simplified_lines[-1] = f'{simplified_lines[-1]}{lines[n]}'
-
-        lines = tuple(simplified_lines)
-
-        simplified_lines = []
-
-        if len(lines) % 2 == 0:
-            simplified_lines = tuple([f'{lines[n]}+{lines[n+1]}' for n in range(0,len(lines),2)])
-        else:
-            simplified_lines = [f"{lines[n]}+{lines[n+1]}" for n in range(0,len(lines)-1,2)]
-            simplified_lines.append(lines[-1])
-            simplified_lines = tuple(simplified_lines)
-
-        del lines
-
-        val_counter = 1 ; bin_num_order_count = []
-        bin_num_order = [(current_num := simplified_lines[0])]
-
-        for n in range(1,len(simplified_lines)):
-            if simplified_lines[n] != current_num:
-                bin_num_order_count.append(val_counter)
-                val_counter = 1
-                bin_num_order.append(simplified_lines[n])
-            else:
-                val_counter += 1
-
-        del simplified_lines ; del current_num
-
-        if len(bin_num_order) > len(bin_num_order_count):
-            bin_num_order_count.append(val_counter)
-            bin_num_order.append(simplified_lines[-1])
-
-        del val_counter
-
-        abridged_lines = [str(bin_num_order[n]) if bin_num_order_count[n] == 1 else f'{bin_num_order[n]}^{bin_num_order_count[n]}' for n in range(len(bin_num_order))]
-        replacers_2 = {'10':"_",'20':'-','30':'!','40':'?','50':'@','60':'#','70':'$','80':'=','90':'&'}
-        chars = tuple(replacers_2.keys())
-
-        del bin_num_order ; del bin_num_order_count
-
-        for n in range(len(abridged_lines)):
-            for char in chars:
-                abridged_lines[n] = abridged_lines[n].replace(char,replacers_2[char])
-
-        del replacers_2 ; del chars
-
-        nums = [] ; starting_index = 0 ; starting_prefix = "" ; combo = []
-
-        for abridged_line in (abridged_lines := tuple(abridged_lines)):
-            starting_index += 1
-            if '+' in abridged_line:
-                starting_prefix = abridged_line[:abridged_line.find('+')+1]
-                combo.append(abridged_line[abridged_line.find('+')+1:])
-                break
-
-        for n in range(starting_index,len(abridged_lines)):
-            if abridged_lines[n].startswith(starting_prefix) and starting_prefix != "":
-                combo.append(abridged_lines[n])
-            elif starting_prefix == "":
-                if '+' in abridged_lines[n]:
-                    starting_prefix = abridged_lines[n][:abridged_lines[n].find('+')+1]
-                    combo.append(abridged_lines[n][abridged_lines[n].find('+')+1:])
-                else:
-                    nums.append(abridged_lines[n])
-            else:
-                nums.append("%s%s" % (starting_prefix,"|".join(combo)))
-                combo = []
-                starting_prefix = ""
-                if '+' in abridged_lines[n]:
-                    combo.append(abridged_lines[n][abridged_lines[n].find('+')+1:])
-                    starting_prefix = abridged_lines[n][:abridged_lines[n].find('+')+1]
-                else:
-                    nums.append(abridged_lines[n])
-
-        if starting_prefix != "":
-            nums.append("%s%s" % (starting_prefix,"|".join(combo)))
-
-        del starting_prefix ; del abridged_lines ; del combo
-
-        nums = tuple(nums)
-
-        if not 0 in (counters := (len(extract_texted),len(nums))):
-            file_name = bin_path[bin_path.rfind('/')+1:]
-            nomin_kalvamortum = "%s_%s" % (file_name[:file_name.rfind('.')],file_name[file_name.rfind('.')+1:])
-            del file_name
-            mkdir(f'{self.db_path}/{archive_db_name}/{nomin_kalvamortum}')
-            if counters[0]:
-                with open(f'{self.db_path}/{archive_db_name}/{nomin_kalvamortum}/bin_extracted_text.txt','w',encoding='utf-8') as tf:
-                    tf.write(extracted_text[0])
-                    for n in range(1,len(extracted_text)):
-                        tf.write(f'\n{extracted_text[n]}')
-            del extracted_text
-            if counters[1]:
-                with open(f'{self.db_path}/{archive_db_name}/{nomin_kalvamortum}/bin_nums.txt','w',encoding='utf-8') as tf:
-                    tf.write(nums[0])
-                    for n in range(1,len(nums)):
-                        tf.write(f'\n{nums[n]}')
-            del nums
-            if not exists((_metadata := f'{self.db_path}/{archive_db_name}/_metadata.txt')):
-                try:
-                    with open(_metadata,'w',encoding='utf-8') as tf:
-                        tf.write(f'{nomin_kalvamortum}|BIN|{baseline_metadata}|{counters[0]}|{counters[1]}')
-                except UnicodeEncodeError:
-                    with open(_metadata,'w',encoding='latin-1') as tf:
-                        tf.write(f'{nomin_kalvamortum}|BIN|{baseline_metadata}|{counters[0]}|{counters[1]}')
-            else:
-                try:
-                    with open(_metadata,'a',encoding='utf-8') as tf:
-                        tf.write(f'\n{nomin_kalvamortum}|BIN|{baseline_metadata}|{counters[0]}|{counters[1]}')
-                except UnicodeEncodeError:
-                    with open(_metadata,'a',encoding='latin-1') as tf:
-                        tf.write(f'\n{nomin_kalvamortum}|BIN|{baseline_metadata}|{counters[0]}|{counters[1]}')
-
-        return True
-
-
     def searchQuery(self, entry_string : str, check_type : str | tuple[str] | list[str] | set[str] = 'any', size_query : str | None = None, include_entity_name : bool = True, entity_names_only : bool = False, return_tuple : bool = False, max_line_concat : int = 3, save_found_matches : bool = True, save_to_file : bool = False, output_file_type : str = 'excel', output_location : str | None = None, output_name : str | None = None, overwrite_existing_output : bool = False, csv_field_size_limit : int = 131_072, csv_delimiter : str = ',', overwrite_saved_found_matches : bool = False, terminal_progress_display : bool = False, force_file_generation : bool = True, input_to_continue : bool = False, grace_timer : int = 120) -> tuple[str] | None:
         '''
         This allows, by default, the searching for the presence of specific
@@ -2527,8 +2686,7 @@ class ChloeAI:
                 words = {item : [False,False,False] for item in entry_string.split(' ')}
                 test_contents_str = set([f"{word}$contents" for word in tuple(words.keys())])
                 test_name_str = set([f"{word}$names" for word in tuple(words.keys())])
-                found_matches = []
-                found_name_matches = []
+                found_matches = [] ; found_name_matches = []
                 for previous_search in tuple([txt_file[:txt_file.rfind(".")] for txt_file in tuple(listdir(f'{self.db_path}/_terms_searched'))]):
                     if previous_search.endswith('$contents'):
                         if previous_search in test_contents_str:
@@ -2579,9 +2737,7 @@ class ChloeAI:
                                                 break
                                             counter += 1
                                     line_count_contents[found_word] = counter
-                        found_name_matches = list(found_name_matches)
-                        least_items = "NOTHING"
-                        min_num = 10_000_000_000
+                        found_name_matches = list(found_name_matches) ; least_items = "NOTHING" ; min_num = 10_000_000_000
                         for found_word in found_words:
                             if min_num > line_count_contents[found_word]:
                                 least_items = found_word[:]
@@ -2765,9 +2921,7 @@ class ChloeAI:
                                                 break
                                             counter += 1
                                     line_count_contents[found_word] = counter
-                        found_name_matches = list(found_name_matches)
-                        least_items = "NOTHING"
-                        min_num = 10_000_000_000
+                        found_name_matches = list(found_name_matches) ; least_items = "NOTHING" ; min_num = 10_000_000_000
                         for found_word in found_words:
                             if min_num > line_count_contents[found_word]:
                                 least_items = found_word[:]
@@ -2863,6 +3017,7 @@ class ChloeAI:
                     else:
                         return None
             else:
+                # Ensure that relevant data actually exists.
                 contents_found = False ; names_found = False
                 test_contents_str = f'{entry_string}$contents' ; test_name_str = f'{entry_string}$names'
                 found_matches = [] ; found_name_matches = []
@@ -2910,7 +3065,6 @@ class ChloeAI:
                                                 if entity.lower().endswith(extension):
                                                     found_matches.append(entity)
                                                     break
-                                    del temp_extensions
                                 case 'alia':
                                     temp_extensions = tuple(list(self.image_types) + ['txt','pdf','docx','shp','gdb'])
                                     with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
@@ -2923,7 +3077,6 @@ class ChloeAI:
                                                 if not entity.lower()[entity.rfind(".")+1:].endswith(extension) or not '.' in entity:
                                                     found_matches.append(entity)
                                                     break
-                                    del temp_extensions
                                 case _:
                                     if return_tuple:
                                         return ()
@@ -3008,7 +3161,6 @@ class ChloeAI:
                                                 if entity.lower().endswith(extension):
                                                     found_name_matches.append(entity)
                                                     break
-                                    del temp_extensions
                                 case 'alia':
                                     temp_extensions = tuple(list(self.image_types) + ['txt','pdf','docx','shp','gdb'])
                                     with open(f'{self.db_path}/_terms_searched/{previous_search}.txt',encoding='utf-8') as tf:
@@ -3021,7 +3173,6 @@ class ChloeAI:
                                                 if not entity.lower()[entity.rfind(".")+1:].endswith(extension):
                                                     found_name_matches.append(entity)
                                                     break
-                                    del temp_extensions
                                 case _:
                                     if return_tuple:
                                         return ()
@@ -3063,18 +3214,20 @@ class ChloeAI:
                             return ()
                         else:
                             return None
-                    if contents_found and names_found:
-                        if len(found_matches := set(list(found_matches)+list(found_name_matches))) and any((contents_found,names_found)):
-                            if valid_size_query_input:
-                                found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
-                            if save_to_file and len((found_matches := tuple(found_matches))):
-                                genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types),force_file_generation,input_to_continue,grace_timer)
-                            if return_tuple:
-                                return found_matches
+                    if any((contents_found,names_found)):
+                        if include_entity_name:
+                            found_matches = set(list(found_matches)+list(found_name_matches))
+                        else:
+                            found_matches = set(found_matches)
+                        if valid_size_query_input:
+                            found_matches = self.simplifyResultsViaSize(found_matches,size_tester,og_check_type,terminal_progress_display)
+                        if save_to_file and len((found_matches := tuple(found_matches))):
+                            genSearchQueryResultFile(found_matches,output_file_type,output_location,output_name,csv_field_size_limit,csv_delimiter,overwrite_existing_output,set(self.image_types),force_file_generation,input_to_continue,grace_timer)
+                        if return_tuple:
+                            return found_matches
                         return None
 
-        found_matches = []
-        found_name_matches = []
+        found_matches = [] ; found_name_matches = []
         if tqdm_imported:
             iterator = tqdm(tuple(self.used_names), disable = not terminal_progress_display, desc = f"Searching for instances of {entry_string}")
         else:
@@ -3089,8 +3242,6 @@ class ChloeAI:
                                 extracted_data[folder_name] = [item[item.find("/")+1:]]
                             else:
                                 extracted_data[folder_name].append(item[item.find("/")+1:])
-                    try: del folder_name
-                    except NameError: pass
                     if '_alia_dosieroj.txt' in items:
                         with zf.open('_alia_dosieroj.txt') as tf:
                             while True:
@@ -3099,8 +3250,6 @@ class ChloeAI:
                                     break
                                 if entry_string in getTestName((entity := decodeZipTxtLine(entity).split('|')[0])):
                                     found_name_matches.append("%s\\%s" % (self.path_pointer[used_name].replace('/','\\'),entity))
-                    try: del items
-                    except NameError: pass
                     for classify in tuple(extracted_data.keys()):
                         if classify == '_txt_files':
                             for txt_file in extracted_data[classify]:
@@ -3182,8 +3331,6 @@ class ChloeAI:
                         if '/' in item[:-1]:
                             if not (folder_name := item[:item.find("/")]) in extracted_data.keys(): extracted_data[folder_name] = [item[item.find("/")+1:]]
                             else: extracted_data[folder_name].append(item[item.find("/")+1:])
-                    try: del folder_name
-                    except NameError: pass
                     if '_alia_dosieroj.txt' in items:
                         with zf.open(f'_alia_dosieroj.txt') as tf:
                             while True:
@@ -3196,8 +3343,6 @@ class ChloeAI:
                                 for term in terms:
                                     if term in test_name:
                                         term_name_memories[term].append("%s\\%s" % (self.path_pointer[used_name].replace('/','\\'),entity))
-                    try: del items
-                    except NameError: pass
                     for classify in tuple(extracted_data.keys()):
                         if classify == '_txt_files':
                             for txt_file in extracted_data[classify]:
@@ -3211,7 +3356,6 @@ class ChloeAI:
                                             term_name_memories[term].append("%s\\%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file))
                                         if isQueryMatchKether(term,txt_lines):
                                             term_memories[term].append("%s\\%s" % (self.path_pointer[used_name].replace("/","\\"),txt_file))
-                                del txt_lines
                         elif classify.lower().endswith('_bin'):
                             if testing_entry_string in getTestName(classify):
                                 found_name_matches.append("%s\\%s.%s" % (self.path_pointer[used_name].replace('/','\\'),classify[:-4],classify[-3:]))
@@ -3319,6 +3463,12 @@ class ChloeAI:
         try: del extracted_data_keys
         except NameError: pass
         try: del txt_lines
+        except NameError: pass
+        try: del items
+        except NameError: pass
+        try: del txt_lines
+        except NameError: pass
+        try: del folder_name
         except NameError: pass
 
         if isinstance(check_type,str):
@@ -3763,8 +3913,6 @@ class ChloeAI:
                                     line_num_checker[f"{line[5]}|{line[1]}"] = {db_name}
                                 else:
                                     line_num_checker[f"{line[5]}|{line[1]}"].add(db_name)
-                    try: del line
-                    except NameError: pass
                     metadata_files.remove('_metadata.txt')
                 for metadata_file in (metadata_files := tuple(metadata_files)):
                     if metadata_file.lower().endswith('_gdb_metadata.txt'):
@@ -3772,6 +3920,9 @@ class ChloeAI:
                             line_num_checker[num_id].add(db_name)
                         else:
                             line_num_checker[num_id] = {db_name}
+
+        try: del line
+        except NameError: pass
 
         for a in iterator:
             current_db_name = db_names[a]
