@@ -86,11 +86,11 @@ Parameters:
 
 
 
-**database\_location** (*String* or *NoneType*) - This dictates the directory/folder where the database used by Chloe Felina will be generated. If this is not specified, it will try to default to the current user's Documents folder. Please note that specific locations on the user's local machine are forbidden from being used and will instead default to the current user's Documents folder if one of such locations is specified.
+**database\_location** (*String* or *NoneType*) - This dictates the directory/folder where the database used by Chloe_Felina will be generated. If this is not specified, it will try to default to the current user's Documents folder. Please note that specific locations on the user's local machine are forbidden from being used and will instead default to the current user's Documents folder if one of such locations is specified.
 
 
 
-**database\_name** (*String*) - This will be the name of the database used by Chloe Felina. Anything name is acceptable. If a database has already been generated for Chloe Felina (and both **database\_location** and **database\_name** together point to it), it will get the necessary data from the pre-existing database instead of initializing a new one. By default "datumbazo" is used as the name of the database. Datumbazo is supposedly "database" in Esperanto.
+**database\_name** (*String*) - This will be the name of the database used by Chloe_Felina. Anything name is acceptable. If a database has already been generated for Chloe_Felina (and both **database\_location** and **database\_name** together point to it), it will get the necessary data from the pre-existing database instead of initializing a new one. By default "datumbazo" is used as the name of the database. Datumbazo is supposedly "database" in Esperanto.
 
 
 
@@ -110,7 +110,7 @@ Parameters:
 
 
 
-**crintum\_obfuscation** (*Boolean*) - If a database for Chloe Felina already exists, it will expect that obfuscation has already been applied to the crintum\_pointer.txt and decode it during the session that Chloe Felina is being used. Otherwise, any added entry to crintum\_pointer.txt will be obfuscated via a custom obfuscation algorithm. This is False by default. Set to True if you want a minor amount of security; however, this may result in a slower initialization of **ChloeAI** depending upon how many entries are in crintum\_pointer.txt.
+**crintum\_obfuscation** (*Boolean*) - If a database for Chloe_Felina already exists, it will expect that obfuscation has already been applied to the crintum\_pointer.txt and decode it during the session that Chloe_Felina is being used. Otherwise, any added entry to crintum\_pointer.txt will be obfuscated via a custom obfuscation algorithm. This is False by default. Set to True if you want a minor amount of security; however, this may result in a slower initialization of **ChloeAI** depending upon how many entries are in crintum\_pointer.txt.
 
 
 
@@ -126,27 +126,27 @@ Parameters:
 
 
 
-**allow\_autoclear\_terms** (*Boolean*) - **ChloeAI.clearSearchQueryMemory** will be called to remove the contents of "\_terms\_searched" in the Chloe Felina database if it exists upon initializing a pre-existing Chloe Felina database. By default, this is False.
+**allow\_autoclear\_terms** (*Boolean*) - **ChloeAI.clearSearchQueryMemory** will be called to remove the contents of "\_terms\_searched" in the Chloe_Felina database if it exists upon initializing a pre-existing Chloe_Felina database. By default, this is False.
 
 
 
-**auto\_update\_database** (*Boolean*) - This runs **ChloeAI.updateCFB** upon initializing a Chloe Felina database. By default, this is False.
+**auto\_update\_database** (*Boolean*) - This runs **ChloeAI.updateCFB** upon initializing a Chloe_Felina database. By default, this is False.
 
 
 
-**keep\_db\_if\_no\_connection** (*Boolean*) - This requires the win32api (i.e., pywin32) module to be installed for this parameter to come into effect. If while getting data for the directory that a zip file in the database is referencing that the directory cannot be found or connection to it (i.e., the non-local drive) cannot be established, checks for that zip file are skipped and are assumed to be correct due to being unable to be verified. If this parameter is False, being unable to find the referenced directory or connect to the drive that the directory is located within will result in the zip file being deleted and its references removed from the database. By default, this is True. This parameter applies exclusively to referenced directories in the Chloe Felina database that are not the main drive (i.e., C Drive in the vast majority of case). This parameter only pertains to **ChloeAI.updateCFB**, not **ChloeAI.\_\_init\_\_** directly.
+**keep\_db\_if\_no\_connection** (*Boolean*) - This requires the win32api (i.e., pywin32) module to be installed for this parameter to come into effect. If while getting data for the directory that a zip file in the database is referencing that the directory cannot be found or connection to it (i.e., the non-local drive) cannot be established, checks for that zip file are skipped and are assumed to be correct due to being unable to be verified. If this parameter is False, being unable to find the referenced directory or connect to the drive that the directory is located within will result in the zip file being deleted and its references removed from the database. By default, this is True. This parameter applies exclusively to referenced directories in the Chloe_Felina database that are not the main drive (i.e., C Drive in the vast majority of case). This parameter only pertains to **ChloeAI.updateCFB**, not **ChloeAI.\_\_init\_\_** directly.
 
 
 
-**clear\_search\_update** (*Boolean*) - This will clear all data cached pertaining **ChloeAI.searchQuery** if the Chloe Felina database has any zip files removed or the data in said zip files was changed in any way after running the main portion of **ChloeAI.updateCFB**. By default, this is False.
+**clear\_search\_update** (*Boolean*) - This will clear all data cached pertaining **ChloeAI.searchQuery** if the Chloe_Felina database has any zip files removed or the data in said zip files was changed in any way after running the main portion of **ChloeAI.updateCFB**. By default, this is False.
 
 
 
-**updateCFB\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False. This does not pertain to any processes that happen within **ChloeAI.\_\_init\_\_** directly, only **ChloeAI.updateCFB**.
+**updateCFB\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe_Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe_Felina performing slower than it would otherwise. By default, this is False. This does not pertain to any processes that happen within **ChloeAI.\_\_init\_\_** directly, only **ChloeAI.updateCFB**.
 
 
 
-**corrupted\_zip\_check** (*Boolean*) - A check for each zip file in the Chloe Felina database will be conducted to see if any are corrupted and remove them from reference and the database if so. By default, this is True. It is wise to set this as False if you want to save the time it takes for **ChloeAI** to initialize.
+**corrupted\_zip\_check** (*Boolean*) - A check for each zip file in the Chloe_Felina database will be conducted to see if any are corrupted and remove them from reference and the database if so. By default, this is True. It is wise to set this as False if you want to save the time it takes for **ChloeAI** to initialize.
 
 
 
@@ -156,7 +156,7 @@ Parameters:
 
 
 
-Purpose: This dynamically checks and updates all zip files stored in the Chloe Felina database against the data they reference to determine if things need to be added and/or removed and/or if a directory being referenced no longer exists meaning that a zip file and related data are deleted. This is to ensure that ChloeAI.searchQuery and ChloeAI.findAllDuplicates do not produce redundant or inaccurate results or point to files/entities that no longer exist or have had their contents modified. As of right now, it can only add newly found data and remove redundant data. The portion of the algorithm governing updating zip files if the referenced data has been modified/updated has been removed due to being incomplete.
+Purpose: This dynamically checks and updates all zip files stored in the Chloe_Felina database against the data they reference to determine if things need to be added and/or removed and/or if a directory being referenced no longer exists meaning that a zip file and related data are deleted. This is to ensure that ChloeAI.searchQuery and ChloeAI.findAllDuplicates do not produce redundant or inaccurate results or point to files/entities that no longer exist or have had their contents modified. As of right now, it can only add newly found data and remove redundant data. The portion of the algorithm governing updating zip files if the referenced data has been modified/updated has been removed due to being incomplete.
 
 
 
@@ -164,15 +164,15 @@ Parameters:
 
 
 
-**keep\_db\_if\_no\_connection** (*Boolean*) - This requires the win32api (i.e., pywin32) module to be installed for this parameter to come into effect. If while getting data for the directory that a zip file in the database is referencing that the directory cannot be found or connection to it (i.e., the non-local drive) cannot be established, checks for that zip file are skipped and are assumed to be correct due to being unable to be verified. If this parameter is False, being unable to find the referenced directory or connect to the drive that the directory is located within will result in the zip file being deleted and its references removed from the database. By default, this is True. This parameter applies exclusively to referenced directories in the Chloe Felina database that are not the main drive (i.e., C Drive in the vast majority of case).
+**keep\_db\_if\_no\_connection** (*Boolean*) - This requires the win32api (i.e., pywin32) module to be installed for this parameter to come into effect. If while getting data for the directory that a zip file in the database is referencing that the directory cannot be found or connection to it (i.e., the non-local drive) cannot be established, checks for that zip file are skipped and are assumed to be correct due to being unable to be verified. If this parameter is False, being unable to find the referenced directory or connect to the drive that the directory is located within will result in the zip file being deleted and its references removed from the database. By default, this is True. This parameter applies exclusively to referenced directories in the Chloe_Felina database that are not the main drive (i.e., C Drive in the vast majority of case).
 
 
 
-**clear\_search\_update** (*Boolean*) - This will clear all data cached pertaining **ChloeAI.searchQuery** if the Chloe Felina database has any zip files removed or the data in said zip files was changed in any way during the execution of this function. By default, this is False.
+**clear\_search\_update** (*Boolean*) - This will clear all data cached pertaining **ChloeAI.searchQuery** if the Chloe_Felina database has any zip files removed or the data in said zip files was changed in any way during the execution of this function. By default, this is False.
 
 
 
-**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
+**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe_Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe_Felina performing slower than it would otherwise. By default, this is False.
 
 
 
@@ -190,7 +190,7 @@ Parameters:
 
 
 
-**top\_directory\_path** (*String*) - This is the specified full path to the directory the user wants Chloe Felina to start with getting data from and will get data from all nested folders/directories as well. An invalid explicit path will result in nothing happening.
+**top\_directory\_path** (*String*) - This is the specified full path to the directory the user wants Chloe_Felina to start with getting data from and will get data from all nested folders/directories as well. An invalid explicit path will result in nothing happening.
 
 
 
@@ -198,7 +198,7 @@ Parameters:
 
 
 
-**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
+**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe_Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe_Felina performing slower than it would otherwise. By default, this is False.
 
 
 
@@ -216,15 +216,15 @@ Parameters:
 
 
 
-**reference\_directory** (*String*) - This is the specified full path to the directory the user wants Chloe Felina to get data from. An invalid explicit path will result in nothing happening.
+**reference\_directory** (*String*) - This is the specified full path to the directory the user wants Chloe_Felina to get data from. An invalid explicit path will result in nothing happening.
 
 
 
-**clear\_terms\_searched** (*Boolean*) - This allows the automatic removal of items in the "\_terms\_searched" folder in the Chloe Felina database if said folder exists if a new zip file is successfully added to the active Chloe Felina database by calling **ChloeAI.clearSearchMemory**. By default, this is True.
+**clear\_terms\_searched** (*Boolean*) - This allows the automatic removal of items in the "\_terms\_searched" folder in the Chloe_Felina database if said folder exists if a new zip file is successfully added to the active Chloe_Felina database by calling **ChloeAI.clearSearchMemory**. By default, this is True.
 
 
 
-**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
+**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe_Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe_Felina performing slower than it would otherwise. By default, this is False.
 
 
 
@@ -234,7 +234,7 @@ Parameters:
 
 
 
-Purpose: This is dynamic term searching system that scans the database for matches to an inputted term or phrase and can output the results as an organized Excel, text, or CSV file and/or return a tuple. Search results by default are saved for future searches for faster results as well as shortcutting the need to check the entirety of the database. For example, if "plagioclase" was already searched and the user inputs "plagioclase feldspar" into **ChloeAI.searchQuery**, only the saved results for "plagioclase" will be checked for any instance of "plagioclase feldspar" existing within said search results instead of the whole database. The only downside of this system is that there is no association between plural and singular versions of terms. So, "station" and "stations" are not considered to be the same thing by the system. This downside is only present due to allowing for any specified strings of characters being allowed to be searched for. So, having code in place to connect the search results of "station" with "stations" would be unnecessary. In addition, using the **entity\_names\_only** parameter, it can check only file names instead if one is only looking for a file of a specific name instead of a checking the name and its contents.
+Purpose: This is dynamic term searching system that scans the database for matches to an inputted term or phrase and can output the results as an organized Excel, text, or CSV file and/or return a tuple. Search results by default are saved for future searches for faster results as well as short-cutting the need to check the entirety of the database. For example, if "plagioclase" was already searched and the user inputs "plagioclase feldspar" into **ChloeAI.searchQuery**, only the saved results for "plagioclase" will be checked for any instance of "plagioclase feldspar" existing within said search results instead of the whole database. The only downside of this system is that there is no association between plural and singular versions of terms. So, "station" and "stations" are not considered to be the same thing by the system. This downside is only present due to allowing for any specified strings of characters being allowed to be searched for. So, having code in place to connect the search results of "station" with "stations" would be unnecessary. In addition, using the **entity\_names\_only** parameter, it can check only file names instead if one is only looking for a file of a specific name instead of a checking the name and its contents.
 
 
 
@@ -464,15 +464,15 @@ If you understand how SQL works, the same logic applies here with the following 
 
 
 
-**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
+**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe_Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe_Felina performing slower than it would otherwise. By default, this is False.
 
 
 
-**force\_file\_generation** (*Boolean*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. If, for whatever reason, Chloe Felina cannot remove the file it is supposed to be ovewritting as well as there already being files of a different output format unable to be used because they already exist at the **output\_location**, a new output file will be generated instead of overwritting the pre-existing one appending a random string of 8 characters to the end of the name. If False and no alternative output file format can be used, no output file will be generated.
+**force\_file\_generation** (*Boolean*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. If, for whatever reason, Chloe_Felina cannot remove the file it is supposed to be overwriting as well as there already being files of a different output format unable to be used because they already exist at the **output\_location**, a new output file will be generated instead of overwriting the pre-existing one appending a random string of 8 characters to the end of the name. If False and no alternative output file format can be used, no output file will be generated.
 
 
 
-**input\_to\_continue** (*Boolean*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. If a different file format is used due to being unable to overwrite a pre-existing file for whatever reason, The user will be prompted to hit ENTER/RETURN on one's keyboard in order to allow Chloe Felina to continue its execution. This is to allow the user to explicitly know that an alternative output file had be generated instead of the designated one. By default, this is False.
+**input\_to\_continue** (*Boolean*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. If a different file format is used due to being unable to overwrite a pre-existing file for whatever reason, The user will be prompted to hit ENTER/RETURN on one's keyboard in order to allow Chloe_Felina to continue its execution. This is to allow the user to explicitly know that an alternative output file had be generated instead of the designated one. By default, this is False.
 
 
 
@@ -504,7 +504,7 @@ N/A
 
 
 
-Purpose: This checks the Chloe Felina database for any items that are duplicates (or potential duplicates) of each other with the option to output the findings as a returned tuple and/or an organized Excel, CSV, or text file. This helps the user see which files are potentially redundant.
+Purpose: This checks the Chloe_Felina database for any items that are duplicates (or potential duplicates) of each other with the option to output the findings as a returned tuple and/or an organized Excel, CSV, or text file. This helps the user see which files are potentially redundant.
 
 
 
@@ -512,11 +512,11 @@ Parameters:
 
 
 
-**include\_other\_entities** (*Boolean*) - This parameter does a baseline process of attempting to find duplicates among file/entity types not covered as of yet for thorough data extraction. These are anything listed in a text file called "alia\_dosieroj" within the zip files in the Chloe Felina database that reference directories. Contextually and likely, not all zip files will contain this text file. By default, this is False.
+**include\_other\_entities** (*Boolean*) - This parameter does a baseline process of attempting to find duplicates among file/entity types not covered as of yet for thorough data extraction. These are anything listed in a text file called "alia\_dosieroj" within the zip files in the Chloe_Felina database that reference directories. Contextually and likely, not all zip files will contain this text file. By default, this is False.
 
 
 
-**return\_tuple** (*Boolean*) - This allows the returning of a nested tuple of items in the Chloe Felina database found to be (potential) duplicates of each other where items within a given sub-tuple within the tuple are all considered to be duplicates of each other. By default, this is False.
+**return\_tuple** (*Boolean*) - This allows the returning of a nested tuple of items in the Chloe_Felina database found to be (potential) duplicates of each other where items within a given sub-tuple within the tuple are all considered to be duplicates of each other. By default, this is False.
 
 
 
@@ -552,15 +552,15 @@ Parameters:
 
 
 
-**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
+**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe_Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe_Felina performing slower than it would otherwise. By default, this is False.
 
 
 
-**force\_file\_generation** (*Boolean*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. If, for whatever reason, Chloe Felina cannot remove the file it is supposed to be ovewritting as well as there already being files of a different output format unable to be used because they already exist at the **output\_location**, a new output file will be generated instead of overwritting the pre-existing one appending a random string of 8 characters to the end of the name. If False and no alternative output file format can be used, no output file will be generated.
+**force\_file\_generation** (*Boolean*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. If, for whatever reason, Chloe_Felina cannot remove the file it is supposed to be overwriting as well as there already being files of a different output format unable to be used because they already exist at the **output\_location**, a new output file will be generated instead of overwriting the pre-existing one appending a random string of 8 characters to the end of the name. If False and no alternative output file format can be used, no output file will be generated.
 
 
 
-**input\_to\_continue** (*Boolean*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. If a different file format is used due to being unable to overwrite a pre-existing file for whatever reason, The user will be prompted to hit ENTER/RETURN on one's keyboard in order to allow Chloe Felina to continue its execution. This is to allow the user to explicitly know that an alternative output file had be generated instead of the designated one. By default, this is False.
+**input\_to\_continue** (*Boolean*) - This parameter only comes into effect if **overwrite\_existing\_output** is True. If a different file format is used due to being unable to overwrite a pre-existing file for whatever reason, The user will be prompted to hit ENTER/RETURN on one's keyboard in order to allow Chloe_Felina to continue its execution. This is to allow the user to explicitly know that an alternative output file had be generated instead of the designated one. By default, this is False.
 
 
 
@@ -804,5 +804,5 @@ Purpose: This simply outputs an integer value of the number of items with refere
 
 
 
-**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
+**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe_Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe_Felina performing slower than it would otherwise. By default, this is False.
 
