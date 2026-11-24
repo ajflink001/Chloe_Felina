@@ -78,7 +78,7 @@ Note 4: "any", "all", and "every" will be ignored and excluded if **check\_type*
 
 
 
-Purpose: Initialization of Chloe Felina's "brain".
+Purpose: Initialization of Chloe_Felina's "brain".
 
 
 
@@ -114,7 +114,7 @@ Parameters:
 
 
 
-**chloe\_vocalization** (*Boolean*) - This is for an explicitly optional feature of Chloe Felina. Upon successfully completing certain functions in the **ChloeAI**, a randomly chosen audio clip of Chloe Link will be played of her either trilling or meowing happily by calling the **playChloeHappy** function. This is False by default.
+**chloe\_vocalization** (*Boolean*) - This is for an explicitly optional feature of Chloe_Felina. Upon successfully completing certain functions in the **ChloeAI**, a randomly chosen audio clip of Chloe Link will be played of her either trilling or meowing happily by calling the **playChloeHappy** function. This is False by default.
 
 
 
@@ -776,7 +776,7 @@ byte/bytes/B (Technically, unused, since anything other than the proceeding will
 
 
 
-**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe Felina performing slower than it would otherwise. By default, this is False.
+**terminal\_progress\_display** (*Boolean*) - This parameters only comes into effect if tqdm module is installed/available. This allows the display of progress bar for data being processed by Chloe_Felina and archived if using a terminal / command prompt display if set to True. This will NOT display or work properly in something like the Python IDLE. It will also result in the Chloe_Felina performing slower than it would otherwise. By default, this is False.
 
 
 
